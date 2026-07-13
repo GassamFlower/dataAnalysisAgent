@@ -1,0 +1,44 @@
+"""应用配置。从环境变量 / .env 读取。"""
+from pathlib import Path
+from pydantic_settings import BaseSettings
+
+# .env 文件路径相对于本文件所在目录（server/），确保从任何 CWD 都能正确加载
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
+
+
+class Settings(BaseSettings):
+    # DeepSeek
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_V3_MODEL: str = "deepseek-chat"      # R1~R3 理解 / 推断 / 解析
+    DEEPSEEK_R1_MODEL: str = "deepseek-reasoner"  # R4 硬伤诊断推理
+
+    # 服务
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    DEBUG: bool = True
+
+    # 前端（CORS）
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # 数据库（开发环境用 SQLite，生产环境用 PostgreSQL）
+    DATABASE_URL: str = "sqlite+aiosqlite:///./data_analysis_agent.db"
+
+    # 安全（JWT）
+    JWT_SECRET_KEY: str = ""  # 生产环境必须设置
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 天
+
+    # 开发模式（仅 DEBUG=True 时允许 dev-token）
+    DEV_TOKEN: str = "dev-token"
+    ALLOW_DEV_TOKEN: bool = True  # 生产环境设为 False
+
+    # 速率限制
+    RATE_LIMIT_PER_MINUTE: int = 60
+
+    class Config:
+        env_file = str(_ENV_FILE)
+        case_sensitive = True
+
+
+settings = Settings()

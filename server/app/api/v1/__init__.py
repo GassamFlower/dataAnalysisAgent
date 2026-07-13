@@ -1,0 +1,10 @@
+"""v1 版路由聚合。"""
+from fastapi import APIRouter
+
+from app.api.v1 import projects, questionnaire, simulation, report
+
+router = APIRouter(prefix="/v1")
+router.include_router(projects.router)
+router.include_router(questionnaire.router)
+router.include_router(simulation.router)
+router.include_router(report.router)

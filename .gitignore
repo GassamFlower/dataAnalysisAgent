@@ -1,0 +1,57 @@
+# 依赖
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# 环境变量（含密钥，禁止提交）
+.env
+.env.local
+.env.*.local
+server/.env.production
+web/.env.production
+
+# 数据库文件
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# 构建产物
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
+
+# 测试 / 覆盖率
+coverage/
+.coverage
+htmlcov/
+
+# 生成的报告文件（运行时产物）
+server/outputs/
+server/tmp/
+
+# 临时脚本（验证/测试用，不入库）
+test_*.py
+verify_*.py
+
+# 其他临时文件
+*.html

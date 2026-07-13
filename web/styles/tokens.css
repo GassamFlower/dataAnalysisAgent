@@ -1,0 +1,131 @@
+/**
+ * Design Tokens - cream 暖调复古老钱质感
+ *
+ * 铁律：所有视觉值必须从此处取，禁止硬编码。
+ * 详见 FRONTEND_ARCHITECTURE.md 第五章。
+ */
+
+:root {
+  /* ===== 背景层（cream 奶油暖白） ===== */
+  --bg-base: #faf7f2; /* 页面主背景 */
+  --bg-surface: #f5f0e8; /* 卡片 / 次背景 */
+  --bg-elevated: #ffffff; /* 弹窗 / 浮层 */
+  --bg-muted: #ebe3d5; /* 表格条纹 / 分隔区 */
+
+  /* ===== 前景层（ink 墨色，暖灰底，非纯黑） ===== */
+  --ink-900: #2a2520; /* 主文字（标题） */
+  --ink-700: #4a4239; /* 次文字（正文） */
+  --ink-500: #7a7066; /* 辅助文字（说明） */
+  --ink-400: #a89e92; /* 占位 / 禁用 */
+
+  /* ===== 强调色（复古暖色，低饱和老钱质感） ===== */
+  --accent-brick: #b5564b; /* 主强调（CTA / 品牌） */
+  --accent-indigo: #3d5a80; /* 次强调（链接 / 信息） */
+  --accent-olive: #8b6f47; /* 第三强调（标签 / 装饰） */
+
+  /* ===== 语义色 ===== */
+  --success: #5a7d5a; /* 成功（达标） */
+  --warning: #c9a227; /* 警告（存疑） */
+  --error: #a03e33; /* 错误（不达标） */
+
+  /* ===== 数据可视化色板（低饱和暖色系） ===== */
+  --chart-1: #b5564b;
+  --chart-2: #3d5a80;
+  --chart-3: #c9a227;
+  --chart-4: #5a7d5a;
+  --chart-5: #8b6f47;
+  --chart-6: #6b4e7a;
+
+  /* ===== 字号 ===== */
+  --text-display: 36px;
+  --text-display-line: 44px;
+  --text-h1: 28px;
+  --text-h1-line: 36px;
+  --text-h2: 22px;
+  --text-h2-line: 30px;
+  --text-h3: 18px;
+  --text-h3-line: 26px;
+  --text-body-lg: 16px;
+  --text-body-lg-line: 26px;
+  --text-body: 14px;
+  --text-body-line: 22px;
+  --text-small: 13px;
+  --text-small-line: 20px;
+  --text-caption: 12px;
+  --text-caption-line: 18px;
+
+  /* ===== 间距（8px 栅格） ===== */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* ===== 圆角 ===== */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ===== 阴影（暖灰底，非纯黑） ===== */
+  --shadow-xs: 0 1px 2px rgba(42, 37, 32, 0.04);
+  --shadow-sm: 0 1px 3px rgba(42, 37, 32, 0.06), 0 1px 2px rgba(42, 37, 32, 0.04);
+  --shadow-md: 0 4px 8px rgba(42, 37, 32, 0.06), 0 2px 4px rgba(42, 37, 32, 0.04);
+  --shadow-lg: 0 8px 16px rgba(42, 37, 32, 0.08), 0 4px 8px rgba(42, 37, 32, 0.04);
+  --shadow-xl: 0 16px 32px rgba(42, 37, 32, 0.1), 0 4px 8px rgba(42, 37, 32, 0.04);
+
+  /* ===== 边框 ===== */
+  --border-color: #ebe3d5;
+  --border-color-strong: #a89e92;
+  --border-width: 1px;
+  --border-width-focus: 2px;
+  --border-style: solid;
+
+  /* ===== 字体 ===== */
+  --font-display: var(--font-fraunces), "Noto Serif SC", Georgia, serif;
+  --font-sans: var(--font-noto-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* ===== 动效 ===== */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+
+  /* ===== shadcn/ui 语义 token 映射（组件通过这些取色） ===== */
+  --background: var(--bg-base);
+  --foreground: var(--ink-900);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--ink-900);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--ink-900);
+  --primary: var(--accent-brick);
+  --primary-foreground: #ffffff;
+  --secondary: var(--bg-muted);
+  --secondary-foreground: var(--ink-700);
+  --muted: var(--bg-muted);
+  --muted-foreground: var(--ink-500);
+  --accent: var(--bg-surface);
+  --accent-foreground: var(--ink-900);
+  --destructive: var(--error);
+  --destructive-foreground: #ffffff;
+  --success: var(--success);
+  --success-foreground: #ffffff;
+  --warning: var(--warning);
+  --warning-foreground: #ffffff;
+  --border: var(--border-color);
+  --input: var(--border-color);
+  --ring: var(--accent-brick);
+
+  /* shadcn 半径语义 */
+  --radius: var(--radius-md);
+}

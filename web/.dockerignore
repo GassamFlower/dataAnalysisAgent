@@ -1,0 +1,32 @@
+# 依赖
+node_modules/
+
+# 构建产物（Docker 内重新构建）
+.next/
+out/
+
+# 环境变量
+.env
+.env.local
+.env.local.example
+.env.production
+
+# 测试
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+
+# 文档
+*.md
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# 类型检查
+tsconfig.tsbuildinfo
