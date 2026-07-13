@@ -85,7 +85,7 @@ export default function AboutPage() {
             <p className="mt-4 text-body-lg text-ink-600">
               本科毕设最怕的是：问卷发出去收不回数据，好不容易收回来却发现信效度不达标、
               假设的关系跑不出来。数据分析智能体让你在正式发问卷前，
-              先用模拟数据做一次"预演"，提前发现问题、调整方向。
+              先用模拟数据做一次&ldquo;预演&rdquo;，提前发现问题、调整方向。
             </p>
             <div className="mt-6">
               <Button asChild>

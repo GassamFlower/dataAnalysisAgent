@@ -14,7 +14,7 @@ export function WatermarkNotice() {
         表明该数据为研究预演数据，不可直接用于正式研究或论文。
       </p>
       <p className="mt-2 text-caption text-ink-500">
-        此措施符合宪法第 7 条"水印铁律"，确保数据来源透明可追溯。
+        此措施符合宪法第 7 条&ldquo;水印铁律&rdquo;，确保数据来源透明可追溯。
       </p>
     </Card>
   );
