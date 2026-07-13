@@ -66,7 +66,7 @@ export default function ExportPage({ params }: { params: { id: string } }) {
   }
 
   // 检查是否有模拟数据
-  const hasSimulationData = simulationData?.matrix?.cells?.length > 0;
+  const hasSimulationData = (simulationData?.matrix?.cells?.length ?? 0) > 0;
 
   if (!hasSimulationData) {
     return (
