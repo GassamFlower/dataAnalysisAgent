@@ -1,13 +1,48 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, QrCode } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DISCLAIMER } from "@/lib/constants";
-
-export const metadata = { title: "登录" };
+import { useAuthStore } from "@/lib/stores/auth-store";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/login", { method: "POST" });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`登录失败: ${res.status} ${text}`);
+      }
+      const data = await res.json();
+      // data: { token, user: { id, nickname, plan } }
+      setAuth(
+        {
+          id: data.user.id,
+          nickname: data.user.nickname,
+          plan: data.user.plan ?? "subscription",
+        },
+        data.token
+      );
+      router.push("/projects");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "登录失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
       <Link
@@ -24,22 +59,30 @@ export default function LoginPage() {
             登录预演
           </h1>
           <p className="mt-2 text-body text-ink-500">
-            微信扫码登录，开始你的研究预演
+            点击登录，开始你的研究预演
           </p>
         </div>
 
         <div className="mt-8 flex flex-col items-center">
-          <div className="flex h-48 w-48 items-center justify-center rounded-lg border border-dashed border-border bg-cream-surface">
-            <QrCode className="h-16 w-16 text-ink-400" />
-          </div>
-          <p className="mt-4 text-caption text-ink-500">
-            微信扫码 · 免注册即用
-          </p>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                登录中...
+              </>
+            ) : (
+              "测试账号登录"
+            )}
+          </Button>
+          {error && (
+            <p className="mt-3 text-caption text-red-600">{error}</p>
+          )}
         </div>
-
-        <Button className="mt-8 w-full" size="lg" asChild>
-          <Link href="/projects">扫码登录</Link>
-        </Button>
 
         <p className="mt-6 text-center text-caption text-ink-400">
           登录即同意《用户协议》与《预演数据使用须知》

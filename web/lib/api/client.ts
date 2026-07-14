@@ -3,11 +3,20 @@
  * 业务域分文件：questionnaire / simulation / report。
  */
 
+import { useAuthStore } from "@/lib/stores/auth-store";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
   params?: Record<string, string | number | boolean>;
   body?: unknown;
+}
+
+/** 获取当前用户的 Authorization 头 */
+function getAuthHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -22,6 +31,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeader(),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
