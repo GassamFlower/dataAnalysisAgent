@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
+import { getBackendHeaders } from "@/lib/server/auth";
 
 /**
  * 报告 API（BFF 层）。
  * GET 转发到后端 FastAPI /api/v1/report/{project_id}，做 snake→camel 转换。
- * 导出 POST 已移至 app/api/report/[id]/export/route.ts。
- * 开发态用 dev-token 认证；生产态应从用户 session 取 token。
  */
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
-const DEV_TOKEN = process.env.DEV_TOKEN ?? "dev-token";
 
-/** 后端 Decimal 以字符串返回，安全转 number */
 function toNumber(v: unknown, fallback = 0): number {
   if (v === null || v === undefined || v === "") return fallback;
   const n = typeof v === "number" ? v : parseFloat(String(v));
@@ -74,7 +71,6 @@ interface BackendReport {
   created_at: string;
 }
 
-/** 后端 ReportResponse → 前端 Report（snake→camel + Decimal 字符串→number） */
 function transformReport(raw: BackendReport) {
   if (!raw) return null;
   return {
@@ -134,11 +130,11 @@ function transformReport(raw: BackendReport) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   const res = await fetch(`${BACKEND_URL}/api/v1/report/${params.id}`, {
-    headers: { Authorization: `Bearer ${DEV_TOKEN}` },
+    headers: getBackendHeaders(request),
     cache: "no-store",
   });
 
@@ -151,7 +147,6 @@ export async function GET(
   }
 
   const json = await res.json();
-  // 后端返回 {code,message,data: ReportResponse}
   const report = transformReport(json.data as BackendReport);
   if (!report) {
     return NextResponse.json({ error: "未找到报告" }, { status: 404 });

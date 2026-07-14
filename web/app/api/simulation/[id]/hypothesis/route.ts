@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
+import { getBackendHeaders } from "@/lib/server/auth";
 
 /**
  * 假设解析 API（BFF 层）。
- * 转发到后端 POST /api/v1/simulation/hypothesis/{project_id}，
- * 后端调用 LLM 解析用户假设为主效应路径。
+ * 转发到后端 POST /api/v1/simulation/hypothesis/{project_id}。
  */
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
-const DEV_TOKEN = process.env.DEV_TOKEN ?? "dev-token";
 
 interface HypothesisPath {
   predictor: string;
@@ -34,10 +33,7 @@ export async function POST(
     `${BACKEND_URL}/api/v1/simulation/hypothesis/${params.id}`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${DEV_TOKEN}`,
-      },
+      headers: getBackendHeaders(request),
       body: JSON.stringify({ raw_text: rawText }),
       cache: "no-store",
     }
@@ -52,8 +48,6 @@ export async function POST(
   }
 
   const json = await res.json();
-  // 后端 {code,message,data:{id,project_id,raw_text,paths:[{predictor,outcome,direction,strength}]}}
-  // → 前端 {hypothesisId, paths}
   const data = json.data ?? {};
   const paths: HypothesisPath[] = (data.paths ?? []).map(
     (p: Record<string, unknown>) => ({

@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
+import { getBackendHeaders } from "@/lib/server/auth";
 
 /**
  * 报告生成 API（BFF 层）。
- * 转发到后端 POST /api/v1/report/analyze/{project_id}，
- * 后端跑标准统计套餐 + R4 诊断，生成报告。
+ * 转发到后端 POST /api/v1/report/analyze/{project_id}。
  */
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
-const DEV_TOKEN = process.env.DEV_TOKEN ?? "dev-token";
 
-/** 后端 Decimal 以字符串返回，安全转 number */
 function toNumber(v: unknown, fallback = 0): number {
   if (v === null || v === undefined || v === "") return fallback;
   const n = typeof v === "number" ? v : parseFloat(String(v));
@@ -73,7 +71,6 @@ interface BackendReport {
   created_at: string;
 }
 
-/** 后端 ReportResponse → 前端 Report（snake→camel + Decimal 字符串→number） */
 function transformReport(raw: BackendReport) {
   if (!raw) return null;
   return {
@@ -133,14 +130,14 @@ function transformReport(raw: BackendReport) {
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   const res = await fetch(
     `${BACKEND_URL}/api/v1/report/analyze/${params.id}`,
     {
       method: "POST",
-      headers: { Authorization: `Bearer ${DEV_TOKEN}` },
+      headers: getBackendHeaders(request),
       cache: "no-store",
     }
   );

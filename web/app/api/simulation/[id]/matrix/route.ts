@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
+import { getBackendHeaders } from "@/lib/server/auth";
 
 /**
  * 保存相关矩阵 API（BFF 层）。
- * 转发到后端 PUT /api/v1/simulation/{project_id}/matrix，
- * 持久化用户编辑的矩阵到数据库。
+ * 转发到后端 PUT /api/v1/simulation/{project_id}/matrix。
  */
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
-const DEV_TOKEN = process.env.DEV_TOKEN ?? "dev-token";
 
 interface MatrixCell {
   row: string;
@@ -38,10 +37,7 @@ export async function PUT(
     `${BACKEND_URL}/api/v1/simulation/${params.id}/matrix`,
     {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${DEV_TOKEN}`,
-      },
+      headers: getBackendHeaders(request),
       body: JSON.stringify({
         dimensions: body.dimensions,
         cells: body.cells,

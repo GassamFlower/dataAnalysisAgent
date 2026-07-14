@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import type { Project } from "@/types";
+import { getBackendHeaders } from "@/lib/server/auth";
 
 /**
  * 项目列表 API（BFF 层）。
- * 转发到后端 FastAPI /api/v1/projects，开发态用 dev-token 认证。
- * 生产态应从用户 session 取 token 注入 Authorization。
+ * 转发到后端 FastAPI /api/v1/projects，从请求头转发用户 JWT。
  */
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
-const DEV_TOKEN = process.env.DEV_TOKEN ?? "dev-token";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -18,7 +17,7 @@ export async function GET(request: Request) {
   const res = await fetch(
     `${BACKEND_URL}/api/v1/projects/?page=${page}&page_size=${pageSize}`,
     {
-      headers: { Authorization: `Bearer ${DEV_TOKEN}` },
+      headers: getBackendHeaders(request),
       cache: "no-store",
     }
   );
@@ -32,8 +31,6 @@ export async function GET(request: Request) {
   }
 
   const json = await res.json();
-  // 后端返回 {code,message,data:{items,total,page,page_size}}（snake_case）
-  // 前端期望 {projects: Project[]}（camelCase）
   const items = (json.data?.items ?? []).map((item: Record<string, unknown>) => ({
     id: item.id as string,
     name: item.name as string,
@@ -50,8 +47,7 @@ export async function POST(request: Request) {
   const res = await fetch(`${BACKEND_URL}/api/v1/projects/`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${DEV_TOKEN}`,
+      ...getBackendHeaders(request),
     },
     body: JSON.stringify(body),
     cache: "no-store",
@@ -66,7 +62,6 @@ export async function POST(request: Request) {
   }
 
   const json = await res.json();
-  // 后端返回 snake_case，前端期望 camelCase
   const item = json.data ?? {};
   const project: Partial<Project> = {
     id: item.id,
