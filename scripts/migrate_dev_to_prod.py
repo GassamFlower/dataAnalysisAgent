@@ -9,8 +9,8 @@
 
 注意：
   - 脚本放在项目根目录 scripts/ 下，不在 uvicorn 监控范围内
-  - SQLite 中 UUID 以 32 位 hex 存储（SqlAlchemy Uuid 类型），
-    PostgreSQL 需要标准 36 位 UUID 格式（带连字符）
+  - SQLAlchemy 的 Uuid 类型在 DB 中以 32 位 hex 存储（无连字符），
+    迁移时必须保持 hex 格式，不能转为 36 位标准 UUID，否则 db.get() 查询不匹配
   - 迁移顺序按外键依赖：users → projects → questions/hypotheses/correlation_matrices/simulation_configs/reports → hypothesis_paths/datasets/reliability_results/diagnoses → diagnosis_issues
 """
 import json
@@ -24,13 +24,16 @@ DB_PATH = Path(__file__).parent.parent / "server" / "data_analysis_agent.db"
 OUTPUT_PATH = Path(__file__).parent / "migrate_data.sql"
 
 
-def hex_to_uuid(hex_str: str) -> str:
-    """32位hex → 36位标准UUID格式（带连字符）。"""
-    if not hex_str or len(hex_str) == 36:
-        return hex_str
-    if len(hex_str) == 32:
-        return f"{hex_str[:8]}-{hex_str[8:12]}-{hex_str[12:16]}-{hex_str[16:20]}-{hex_str[20:]}"
-    return hex_str
+def to_hex(uuid_str: str) -> str:
+    """统一转为 32 位 hex 格式（无连字符）。
+    SQLAlchemy Uuid 类型在 DB 中以 .hex（32位无连字符）存储，
+    db.get(Model, uuid_obj) 查询时也用 .hex 匹配。
+    源数据可能混有 32 位 hex 和 36 位 UUID 两种格式，统一转换。
+    """
+    if not uuid_str:
+        return ""
+    s = uuid_str.replace("-", "")
+    return s  # 32位hex
 
 
 def escape_sql(s: str) -> str:
@@ -80,7 +83,7 @@ def main():
         lines.append("-- users")
         lines.append("DELETE FROM users;")
         for r in rows:
-            uid = hex_to_uuid(r["id"])
+            uid = to_hex(r["id"])
             lines.append(
                 f"INSERT INTO users (id, openid, nickname, avatar, plan, plan_expires_at, created_at, updated_at) "
                 f"VALUES ('{uid}', {escape_sql(r['openid'])}, {escape_sql(r['nickname'])}, "
@@ -97,8 +100,8 @@ def main():
         lines.append("-- projects")
         lines.append("DELETE FROM projects;")
         for r in rows:
-            pid = hex_to_uuid(r["id"])
-            uid = hex_to_uuid(r["user_id"])
+            pid = to_hex(r["id"])
+            uid = to_hex(r["user_id"])
             lines.append(
                 f"INSERT INTO projects (id, user_id, name, status, created_at, updated_at) "
                 f"VALUES ('{pid}', '{uid}', {escape_sql(r['name'])}, {escape_sql(r['status'])}, "
@@ -113,10 +116,10 @@ def main():
         lines.append("-- questions")
         lines.append("DELETE FROM questions;")
         for r in rows:
-            qid = hex_to_uuid(r["id"])
-            pid = hex_to_uuid(r["project_id"])
+            qid = to_hex(r["id"])
+            pid = to_hex(r["project_id"])
             lines.append(
-                f"INSERT INTO questions (id, project_id, index, text, question_type, dimension, is_reverse, confidence, created_at) "
+                f"INSERT INTO questions (id, project_id, \"index\", text, question_type, dimension, is_reverse, confidence, created_at) "
                 f"VALUES ('{qid}', '{pid}', {r['index']}, {escape_sql(r['text'])}, "
                 f"{escape_sql(r['question_type'])}, {escape_sql(r['dimension'])}, "
                 f"{'TRUE' if r['is_reverse'] else 'FALSE'}, {escape_sql(r['confidence'])}, "
@@ -131,8 +134,8 @@ def main():
         lines.append("-- hypotheses")
         lines.append("DELETE FROM hypotheses;")
         for r in rows:
-            hid = hex_to_uuid(r["id"])
-            pid = hex_to_uuid(r["project_id"])
+            hid = to_hex(r["id"])
+            pid = to_hex(r["project_id"])
             lines.append(
                 f"INSERT INTO hypotheses (id, project_id, raw_text, created_at) "
                 f"VALUES ('{hid}', '{pid}', {escape_sql(r['raw_text'])}, "
@@ -147,8 +150,8 @@ def main():
         lines.append("-- hypothesis_paths")
         lines.append("DELETE FROM hypothesis_paths;")
         for r in rows:
-            pid = hex_to_uuid(r["id"])
-            hid = hex_to_uuid(r["hypothesis_id"])
+            pid = to_hex(r["id"])
+            hid = to_hex(r["hypothesis_id"])
             lines.append(
                 f"INSERT INTO hypothesis_paths (id, hypothesis_id, predictor, outcome, direction, strength) "
                 f"VALUES ('{pid}', '{hid}', {escape_sql(r['predictor'])}, "
@@ -163,8 +166,8 @@ def main():
         lines.append("-- correlation_matrices")
         lines.append("DELETE FROM correlation_matrices;")
         for r in rows:
-            mid = hex_to_uuid(r["id"])
-            pid = hex_to_uuid(r["project_id"])
+            mid = to_hex(r["id"])
+            pid = to_hex(r["project_id"])
             lines.append(
                 f"INSERT INTO correlation_matrices (id, project_id, dimensions, cells, created_at, updated_at) "
                 f"VALUES ('{mid}', '{pid}', {format_json(json.loads(r['dimensions']))}, "
@@ -180,10 +183,10 @@ def main():
         lines.append("-- simulation_configs")
         lines.append("DELETE FROM simulation_configs;")
         for r in rows:
-            cid = hex_to_uuid(r["id"])
-            pid = hex_to_uuid(r["project_id"])
-            hid = hex_to_uuid(r["hypothesis_id"]) if r["hypothesis_id"] else "NULL"
-            mid = hex_to_uuid(r["matrix_id"]) if r["matrix_id"] else "NULL"
+            cid = to_hex(r["id"])
+            pid = to_hex(r["project_id"])
+            hid = to_hex(r["hypothesis_id"]) if r["hypothesis_id"] else "NULL"
+            mid = to_hex(r["matrix_id"]) if r["matrix_id"] else "NULL"
             hid_sql = f"'{hid}'" if hid != "NULL" else "NULL"
             mid_sql = f"'{mid}'" if mid != "NULL" else "NULL"
             lines.append(
@@ -200,11 +203,11 @@ def main():
         lines.append("-- datasets")
         lines.append("DELETE FROM datasets;")
         for r in rows:
-            did = hex_to_uuid(r["id"])
-            pid = hex_to_uuid(r["project_id"])
-            cid = hex_to_uuid(r["simulation_config_id"])
+            did = to_hex(r["id"])
+            pid = to_hex(r["project_id"])
+            cid = to_hex(r["simulation_config_id"])
             lines.append(
-                f"INSERT INTO datasets (id, simulation_config_id, project_id, sample_size, columns, data, created_at) "
+                f"INSERT INTO datasets (id, simulation_config_id, project_id, sample_size, columns, \"data\", created_at) "
                 f"VALUES ('{did}', '{cid}', '{pid}', {r['sample_size']}, "
                 f"{format_json(json.loads(r['columns']))}, "
                 f"{format_json(json.loads(r['data']))}, "
@@ -219,8 +222,8 @@ def main():
         lines.append("-- reports")
         lines.append("DELETE FROM reports;")
         for r in rows:
-            rid = hex_to_uuid(r["id"])
-            pid = hex_to_uuid(r["project_id"])
+            rid = to_hex(r["id"])
+            pid = to_hex(r["project_id"])
             alpha = r["overall_alpha"]
             alpha_sql = f"{alpha}" if alpha is not None else "NULL"
             lines.append(
@@ -239,8 +242,8 @@ def main():
         lines.append("-- reliability_results")
         lines.append("DELETE FROM reliability_results;")
         for r in rows:
-            rid = hex_to_uuid(r["id"])
-            rpt_id = hex_to_uuid(r["report_id"])
+            rid = to_hex(r["id"])
+            rpt_id = to_hex(r["report_id"])
             lines.append(
                 f"INSERT INTO reliability_results (id, report_id, dimension, alpha, kmo, bartlett_p_value, passed) "
                 f"VALUES ('{rid}', '{rpt_id}', {escape_sql(r['dimension'])}, "
@@ -256,8 +259,8 @@ def main():
         lines.append("-- diagnoses")
         lines.append("DELETE FROM diagnoses;")
         for r in rows:
-            did = hex_to_uuid(r["id"])
-            rpt_id = hex_to_uuid(r["report_id"])
+            did = to_hex(r["id"])
+            rpt_id = to_hex(r["report_id"])
             lines.append(
                 f"INSERT INTO diagnoses (id, report_id, passed, created_at) "
                 f"VALUES ('{did}', '{rpt_id}', {'TRUE' if r['passed'] else 'FALSE'}, "
@@ -272,10 +275,10 @@ def main():
         lines.append("-- diagnosis_issues")
         lines.append("DELETE FROM diagnosis_issues;")
         for r in rows:
-            iid = hex_to_uuid(r["id"])
-            did = hex_to_uuid(r["diagnosis_id"])
+            iid = to_hex(r["id"])
+            did = to_hex(r["diagnosis_id"])
             lines.append(
-                f"INSERT INTO diagnosis_issues (id, diagnosis_id, dimension, metric, value, threshold, reason, suggestion) "
+                f"INSERT INTO diagnosis_issues (id, diagnosis_id, dimension, metric, \"value\", threshold, reason, suggestion) "
                 f"VALUES ('{iid}', '{did}', {escape_sql(r['dimension'])}, "
                 f"{escape_sql(r['metric'])}, {r['value']}, {r['threshold']}, "
                 f"{escape_sql(r['reason'])}, {escape_sql(r['suggestion'])});"
