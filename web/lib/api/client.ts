@@ -63,6 +63,7 @@ async function postBlob(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeader(),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
