@@ -173,9 +173,12 @@ async def analyze(
     if project.status != "simulated":
         raise ValidationException("项目状态不正确，请先完成数据生成")
 
-    # 3. 获取模拟配置
+    # 3. 获取最新模拟配置
     result = await db.execute(
-        select(SimulationConfig).where(SimulationConfig.project_id == project_id)
+        select(SimulationConfig)
+        .where(SimulationConfig.project_id == project_id)
+        .order_by(SimulationConfig.created_at.desc())
+        .limit(1)
     )
     sim_config = result.scalar_one_or_none()
     if not sim_config:
