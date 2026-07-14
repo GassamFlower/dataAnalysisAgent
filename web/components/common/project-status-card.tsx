@@ -16,6 +16,7 @@ const STATUS_TO_VARIANT: Record<
 > = {
   draft: "secondary",
   inspected: "default",
+  hypothesized: "default",
   simulated: "warning",
   analyzed: "success",
 };
@@ -27,6 +28,8 @@ function getStageDescription(status: ProjectStatus): string {
       return "项目已创建，请上传题目文本进行体检";
     case "inspected":
       return "题目体检完成，可开始数据预演";
+    case "hypothesized":
+      return "假设已提交，可生成模拟数据";
     case "simulated":
       return "模拟数据已生成，可产出统计报告";
     case "analyzed":
@@ -45,6 +48,8 @@ function getNextAction(
     case "draft":
       return null;
     case "inspected":
+      return { label: "去数据预演", href: `/projects/${projectId}/simulate` };
+    case "hypothesized":
       return { label: "去数据预演", href: `/projects/${projectId}/simulate` };
     case "simulated":
       return { label: "去查看报告", href: `/projects/${projectId}/report` };

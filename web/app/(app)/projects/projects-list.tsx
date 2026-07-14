@@ -39,6 +39,7 @@ const STATUS_TO_VARIANT: Record<
 > = {
   draft: "secondary",
   inspected: "default",
+  hypothesized: "default",
   simulated: "warning",
   analyzed: "success",
 };
@@ -48,6 +49,7 @@ const FILTER_OPTIONS = [
   { value: "all", label: "全部状态" },
   { value: "draft", label: "待体检" },
   { value: "inspected", label: "已体检" },
+  { value: "hypothesized", label: "已假设" },
   { value: "simulated", label: "已预演" },
   { value: "analyzed", label: "已出报告" },
 ] as const;

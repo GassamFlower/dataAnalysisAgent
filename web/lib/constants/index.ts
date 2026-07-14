@@ -110,6 +110,7 @@ export const DISCLAIMER =
 export const PROJECT_STATUS = {
   draft: { label: "待体检", tone: "muted" as const },
   inspected: { label: "已体检", tone: "info" as const },
+  hypothesized: { label: "已假设", tone: "info" as const },
   simulated: { label: "已预演", tone: "info" as const },
   analyzed: { label: "已出报告", tone: "success" as const },
 } as const;

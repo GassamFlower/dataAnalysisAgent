@@ -112,7 +112,7 @@ export interface DiffTestResult {
 export interface Project {
   id: string;
   name: string;
-  status: "draft" | "inspected" | "simulated" | "analyzed";
+  status: "draft" | "inspected" | "hypothesized" | "simulated" | "analyzed";
   createdAt: string;
   updatedAt: string;
   /** 关联的题目结构（体检后填充） */
