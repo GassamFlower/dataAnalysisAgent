@@ -53,5 +53,8 @@ server/tmp/
 test_*.py
 verify_*.py
 
+# 文档文件（仅本地维护，不上传 GitHub）
+docs/
+
 # 其他临时文件
 *.html
