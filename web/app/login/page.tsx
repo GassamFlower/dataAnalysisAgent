@@ -1,12 +1,20 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DISCLAIMER } from "@/lib/constants";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
@@ -33,6 +41,8 @@ function LoginForm() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
 
   // 从 URL 读取错误信息（BFF 回调失败时重定向带 error 参数）
   useEffect(() => {
@@ -48,7 +58,34 @@ function LoginForm() {
   // 读取 redirect 参数（登录成功后跳转的路径）
   const redirectPath = searchParams.get("redirect") ?? "/projects";
 
-  /** 微信扫码登录：获取授权 URL 后跳转 */
+  /** 检测 localStorage 中是否已有登录态（扫码授权后回调页会写入） */
+  const checkLoginStatus = useCallback(() => {
+    try {
+      const raw = localStorage.getItem("auth-storage");
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return parsed?.state?.isAuthenticated && parsed?.state?.token;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // 二维码弹窗打开时，轮询检测登录态
+  useEffect(() => {
+    if (!qrOpen) return;
+
+    const interval = setInterval(() => {
+      if (checkLoginStatus()) {
+        clearInterval(interval);
+        setQrOpen(false);
+        router.push(redirectPath);
+      }
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [qrOpen, redirectPath, router, checkLoginStatus]);
+
+  /** 微信扫码登录：获取授权 URL 并展示二维码 */
   const handleWechatLogin = async () => {
     setLoading(true);
     setError(null);
@@ -61,14 +98,14 @@ function LoginForm() {
         throw new Error(`获取微信授权链接失败: ${res.status} ${text}`);
       }
       const data = await res.json();
-      // data: { url: "https://open.weixin.qq.com/connect/oauth2/authorize?..." }
       if (!data.url) {
         throw new Error("微信登录未配置，请先在 .env 中设置 WECHAT_APP_ID");
       }
-      // 跳转到微信授权页
-      window.location.href = data.url;
+      setQrUrl(data.url);
+      setQrOpen(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "微信登录失败，请重试");
+    } finally {
       setLoading(false);
     }
   };
@@ -131,7 +168,7 @@ function LoginForm() {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                正在跳转...
+                正在加载...
               </>
             ) : (
               <>
@@ -167,6 +204,32 @@ function LoginForm() {
       <p className="mt-8 max-w-sm text-center text-caption text-ink-400">
         {DISCLAIMER}
       </p>
+
+      {/* 微信扫码二维码弹窗 */}
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">微信扫码登录</DialogTitle>
+            <DialogDescription className="text-center">
+              请使用微信扫一扫，扫描下方二维码完成授权
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            {qrUrl ? (
+              <div className="rounded-lg border border-border bg-white p-3">
+                <QRCodeSVG value={qrUrl} size={200} level="M" />
+              </div>
+            ) : (
+              <Loader2 className="h-10 w-10 animate-spin text-ink-400" />
+            )}
+            <p className="text-center text-caption text-ink-500">
+              扫码后请在微信内点击授权
+              <br />
+              授权完成后本页面将自动跳转
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
