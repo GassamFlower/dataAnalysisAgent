@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     DEV_TOKEN: str = "dev-token"
     ALLOW_DEV_TOKEN: bool = True  # 生产环境设为 False
 
+    # 微信公众号网页授权
+    WECHAT_APP_ID: str = ""
+    WECHAT_APP_SECRET: str = ""
+    # 网页授权回调地址（前端 BFF 回调路由完整 URL，如 https://example.com/api/auth/callback）
+    WECHAT_REDIRECT_URI: str = ""
+
     # 速率限制
     RATE_LIMIT_PER_MINUTE: int = 60
 

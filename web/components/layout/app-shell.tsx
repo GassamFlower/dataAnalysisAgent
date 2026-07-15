@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Plus, Settings, FileText } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, Plus, Settings, FileText, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/lib/stores/auth-store";
 
 const navItems = [
   { href: "/projects", label: "我的项目", icon: LayoutDashboard },
@@ -15,9 +17,29 @@ const navItems = [
 /**
  * 应用 Shell：左侧栏 + 主内容区。
  * 用于 (app) 路由组（需登录的产品页）。
+ * 包含路由守卫：未登录时跳转到 /login。
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const mounted = useMounted();
+
+  // 路由守卫：未登录跳转到 /login（带 redirect 参数）
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [mounted, isAuthenticated, pathname, router]);
+
+  // 等待客户端 mount 完成（避免 hydration mismatch）+ 未登录时显示 Loading
+  if (!mounted || !isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-ink-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,4 +80,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
     </div>
   );
+}
+
+/** 客户端 mount 检测 hook（避免 hydration mismatch） */
+function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
 }
