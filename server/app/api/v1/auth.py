@@ -3,7 +3,7 @@ import re
 import uuid
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -204,8 +204,8 @@ def _create_reset_token(user_id: uuid.UUID) -> str:
     payload = {
         "sub": str(user_id),
         "type": RESET_TOKEN_TYPE,
-        "exp": datetime.utcnow() + timedelta(minutes=30),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+        "iat": datetime.now(timezone.utc),
     }
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
@@ -310,7 +310,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     # 生成验证码并存储
     code = _generate_code()
     user.email_verify_code = code
-    user.email_verify_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.email_verify_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
     # 先提交用户数据（确保即使邮件发送失败用户也已创建）
     await db.commit()
@@ -341,7 +341,7 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
     if not user.email_verify_code or not user.email_verify_expires_at:
         raise ValidationException("请先获取验证码")
 
-    if datetime.utcnow() > user.email_verify_expires_at:
+    if datetime.now(timezone.utc) > user.email_verify_expires_at:
         raise ValidationException("验证码已过期，请重新获取")
 
     if user.email_verify_code != req.code:
@@ -391,7 +391,7 @@ async def resend_code(req: ResendCodeRequest, db: AsyncSession = Depends(get_db)
 
     code = _generate_code()
     user.email_verify_code = code
-    user.email_verify_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.email_verify_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
     try:
         send_verification_code(req.email, code)

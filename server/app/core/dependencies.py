@@ -1,6 +1,6 @@
 """公共依赖（认证 + 权限）。"""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Depends
@@ -88,6 +88,6 @@ async def require_paid_plan(user: dict = Depends(get_current_user)) -> dict:
     """
     if user["plan"] == "free":
         raise ForbiddenException("该功能需要付费套餐（单次解锁或订阅）")
-    if user["plan_expires_at"] and user["plan_expires_at"] < datetime.utcnow():
+    if user["plan_expires_at"] and user["plan_expires_at"] < datetime.now(timezone.utc):
         raise ForbiddenException("套餐已过期，请续费")
     return user
