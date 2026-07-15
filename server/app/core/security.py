@@ -3,13 +3,46 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
+import bcrypt
 import jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# 密码哈希上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证密码。
+
+    Args:
+        plain_password: 明文密码
+        hashed_password: 哈希后的密码
+
+    Returns:
+        密码是否匹配
+    """
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except (ValueError, TypeError):
+        return False
+
+
+def hash_password(password: str) -> str:
+    """哈希密码。
+
+    Args:
+        password: 明文密码
+
+    Returns:
+        哈希后的密码
+    """
+    # bcrypt 限制 72 字节，截断超长密码
+    hashed = bcrypt.hashpw(
+        password.encode("utf-8")[:72],
+        bcrypt.gensalt(),
+    )
+    return hashed.decode("utf-8")
 
 
 def create_access_token(
@@ -64,28 +97,3 @@ def verify_token(token: str) -> Optional[dict]:
     except jwt.PyJWTError:
         # 捕获所有 JWT 相关异常（含 ExpiredSignatureError, InvalidTokenError, InvalidKeyError 等）
         return None
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """验证密码。
-
-    Args:
-        plain_password: 明文密码
-        hashed_password: 哈希后的密码
-
-    Returns:
-        密码是否匹配
-    """
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def hash_password(password: str) -> str:
-    """哈希密码。
-
-    Args:
-        password: 明文密码
-
-    Returns:
-        哈希后的密码
-    """
-    return pwd_context.hash(password)

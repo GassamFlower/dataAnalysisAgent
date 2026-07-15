@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     # 网页授权回调地址（前端 BFF 回调路由完整 URL，如 https://example.com/api/auth/callback）
     WECHAT_REDIRECT_URI: str = ""
 
+    # 邮件 SMTP 配置（用于邮箱注册验证码、密码重置）
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 465
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""  # 邮箱授权码（非登录密码）
+    SMTP_FROM_NAME: str = "预演"
+    # 前端基础 URL（用于拼重置密码链接）
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+
     # 速率限制
     RATE_LIMIT_PER_MINUTE: int = 60
 

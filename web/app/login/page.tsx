@@ -3,11 +3,13 @@
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Lock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +46,10 @@ function LoginForm() {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
 
-  // 从 URL 读取错误信息（BFF 回调失败时重定向带 error 参数）
+  // 邮箱登录表单
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   useEffect(() => {
     const err = searchParams.get("error");
     if (err === "missing_code") {
@@ -55,10 +60,8 @@ function LoginForm() {
     }
   }, [searchParams]);
 
-  // 读取 redirect 参数（登录成功后跳转的路径）
   const redirectPath = searchParams.get("redirect") ?? "/projects";
 
-  /** 检测 localStorage 中是否已有登录态（扫码授权后回调页会写入） */
   const checkLoginStatus = useCallback(() => {
     try {
       const raw = localStorage.getItem("auth-storage");
@@ -70,10 +73,8 @@ function LoginForm() {
     }
   }, []);
 
-  // 二维码弹窗打开时，轮询检测登录态
   useEffect(() => {
     if (!qrOpen) return;
-
     const interval = setInterval(() => {
       if (checkLoginStatus()) {
         clearInterval(interval);
@@ -81,45 +82,49 @@ function LoginForm() {
         router.push(redirectPath);
       }
     }, 1500);
-
     return () => clearInterval(interval);
   }, [qrOpen, redirectPath, router, checkLoginStatus]);
 
-  /** 微信扫码登录：获取授权 URL 并展示二维码 */
-  const handleWechatLogin = async () => {
+  /** 邮箱登录 */
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/auth/wechat-url?redirect=${encodeURIComponent(redirectPath)}`
-      );
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`获取微信授权链接失败: ${res.status} ${text}`);
-      }
+      const res = await fetch("/api/auth/email-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
       const data = await res.json();
-      if (!data.url) {
-        throw new Error("微信登录未配置，请先在 .env 中设置 WECHAT_APP_ID");
+      if (!res.ok) {
+        throw new Error(data.message || data.detail || "登录失败");
       }
-      setQrUrl(data.url);
-      setQrOpen(true);
+      // 后端返回 {code, message, data: {token, user}}
+      const { token, user } = data.data;
+      setAuth(
+        {
+          id: user.id,
+          nickname: user.nickname,
+          plan: user.plan ?? "free",
+        },
+        token
+      );
+      router.push(redirectPath);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "微信登录失败，请重试");
+      setError(e instanceof Error ? e.message : "登录失败，请重试");
     } finally {
       setLoading(false);
     }
   };
 
-  /** 测试账号登录（开发环境降级方案） */
+  /** 测试账号登录 */
   const handleDevLogin = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/auth/login", { method: "POST" });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`登录失败: ${res.status} ${text}`);
-      }
+      if (!res.ok) throw new Error(`登录失败: ${res.status}`);
       const data = await res.json();
       setAuth(
         {
@@ -132,6 +137,27 @@ function LoginForm() {
       router.push(redirectPath);
     } catch (e) {
       setError(e instanceof Error ? e.message : "登录失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** 微信扫码登录 */
+  const handleWechatLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/auth/wechat-url?redirect=${encodeURIComponent(redirectPath)}`
+      );
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.message || "微信登录未配置");
+      }
+      setQrUrl(data.url);
+      setQrOpen(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "微信登录失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -153,34 +179,89 @@ function LoginForm() {
             登录预演
           </h1>
           <p className="mt-2 text-body text-ink-500">
-            使用微信扫码登录，开始你的研究预演
+            使用邮箱登录，开始你的研究预演
           </p>
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-3">
-          {/* 微信扫码登录（主按钮） */}
+        {/* 邮箱登录表单 */}
+        <form onSubmit={handleEmailLogin} className="mt-8 flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">邮箱</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                className="pl-9"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">密码</Label>
+              <Link
+                href="/forgot-password"
+                className="text-caption text-ink-500 hover:text-ink-900"
+              >
+                忘记密码？
+              </Link>
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="请输入密码"
+                className="pl-9"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-center text-caption text-red-600">{error}</p>
+          )}
+
+          <Button type="submit" size="lg" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                登录中...
+              </>
+            ) : (
+              "邮箱登录"
+            )}
+          </Button>
+        </form>
+
+        {/* 分隔线 */}
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-caption text-ink-400">或</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        {/* 其他登录方式 */}
+        <div className="flex flex-col items-center gap-3">
           <Button
+            variant="outline"
             className="w-full"
             size="lg"
             onClick={handleWechatLogin}
             disabled={loading}
           >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                正在加载...
-              </>
-            ) : (
-              <>
-                <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8.69 4C5.43 4 2.8 6.13 2.8 8.78c0 1.49.83 2.83 2.13 3.74l-.53 1.6 1.86-.94c.66.13 1.3.27 1.99.27.18 0 .35-.02.53-.03-.11-.38-.18-.78-.18-1.2 0-2.46 2.12-4.46 4.74-4.46.17 0 .33.01.5.03-.5-2.3-2.94-3.99-5.15-3.99zM6.9 7.44c-.4 0-.73-.33-.73-.73s.33-.73.73-.73.73.33.73.73-.33.73-.73.73zm3.6 0c-.4 0-.73-.33-.73-.73s.33-.73.73-.73.73.33.73.73-.33.73-.73.73zm3.58 1.52c-2.36 0-4.27 1.7-4.27 3.8 0 2.1 1.91 3.8 4.27 3.8.5 0 .99-.08 1.45-.22l1.32.67-.36-1.1c.96-.69 1.86-1.66 1.86-3.15 0-2.1-1.91-3.8-4.27-3.8zm-1.42 1.1c-.27 0-.49-.22-.49-.49s.22-.49.49-.49.49.22.49.49-.22.49-.49.49zm2.84 0c-.27 0-.49-.22-.49-.49s.22-.49.49-.49.49.22.49.49-.22.49-.49.49z"/>
-                </svg>
-                微信扫码登录
-              </>
-            )}
+            <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8.69 4C5.43 4 2.8 6.13 2.8 8.78c0 1.49.83 2.83 2.13 3.74l-.53 1.6 1.86-.94c.66.13 1.3.27 1.99.27.18 0 .35-.02.53-.03-.11-.38-.18-.78-.18-1.2 0-2.46 2.12-4.46 4.74-4.46.17 0 .33.01.5.03-.5-2.3-2.94-3.99-5.15-3.99zM6.9 7.44c-.4 0-.73-.33-.73-.73s.33-.73.73-.73.73.33.73.73-.33.73-.73.73zm3.6 0c-.4 0-.73-.33-.73-.73s.33-.73.73-.73.73.33.73.73-.33.73-.73.73zm3.58 1.52c-2.36 0-4.27 1.7-4.27 3.8 0 2.1 1.91 3.8 4.27 3.8.5 0 .99-.08 1.45-.22l1.32.67-.36-1.1c.96-.69 1.86-1.66 1.86-3.15 0-2.1-1.91-3.8-4.27-3.8zm-1.42 1.1c-.27 0-.49-.22-.49-.49s.22-.49.49-.49.49.22.49.49-.22.49-.49.49zm2.84 0c-.27 0-.49-.22-.49-.49s.22-.49.49-.49.49.22.49.49-.22.49-.49.49z"/>
+            </svg>
+            微信扫码登录
           </Button>
 
-          {/* 测试账号登录（降级方案，仅微信登录失败时使用） */}
           <Button
             variant="ghost"
             size="sm"
@@ -190,13 +271,16 @@ function LoginForm() {
           >
             测试账号登录
           </Button>
-
-          {error && (
-            <p className="mt-3 text-center text-caption text-red-600">{error}</p>
-          )}
         </div>
 
         <p className="mt-6 text-center text-caption text-ink-400">
+          还没有账号？{" "}
+          <Link href="/register" className="text-primary hover:underline">
+            立即注册
+          </Link>
+        </p>
+
+        <p className="mt-4 text-center text-caption text-ink-400">
           登录即同意《用户协议》与《预演数据使用须知》
         </p>
       </Card>

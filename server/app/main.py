@@ -80,15 +80,23 @@ async def app_exception_handler(request: Request, exc: AppException):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """处理 Pydantic 请求体校验异常，统一为 ErrorResponse 格式。"""
     errors = exc.errors()
-    # 提取第一个错误的 loc + msg 作为主要信息
-    first = errors[0] if errors else {}
-    loc = " -> ".join(str(l) for l in first.get("loc", []))
+    # 提取第一个错误的 loc + msg 作为主要信息（确保可序列化）
+    safe_errors = []
+    for err in errors:
+        safe_err = {
+            "type": str(err.get("type", "")),
+            "loc": [str(l) for l in err.get("loc", [])],
+            "msg": str(err.get("msg", "参数校验失败")),
+        }
+        safe_errors.append(safe_err)
+    first = safe_errors[0] if safe_errors else {}
+    loc = " -> ".join(first.get("loc", []))
     msg = first.get("msg", "参数校验失败")
     detail = f"{loc}: {msg}" if loc else msg
     logger.info(f"参数校验失败: {detail}")
     return JSONResponse(
         status_code=422,
-        content=error_response(42200, detail, {"errors": errors}),
+        content=error_response(42200, detail, {"errors": safe_errors}),
     )
 
 
