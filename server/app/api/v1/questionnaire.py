@@ -1,8 +1,10 @@
 """题目体检路由（R1~R3：题型识别 / 维度归属 / 反向题标记）。"""
+import io
+import os
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,11 +19,39 @@ from app.schemas.questionnaire import (
     QuestionnaireStructure,
     QuestionResponse,
     QuestionUpdateRequest,
+    QuestionUploadResponse,
 )
 from app.services.inspector import inspect as inspect_service
 from app.services.project_service import update_project_status
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
+
+
+# 文件上传限制
+_MAX_UPLOAD_SIZE = 2 * 1024 * 1024  # 2MB
+_ALLOWED_EXTENSIONS = {".txt", ".docx"}
+
+
+def _read_text_file(content: bytes) -> str:
+    """读取文本文件，依次尝试 UTF-8 / GBK / latin1 编码。"""
+    for encoding in ("utf-8", "gbk", "latin1"):
+        try:
+            return content.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValidationException("无法识别文本文件编码，请保存为 UTF-8 后重试")
+
+
+def _read_docx_file(content: bytes) -> str:
+    """读取 .docx 文件并提取段落文本。"""
+    try:
+        import docx
+    except ImportError as exc:
+        raise ValidationException("缺少 docx 解析依赖，请联系管理员安装 python-docx") from exc
+
+    document = docx.Document(io.BytesIO(content))
+    paragraphs = [p.text.strip() for p in document.paragraphs if p.text.strip()]
+    return "\n".join(paragraphs)
 
 
 @router.post(
@@ -75,6 +105,60 @@ async def inspect(
     await db.flush()
 
     return ResponseModel(data=questionnaire_structure)
+
+
+@router.post(
+    "/upload",
+    response_model=ResponseModel[QuestionUploadResponse],
+    summary="上传问卷文件",
+    description="上传 .txt / .docx 文件并提取原始文本，单文件 ≤ 2MB。",
+)
+async def upload_questionnaire_file(
+    project_id: UUID,
+    file: UploadFile = File(..., description="问卷文件，支持 .txt / .docx"),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """上传问卷文件并提取原始文本。"""
+    # 1. 验证项目存在且属于当前用户
+    result = await db.execute(
+        select(Project).where(
+            Project.id == project_id,
+            Project.user_id == current_user["id"]
+        )
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise NotFoundException("项目不存在")
+
+    # 2. 校验文件名与扩展名
+    if not file.filename:
+        raise ValidationException("文件名不能为空")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise ValidationException(f"不支持的文件格式：{ext}，仅支持 .txt / .docx")
+
+    # 3. 读取文件内容并校验大小
+    content = await file.read()
+    if len(content) > _MAX_UPLOAD_SIZE:
+        raise ValidationException("文件大小超过 2MB 限制")
+
+    if not content:
+        raise ValidationException("文件内容为空")
+
+    # 4. 提取文本
+    try:
+        if ext == ".txt":
+            text = _read_text_file(content)
+        else:
+            text = _read_docx_file(content)
+    except ValidationException:
+        raise
+    except Exception as e:
+        raise ValidationException(f"文件解析失败: {str(e)}")
+
+    return ResponseModel(data=QuestionUploadResponse(text=text))
 
 
 @router.get(

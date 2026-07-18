@@ -1,12 +1,15 @@
-"""问卷体检模块测试（Round 1 验收）。
+"""问卷体检模块测试（Round 1 + Round 2 验收）。
 
 覆盖：
 - 题目解析（LLM 被 mock）
 - 解析后项目状态变为 inspected
 - 查询题目列表
 - 更新单题（维度 / 反向题 / 置信度）
+- 文件上传（.txt / .docx）
 - 未认证 / 越权 / 非法参数
 """
+
+import io
 
 import pytest
 from httpx import AsyncClient
@@ -235,5 +238,98 @@ async def test_update_question_requires_auth(
     resp = await client.patch(
         f"/api/v1/questionnaire/questions/{project_id}/1",
         json={"dimension": "X"},
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_upload_txt_success(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """上传 .txt 文件并提取文本。"""
+    project_id = created_project["id"]
+    content = "1. 我对学习充满热情\n2. 我觉得学习很无聊".encode("utf-8")
+
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        headers=auth_headers,
+        files={"file": ("questions.txt", io.BytesIO(content), "text/plain")},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"]["text"] == content.decode("utf-8")
+
+
+@pytest.mark.anyio
+async def test_upload_docx_success(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """上传 .docx 文件并提取段落文本。"""
+    import docx
+
+    project_id = created_project["id"]
+    buffer = io.BytesIO()
+    document = docx.Document()
+    document.add_paragraph("1. 我对学习充满热情")
+    document.add_paragraph("2. 我觉得学习很无聊")
+    document.save(buffer)
+    buffer.seek(0)
+
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        headers=auth_headers,
+        files={"file": ("questions.docx", buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+    )
+    assert resp.status_code == 200
+    text = resp.json()["data"]["text"]
+    assert "我对学习充满热情" in text
+    assert "我觉得学习很无聊" in text
+
+
+@pytest.mark.anyio
+async def test_upload_invalid_extension(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """上传不支持的文件格式返回 422。"""
+    project_id = created_project["id"]
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        headers=auth_headers,
+        files={"file": ("questions.pdf", io.BytesIO(b"pdf content"), "application/pdf")},
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_upload_oversized_file(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """上传超过 2MB 的文件返回 422。"""
+    project_id = created_project["id"]
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        headers=auth_headers,
+        files={"file": ("big.txt", io.BytesIO(b"x" * (2 * 1024 * 1024 + 1)), "text/plain")},
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_upload_requires_auth(
+    client: AsyncClient,
+    created_project: dict,
+):
+    """未认证无法上传文件。"""
+    project_id = created_project["id"]
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        files={"file": ("questions.txt", io.BytesIO(b"test"), "text/plain")},
     )
     assert resp.status_code == 401

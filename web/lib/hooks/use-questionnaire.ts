@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
+import { questionnaireApi } from "@/lib/api/questionnaire";
 import type { Question, QuestionnaireStructure } from "@/types";
 
 /**
@@ -65,5 +66,13 @@ export function useUpdateQuestion() {
         queryKey: ["questionnaire", variables.projectId],
       });
     },
+  });
+}
+
+/** 上传问卷文件并提取文本 */
+export function useUploadQuestionnaire() {
+  return useMutation({
+    mutationFn: (params: { projectId: string; file: File }) =>
+      questionnaireApi.upload(params.projectId, params.file),
   });
 }

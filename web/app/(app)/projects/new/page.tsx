@@ -20,9 +20,20 @@ export default function NewProjectPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [rawText, setRawText] = useState("");
+  const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
 
   const createProject = useCreateProject();
   const parseQuestionnaire = useParseQuestionnaire();
+
+  const getOrCreateProjectId = async () => {
+    if (draftProjectId) return draftProjectId;
+    if (!name.trim()) {
+      throw new Error("请先输入项目名称再上传文件");
+    }
+    const project = await createProject.mutateAsync({ name: name.trim() });
+    setDraftProjectId(project.id);
+    return project.id;
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -35,25 +46,28 @@ export default function NewProjectPage() {
     }
 
     try {
-      // 1. 创建项目
-      const project = await createProject.mutateAsync({ name: name.trim() });
+      // 1. 确保项目已创建（文件上传可能已提前创建）
+      const projectId = draftProjectId
+        ? draftProjectId
+        : (await createProject.mutateAsync({ name: name.trim() })).id;
 
       // 2. 体检题目
       await parseQuestionnaire.mutateAsync({
-        projectId: project.id,
+        projectId,
         rawText: rawText.trim(),
       });
 
       // 3. 跳转到工作台
       toast.success("项目创建成功，体检完成");
-      router.push(`/projects/${project.id}`);
+      router.push(`/projects/${projectId}`);
     } catch (err) {
       console.error("创建失败:", err);
       toast.error(err instanceof Error ? err.message : "创建失败，请重试");
     }
   };
 
-  const isSubmitting = createProject.isPending || parseQuestionnaire.isPending;
+  const isSubmitting =
+    createProject.isPending || parseQuestionnaire.isPending;
 
   return (
     <div>
@@ -129,6 +143,7 @@ export default function NewProjectPage() {
               value={rawText}
               onChange={setRawText}
               disabled={isSubmitting}
+              getProjectId={getOrCreateProjectId}
             />
           </div>
         </Card>

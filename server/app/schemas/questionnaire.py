@@ -53,3 +53,9 @@ class QuestionUpdateRequest(BaseModel):
     dimension: Optional[str] = Field(None, min_length=1, max_length=100)
     is_reverse: Optional[bool] = None
     confidence: Optional[Literal["high", "low"]] = None
+
+
+class QuestionUploadResponse(BaseModel):
+    """文件上传后返回提取到的原始文本。"""
+
+    text: str
