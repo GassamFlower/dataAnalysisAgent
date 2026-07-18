@@ -50,8 +50,8 @@ server/outputs/
 server/tmp/
 
 # 临时脚本（验证/测试用，不入库）
-test_*.py
-verify_*.py
+/test_*.py
+/verify_*.py
 
 # 文档文件（仅本地维护，不上传 GitHub）
 docs/
