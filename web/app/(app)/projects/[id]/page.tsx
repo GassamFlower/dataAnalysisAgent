@@ -96,7 +96,7 @@ export default function WorkbenchPage({
         />
         <EmptyState
           title="暂无体检数据"
-          description="请先在新建项目页面上传题目文本进行体检"
+          description="请先在新建项目页面粘贴题目文本或上传 .docx / .txt 文件进行体检"
           action={
             <Button asChild>
               <Link href="/projects/new">去上传题目</Link>
