@@ -27,6 +27,26 @@ export const questionnaireApi = {
   update: (projectId: string, structure: QuestionnaireStructure) =>
     apiClient.put(`/api/questionnaire/${projectId}`, structure),
 
+  /** 获取维度列表 */
+  getDimensions: (projectId: string) =>
+    apiClient.get<{ dimensions: string[] }>(
+      `/api/questionnaire/${projectId}/dimensions`
+    ),
+
+  /** 新增/重命名维度 */
+  updateDimensions: (
+    projectId: string,
+    payload: {
+      action: "add" | "rename";
+      name: string;
+      oldName?: string;
+    }
+  ) =>
+    apiClient.post<{ dimensions: string[] }>(
+      `/api/questionnaire/${projectId}/dimensions`,
+      payload
+    ),
+
   /** 上传问卷文件并提取文本（multipart/form-data，不走通用 apiClient） */
   upload: async (projectId: string, file: File): Promise<{ text: string }> => {
     const formData = new FormData();

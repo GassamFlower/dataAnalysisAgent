@@ -12,7 +12,6 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException
-from app.models.project import Project
 from app.models.question import Question
 from app.schemas.questionnaire import (
     QuestionInspectRequest,
@@ -20,16 +19,18 @@ from app.schemas.questionnaire import (
     QuestionResponse,
     QuestionUpdateRequest,
     QuestionUploadResponse,
+    DimensionsResponse,
+    DimensionUpdateRequest,
 )
 from app.services.inspector import inspect as inspect_service
-from app.services.project_service import update_project_status
+from app.services.project_service import get_owned_project, update_project_status
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
 
 # 文件上传限制
 _MAX_UPLOAD_SIZE = 2 * 1024 * 1024  # 2MB
-_ALLOWED_EXTENSIONS = {".txt", ".docx"}
+_ALLOWED_EXTENSIONS = {".txt", ".docx", ".xlsx", ".pdf"}
 
 
 def _read_text_file(content: bytes) -> str:
@@ -54,6 +55,66 @@ def _read_docx_file(content: bytes) -> str:
     return "\n".join(paragraphs)
 
 
+def _read_excel_file(content: bytes) -> str:
+    """读取 .xlsx 文件并提取首个工作表的文本内容。
+
+    优先读取 A 列，如果 A 列为空则按行拼接所有非空单元格。
+    """
+    try:
+        import openpyxl
+    except ImportError as exc:
+        raise ValidationException("缺少 Excel 解析依赖，请联系管理员安装 openpyxl") from exc
+
+    workbook = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    sheet = workbook.active
+    if not sheet:
+        raise ValidationException("Excel 文件为空")
+
+    lines = []
+    first_col_values = []
+    for row in sheet.iter_rows(values_only=True):
+        first = row[0] if row else None
+        if first is not None and str(first).strip():
+            first_col_values.append(str(first).strip())
+
+    if first_col_values:
+        lines = first_col_values
+    else:
+        for row in sheet.iter_rows(values_only=True):
+            row_text = " ".join(str(cell).strip() for cell in row if cell is not None and str(cell).strip())
+            if row_text:
+                lines.append(row_text)
+
+    if not lines:
+        raise ValidationException("Excel 文件未包含可识别的文本内容")
+
+    return "\n".join(lines)
+
+
+def _read_pdf_file(content: bytes) -> str:
+    """读取 .pdf 文件并提取文本内容。"""
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise ValidationException("缺少 PDF 解析依赖，请联系管理员安装 pypdf") from exc
+
+    reader = PdfReader(io.BytesIO(content))
+    if not reader.pages:
+        raise ValidationException("PDF 文件为空")
+
+    paragraphs = []
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            paragraphs.append(text.strip())
+
+    full_text = "\n".join(paragraphs).strip()
+    if not full_text:
+        raise ValidationException("PDF 文件未包含可提取的文本（可能是扫描件或图片 PDF）")
+
+    return full_text
+
+
 @router.post(
     "/inspect",
     response_model=ResponseModel[QuestionnaireStructure],
@@ -70,16 +131,8 @@ async def inspect(
 
     免费层能力，不含 R4 诊断。
     """
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 调用体检服务（LLM R1~R3）
     try:
@@ -111,25 +164,17 @@ async def inspect(
     "/upload",
     response_model=ResponseModel[QuestionUploadResponse],
     summary="上传问卷文件",
-    description="上传 .txt / .docx 文件并提取原始文本，单文件 ≤ 2MB。",
+    description="上传 .txt / .docx / .xlsx / .pdf 文件并提取原始文本，单文件 ≤ 2MB。",
 )
 async def upload_questionnaire_file(
     project_id: UUID,
-    file: UploadFile = File(..., description="问卷文件，支持 .txt / .docx"),
+    file: UploadFile = File(..., description="问卷文件，支持 .txt / .docx / .xlsx / .pdf"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """上传问卷文件并提取原始文本。"""
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 校验文件名与扩展名
     if not file.filename:
@@ -137,7 +182,7 @@ async def upload_questionnaire_file(
 
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in _ALLOWED_EXTENSIONS:
-        raise ValidationException(f"不支持的文件格式：{ext}，仅支持 .txt / .docx")
+        raise ValidationException(f"不支持的文件格式：{ext}，仅支持 .txt / .docx / .xlsx / .pdf")
 
     # 3. 读取文件内容并校验大小
     content = await file.read()
@@ -151,8 +196,14 @@ async def upload_questionnaire_file(
     try:
         if ext == ".txt":
             text = _read_text_file(content)
-        else:
+        elif ext == ".docx":
             text = _read_docx_file(content)
+        elif ext == ".xlsx":
+            text = _read_excel_file(content)
+        elif ext == ".pdf":
+            text = _read_pdf_file(content)
+        else:
+            raise ValidationException(f"不支持的文件格式：{ext}")
     except ValidationException:
         raise
     except Exception as e:
@@ -173,16 +224,8 @@ async def get_questions(
     current_user: dict = Depends(get_current_user)
 ):
     """获取项目的题目列表。"""
-    # 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 验证项目存在且属于当前用户（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
 
     # 查询题目
     result = await db.execute(
@@ -209,16 +252,8 @@ async def update_question(
     current_user: dict = Depends(get_current_user)
 ):
     """更新单题（用户修正 AI 识别结果）。"""
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 查询题目（按 project_id + index 定位）
     result = await db.execute(
@@ -241,3 +276,104 @@ async def update_question(
 
     await db.flush()
     return ResponseModel(data=question)
+
+
+@router.get(
+    "/dimensions/{project_id}",
+    response_model=ResponseModel[DimensionsResponse],
+    summary="获取维度列表",
+    description="获取项目下所有题目的维度列表（去重，按出现顺序）。"
+)
+async def get_dimensions(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """获取项目的维度列表。"""
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
+
+    # 2. 查询维度并按出现顺序去重
+    result = await db.execute(
+        select(Question.dimension)
+        .where(Question.project_id == project_id)
+        .order_by(Question.index)
+    )
+    seen = set()
+    dimensions = []
+    for row in result.all():
+        dim = row[0]
+        if dim and dim not in seen:
+            seen.add(dim)
+            dimensions.append(dim)
+
+    return ResponseModel(data=DimensionsResponse(dimensions=dimensions))
+
+
+@router.post(
+    "/dimensions/{project_id}",
+    response_model=ResponseModel[DimensionsResponse],
+    summary="新增/重命名维度",
+    description="新增一个空维度，或重命名已有维度（同步更新所有相关题目）。"
+)
+async def update_dimensions(
+    project_id: UUID,
+    request: DimensionUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """新增或重命名维度。重命名会同步更新所有相关题目的 dimension 字段。"""
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
+
+    # 2. 查询所有维度
+    result = await db.execute(
+        select(Question.dimension)
+        .where(Question.project_id == project_id)
+    )
+    existing_dimensions = {row[0] for row in result.all() if row[0]}
+
+    if request.action == "add":
+        if request.name in existing_dimensions:
+            raise ValidationException(f"维度 '{request.name}' 已存在")
+        # 新增维度：暂时不绑定任何题目，仅返回更新后的列表
+        existing_dimensions.add(request.name)
+
+    elif request.action == "rename":
+        if not request.old_name:
+            raise ValidationException("重命名操作必须提供 old_name")
+        if request.old_name not in existing_dimensions:
+            raise ValidationException(f"原维度 '{request.old_name}' 不存在")
+        if request.name in existing_dimensions and request.name != request.old_name:
+            raise ValidationException(f"目标维度 '{request.name}' 已存在")
+
+        # 同步更新所有相关题目
+        result = await db.execute(
+            select(Question).where(
+                Question.project_id == project_id,
+                Question.dimension == request.old_name
+            )
+        )
+        questions_to_update = result.scalars().all()
+        for q in questions_to_update:
+            q.dimension = request.name
+
+        existing_dimensions.discard(request.old_name)
+        existing_dimensions.add(request.name)
+
+    # 3. 返回按出现顺序排列的维度列表
+    result = await db.execute(
+        select(Question.dimension)
+        .where(Question.project_id == project_id)
+        .order_by(Question.index)
+    )
+    seen = set()
+    dimensions = []
+    for row in result.all():
+        dim = row[0]
+        if dim and dim not in seen:
+            seen.add(dim)
+            dimensions.append(dim)
+
+    await db.flush()
+    return ResponseModel(data=DimensionsResponse(dimensions=dimensions))

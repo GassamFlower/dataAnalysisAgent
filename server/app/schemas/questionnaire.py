@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class QuestionInspectRequest(BaseModel):
@@ -24,8 +24,7 @@ class QuestionResponse(BaseModel):
     is_reverse: bool
     confidence: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Question(BaseModel):
@@ -59,3 +58,17 @@ class QuestionUploadResponse(BaseModel):
     """文件上传后返回提取到的原始文本。"""
 
     text: str
+
+
+class DimensionsResponse(BaseModel):
+    """维度列表响应。"""
+
+    dimensions: List[str]
+
+
+class DimensionUpdateRequest(BaseModel):
+    """维度编辑请求：新增或重命名维度。"""
+
+    action: Literal["add", "rename"] = Field(..., description="操作类型")
+    name: str = Field(..., min_length=1, max_length=100, description="目标维度名")
+    old_name: Optional[str] = Field(None, min_length=1, max_length=100, description="重命名时的原维度名")

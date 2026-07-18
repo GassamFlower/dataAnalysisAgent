@@ -11,7 +11,9 @@ env/
 .env
 .env.local
 .env.*.local
+.env.test
 server/.env.production
+server/.env.test
 web/.env.production
 
 # 数据库文件

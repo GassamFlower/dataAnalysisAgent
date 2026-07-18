@@ -149,7 +149,10 @@ export async function GET(
   const json = await res.json();
   const report = transformReport(json.data as BackendReport);
   if (!report) {
-    return NextResponse.json({ error: "未找到报告" }, { status: 404 });
+    return NextResponse.json(
+      { code: 404, message: "未找到报告", data: null },
+      { status: 404 }
+    );
   }
-  return NextResponse.json(report);
+  return NextResponse.json({ code: 0, message: "ok", data: report });
 }

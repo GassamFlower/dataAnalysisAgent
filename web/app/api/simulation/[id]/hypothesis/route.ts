@@ -3,7 +3,7 @@ import { getBackendHeaders } from "@/lib/server/auth";
 
 /**
  * 假设解析 API（BFF 层）。
- * 转发到后端 POST /api/v1/simulation/hypothesis/{project_id}。
+ * 转发到后端 POST /api/v1/simulation/{project_id}/hypothesis。
  */
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
@@ -30,7 +30,7 @@ export async function POST(
   }
 
   const res = await fetch(
-    `${BACKEND_URL}/api/v1/simulation/hypothesis/${params.id}`,
+    `${BACKEND_URL}/api/v1/simulation/${params.id}/hypothesis`,
     {
       method: "POST",
       headers: getBackendHeaders(request),

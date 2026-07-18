@@ -9,8 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_paid_plan
 from app.core.responses import ResponseModel
-from app.core.exceptions import NotFoundException, ValidationException
-from app.models.project import Project
+from app.core.exceptions import NotFoundException, ValidationException, BusinessException
 from app.models.hypothesis import Hypothesis
 from app.models.hypothesis_path import HypothesisPath
 from app.models.question import Question
@@ -26,9 +25,10 @@ from app.schemas.simulation import (
     HypothesisPathItem,
     MatrixSaveRequest,
     MatrixSaveResponse,
+    DatasetExportRequest,
 )
 from app.services.hypothesis_parser import parse_hypothesis
-from app.services.project_service import update_project_status
+from app.services.project_service import get_owned_project, update_project_status
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
 
@@ -49,16 +49,8 @@ async def get_simulation_matrix(
     current_user: dict = Depends(get_current_user)
 ):
     """从假设路径重建相关矩阵。"""
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 获取维度列表
     result = await db.execute(
@@ -184,16 +176,8 @@ async def save_matrix(
     current_user: dict = Depends(get_current_user)
 ):
     """保存用户编辑的相关矩阵（upsert，每项目一条记录）。"""
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 查询是否已有矩阵记录
     result = await db.execute(
@@ -239,7 +223,7 @@ async def save_matrix(
 
 
 @router.post(
-    "/hypothesis/{project_id}",
+    "/{project_id}/hypothesis",
     response_model=ResponseModel[HypothesisResponse],
     summary="创建假设",
     description="用户写一句话假设，LLM 解析为主效应路径 + 强度档位"
@@ -251,16 +235,8 @@ async def create_hypothesis(
     current_user: dict = Depends(require_paid_plan)
 ):
     """创建假设：解析用户假设为主效应路径。"""
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 获取项目维度（来自题目体检）
     result = await db.execute(
@@ -274,7 +250,11 @@ async def create_hypothesis(
     try:
         paths = parse_hypothesis(request.raw_text, dimensions)
     except Exception as e:
-        raise ValidationException(f"假设解析失败: {str(e)}")
+        raise BusinessException(
+            code=60006,
+            message=f"假设解析失败: {str(e)}",
+            details={"raw_text": request.raw_text[:200]},
+        )
 
     # 3.5 删除旧的矩阵记录（新假设 → 矩阵需要重建）
     result = await db.execute(
@@ -320,43 +300,41 @@ async def create_hypothesis(
 
 
 @router.post(
-    "/generate",
+    "/{project_id}/generate",
     response_model=ResponseModel[SimulationConfigResponse],
     summary="数据生成",
     description="按份数 + 期望趋势生成模拟数据。付费能力。约束反向生成，α 达标率目标 ≥70%。"
 )
 async def generate(
+    project_id: UUID,
     request: SimulationGenerateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_paid_plan)
 ):
     """按份数 + 期望趋势生成模拟数据。"""
-    # 1. 验证假设存在
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 2. 获取最新假设
     result = await db.execute(
-        select(Hypothesis).where(Hypothesis.id == request.hypothesis_id)
+        select(Hypothesis)
+        .where(Hypothesis.project_id == project_id)
+        .order_by(Hypothesis.created_at.desc())
+        .limit(1)
     )
     hypothesis = result.scalar_one_or_none()
     if not hypothesis:
-        raise NotFoundException("假设不存在")
-
-    # 2. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == hypothesis.project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+        raise NotFoundException("尚未创建研究假设，请先解析假设")
 
     # 3. 获取维度列表
     result = await db.execute(
         select(Question.dimension)
-        .where(Question.project_id == hypothesis.project_id)
+        .where(Question.project_id == project_id)
         .distinct()
     )
     dimensions = [row[0] for row in result.all() if row[0]]
+    if not dimensions:
+        raise ValidationException("项目下没有可用的维度，请先完成题目体检")
 
     # 4. 获取路径列表
     result = await db.execute(
@@ -364,15 +342,15 @@ async def generate(
     )
     paths = result.scalars().all()
 
-    # 5. 获取相关矩阵（如果有）
-    custom_cells = None
-    if request.matrix_id:
-        result = await db.execute(
-            select(CorrelationMatrix).where(CorrelationMatrix.id == request.matrix_id)
-        )
-        matrix = result.scalar_one_or_none()
-        if matrix:
-            custom_cells = matrix.cells
+    # 5. 获取最新相关矩阵（用户编辑后的权威版本）
+    result = await db.execute(
+        select(CorrelationMatrix)
+        .where(CorrelationMatrix.project_id == project_id)
+        .order_by(CorrelationMatrix.updated_at.desc())
+        .limit(1)
+    )
+    matrix = result.scalar_one_or_none()
+    custom_cells = matrix.cells if matrix else None
 
     # 6. 调用数据生成服务
     from app.services.generator import generate as generate_data
@@ -396,15 +374,18 @@ async def generate(
             custom_cells=custom_cells
         )
     except Exception as e:
-        raise ValidationException(f"数据生成失败: {str(e)}")
+        raise BusinessException(
+            code=60005,
+            message=f"数据生成失败: {str(e)}",
+        )
 
     # 7. 保存模拟配置
     from app.models.simulation_config import SimulationConfig
     config = SimulationConfig(
-        project_id=hypothesis.project_id,
+        project_id=project_id,
         sample_size=request.sample_size,
         hypothesis_id=hypothesis.id,
-        matrix_id=request.matrix_id
+        matrix_id=matrix.id if matrix else None
     )
     db.add(config)
     await db.flush()
@@ -413,7 +394,7 @@ async def generate(
     import json
     dataset = Dataset(
         simulation_config_id=config.id,
-        project_id=hypothesis.project_id,
+        project_id=project_id,
         sample_size=request.sample_size,
         columns=df.columns.tolist(),
         data=json.loads(df.to_json(orient="records")),
@@ -428,26 +409,19 @@ async def generate(
 
 
 @router.post(
-    "/export-data/{project_id}",
+    "/{project_id}/export-data",
     summary="导出模拟数据",
-    description="导出模拟数据集（Excel），含 simulated 水印。付费能力。"
+    description="导出模拟数据集（Excel/CSV），含 simulated 水印。付费能力。"
 )
 async def export_data(
     project_id: UUID,
+    request: DatasetExportRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_paid_plan)
 ):
-    """导出模拟数据集（Excel），含 simulated 水印。"""
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    """导出模拟数据集（Excel/CSV），含 simulated 水印。"""
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 验证项目状态（至少已生成数据）
     if project.status not in ("simulated", "analyzed"):
@@ -465,22 +439,33 @@ async def export_data(
         raise NotFoundException("未找到模拟数据集，请先生成数据")
 
     # 4. 调用导出服务
-    from app.services.reporter import export_dataset_excel
+    from app.services.reporter import export_dataset_excel, export_dataset_csv
 
     meta = {
         "project_id": str(project_id),
         "sample_size": dataset.sample_size,
     }
-    file_bytes = export_dataset_excel(
-        columns=dataset.columns,
-        data=dataset.data,
-        meta=meta,
-    )
 
-    # 5. 返回 Excel 文件
-    filename = f"dataset_{project_id}.xlsx"
+    if request.format == "csv":
+        file_bytes = export_dataset_csv(
+            columns=dataset.columns,
+            data=dataset.data,
+            meta=meta,
+        )
+        filename = f"dataset_{project_id}_simulated.csv"
+        media_type = "text/csv; charset=utf-8"
+    else:
+        file_bytes = export_dataset_excel(
+            columns=dataset.columns,
+            data=dataset.data,
+            meta=meta,
+        )
+        filename = f"dataset_{project_id}_simulated.xlsx"
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    # 5. 返回文件
     return StreamingResponse(
         iter([file_bytes]),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )

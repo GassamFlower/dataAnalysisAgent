@@ -3,7 +3,7 @@ import { getBackendHeaders } from "@/lib/server/auth";
 
 /**
  * 数据集导出 BFF 路由。
- * 转发后端 POST /api/v1/simulation/export-data/{project_id}，透传 Excel 二进制流。
+ * 转发后端 POST /api/v1/simulation/{project_id}/export-data，透传二进制流。
  */
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
@@ -11,11 +11,18 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const body = await request.json().catch(() => ({ format: "excel" }));
+  const { format = "excel" } = body;
+
   const exportRes = await fetch(
-    `${BACKEND_URL}/api/v1/simulation/export-data/${params.id}`,
+    `${BACKEND_URL}/api/v1/simulation/${params.id}/export-data`,
     {
       method: "POST",
-      headers: getBackendHeaders(request),
+      headers: {
+        ...getBackendHeaders(request),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ format }),
       cache: "no-store",
     }
   );

@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class HypothesisCreateRequest(BaseModel):
@@ -22,8 +22,7 @@ class HypothesisPathResponse(BaseModel):
     direction: str
     strength: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HypothesisResponse(BaseModel):
@@ -34,8 +33,7 @@ class HypothesisResponse(BaseModel):
     raw_text: str
     paths: List[HypothesisPathResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CorrelationMatrixResponse(BaseModel):
@@ -46,16 +44,14 @@ class CorrelationMatrixResponse(BaseModel):
     dimensions: List
     cells: List
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SimulationGenerateRequest(BaseModel):
     """数据生成请求。"""
 
     sample_size: int = Field(..., gt=0, description="样本量")
-    hypothesis_id: UUID = Field(..., description="假设 ID")
-    matrix_id: Optional[UUID] = Field(None, description="相关矩阵 ID（可选）")
+    # 后端按 project_id 自动取最新 hypothesis 与 matrix，前端无需传入
 
 
 class SimulationConfigResponse(BaseModel):
@@ -67,8 +63,7 @@ class SimulationConfigResponse(BaseModel):
     hypothesis_id: Optional[UUID]
     matrix_id: Optional[UUID]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MatrixCellResponse(BaseModel):
@@ -135,3 +130,11 @@ class SimulationConfig(BaseModel):
 
     sample_size: int
     paths: List[HypothesisPath]
+
+
+class DatasetExportRequest(BaseModel):
+    """模拟数据集导出请求。"""
+
+    format: Literal["excel", "csv"] = Field(
+        default="excel", description="导出格式：excel 或 csv"
+    )

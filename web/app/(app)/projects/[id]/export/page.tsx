@@ -23,22 +23,26 @@ export default function ExportPage({ params }: { params: { id: string } }) {
   const [exportFormat, setExportFormat] = useState<ExportFormat>("excel");
 
   const handleDownload = () => {
-    exportMutation.mutate(params.id, {
-      onSuccess: ({ blob, filename }) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename || `dataset.${exportFormat === "excel" ? "xlsx" : "csv"}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success("数据导出成功，请检查浏览器下载列表");
-      },
-      onError: (err) => {
-        toast.error(err instanceof Error ? err.message : "导出失败，请重试");
-      },
-    });
+    exportMutation.mutate(
+      { projectId: params.id, format: exportFormat },
+      {
+        onSuccess: ({ blob, filename }) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download =
+            filename || `dataset.${exportFormat === "excel" ? "xlsx" : "csv"}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success("数据导出成功，请检查浏览器下载列表");
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "导出失败，请重试");
+        },
+      }
+    );
   };
 
   if (isLoading) {

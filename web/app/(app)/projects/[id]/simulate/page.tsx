@@ -16,15 +16,17 @@ import { LoadingState } from "@/components/common/loading-state";
 import { Watermark } from "@/components/common/watermark";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { PaidActionGuard } from "@/components/common/paid-action-guard";
 import { toast } from "@/components/ui/toaster";
+import { useAuthStore } from "@/lib/stores/auth-store";
 import { useSimulationStore } from "@/lib/stores/simulation-store";
 import {
   useSimulation,
+  useParseHypothesis,
   useGenerateSimulation,
   useSaveMatrix,
   useExportDataset,
 } from "@/lib/hooks/use-simulation";
-import { apiClient } from "@/lib/api/client";
 import {
   STRENGTH_TO_R,
   nextStrength,
@@ -39,13 +41,15 @@ export default function SimulatePage({
 }) {
   const { hypothesisText, setHypothesisText, sampleSize, setSampleSize, paths, setPaths } =
     useSimulationStore();
-  const [parsing, setParsing] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const userPlan = user?.plan ?? "free";
   const [parseError, setParseError] = useState<string | null>(null);
   /** 本地编辑副本：初始/生成后与服务端同步，用户编辑只改本地 */
   const [localMatrix, setLocalMatrix] = useState<Matrix | null>(null);
 
   // 查询已生成的矩阵 + 已保存假设
   const { data: simulationData, isLoading, error, refetch } = useSimulation(params.id);
+  const parseHypothesisMutation = useParseHypothesis();
   const generateMutation = useGenerateSimulation();
   const saveMatrixMutation = useSaveMatrix();
   const exportDatasetMutation = useExportDataset();
@@ -106,7 +110,15 @@ export default function SimulatePage({
     const nextTier = nextStrength(currentTier);
     const sign = cell.value === 0 ? 1 : Math.sign(cell.value);
     const newValue = Number((STRENGTH_TO_R[nextTier] * sign).toFixed(2));
+    updateMatrixCell(rowIdx, colIdx, newValue);
+  };
 
+  // 直接输入数值：校验 [-1, 1]，对称更新，标记为用户编辑
+  const handleCellChange = (rowIdx: number, colIdx: number, value: number) => {
+    updateMatrixCell(rowIdx, colIdx, value);
+  };
+
+  const updateMatrixCell = (rowIdx: number, colIdx: number, newValue: number) => {
     setLocalMatrix((prev) => {
       if (!prev) return prev;
       const newMatrix = {
@@ -127,30 +139,24 @@ export default function SimulatePage({
   };
 
   // 假设解析
-  const handleParse = async () => {
+  const handleParse = () => {
     if (!hypothesisText.trim()) {
       setParseError("请输入研究假设");
       return;
     }
 
-    setParsing(true);
     setParseError(null);
-
-    try {
-      // 调用后端假设解析 API
-      const response = await apiClient.post<{
-        hypothesisId: string;
-        paths: HypothesisPath[];
-      }>(`/api/simulation/${params.id}/hypothesis`, {
-        rawText: hypothesisText,
-      });
-
-      setPaths(response.paths);
-      setParsing(false);
-    } catch (err) {
-      setParseError(err instanceof Error ? err.message : "解析失败");
-      setParsing(false);
-    }
+    parseHypothesisMutation.mutate(
+      { projectId: params.id, rawText: hypothesisText },
+      {
+        onSuccess: (data) => {
+          setPaths(data.paths);
+        },
+        onError: (err) => {
+          setParseError(err instanceof Error ? err.message : "解析失败");
+        },
+      }
+    );
   };
 
   // 生成数据
@@ -168,16 +174,10 @@ export default function SimulatePage({
     try {
       await generateMutation.mutateAsync({
         projectId: params.id,
-        config: {
-          sampleSize,
-          hypothesisText,
-          paths,
-        },
+        sampleSize,
       });
 
       toast.success("数据生成成功");
-      // 刷新矩阵数据
-      refetch();
     } catch (err) {
       console.error("生成失败:", err);
       toast.error(err instanceof Error ? err.message : "生成失败，请重试");
@@ -186,7 +186,9 @@ export default function SimulatePage({
 
   /** 导出模拟数据集（Excel） */
   const handleExportDataset = () => {
-    exportDatasetMutation.mutate(params.id, {
+    exportDatasetMutation.mutate(
+      { projectId: params.id, format: "excel" },
+      {
       onSuccess: ({ blob, filename }) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -265,7 +267,7 @@ export default function SimulatePage({
             <HypothesisInput
               value={hypothesisText}
               onChange={setHypothesisText}
-              parsing={parsing}
+              parsing={parseHypothesisMutation.isPending}
               onParse={handleParse}
             />
             {parseError && (
@@ -307,6 +309,9 @@ export default function SimulatePage({
                 onCellClick={
                   generateMutation.isPending ? undefined : handleCellClick
                 }
+                onCellChange={
+                  generateMutation.isPending ? undefined : handleCellChange
+                }
               />
             ) : (
               <EmptyState
@@ -328,29 +333,33 @@ export default function SimulatePage({
           </div>
           <div className="mt-6 flex items-center justify-end gap-3">
             {hasMatrix && (
-              <Button
-                variant="outline"
-                onClick={handleExportDataset}
-                disabled={exportDatasetMutation.isPending}
-              >
-                {exportDatasetMutation.isPending ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-1.5 h-4 w-4" />
-                )}
-                {exportDatasetMutation.isPending ? "导出中..." : "导出数据集"}
-              </Button>
+              <PaidActionGuard plan={userPlan}>
+                <Button
+                  variant="outline"
+                  onClick={handleExportDataset}
+                  disabled={exportDatasetMutation.isPending}
+                >
+                  {exportDatasetMutation.isPending ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-1.5 h-4 w-4" />
+                  )}
+                  {exportDatasetMutation.isPending ? "导出中..." : "导出数据集"}
+                </Button>
+              </PaidActionGuard>
             )}
-            <Button
-              size="lg"
-              onClick={handleGenerate}
-              disabled={generateMutation.isPending || paths.length === 0}
-            >
-              <Play className="mr-1.5 h-4 w-4" />
-              {generateMutation.isPending
-                ? "生成中..."
-                : `生成模拟数据（${sampleSize} 份）`}
-            </Button>
+            <PaidActionGuard plan={userPlan}>
+              <Button
+                size="lg"
+                onClick={handleGenerate}
+                disabled={generateMutation.isPending || paths.length === 0}
+              >
+                <Play className="mr-1.5 h-4 w-4" />
+                {generateMutation.isPending
+                  ? "生成中..."
+                  : `生成模拟数据（${sampleSize} 份）`}
+              </Button>
+            </PaidActionGuard>
           </div>
           {generateMutation.isError && (
             <p className="mt-2 text-caption text-error">

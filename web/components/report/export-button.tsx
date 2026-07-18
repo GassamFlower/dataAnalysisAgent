@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, FileText, FileSpreadsheet } from "lucide-react";
+import Link from "next/link";
+import { Download, FileText, FileSpreadsheet, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,15 +13,28 @@ import {
 
 /**
  * 报告导出（宪法第 7 条：导出强制带水印，禁去痕迹）。
- * 支持 Word / Excel 两种格式。
+ * 支持 Word / Excel 两种格式；免费用户显示升级引导。
  */
 export function ExportButton({
   onExport,
   disabled,
+  isFree = false,
 }: {
   onExport?: (format: "word" | "excel") => void;
   disabled?: boolean;
+  isFree?: boolean;
 }) {
+  if (isFree) {
+    return (
+      <Button variant="outline" asChild>
+        <Link href="/pricing">
+          <Lock className="mr-1.5 h-4 w-4" />
+          升级解锁导出
+        </Link>
+      </Button>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

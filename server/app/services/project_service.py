@@ -3,10 +3,14 @@
 集中管理项目状态流转规则，禁止业务路由直接修改 `project.status`。
 """
 
+import uuid
 from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple
 
-from app.core.exceptions import ValidationException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import NotFoundException, ValidationException
 from app.models.project import Project
 
 
@@ -24,6 +28,29 @@ def can_transition(from_status: str, to_status: str) -> bool:
     if from_status == to_status:
         return False
     return to_status in _ALLOWED_TRANSITIONS.get(from_status, ())
+
+
+async def get_owned_project(
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> Project:
+    """查询当前用户拥有的、未删除的项目。
+
+    所有按 project_id 操作的业务路由都应调用此函数，以统一实现：
+    1. 项目存在性校验；2. 用户归属校验；3. 软删除过滤。
+    """
+    result = await db.execute(
+        select(Project).where(
+            Project.id == project_id,
+            Project.user_id == user_id,
+            Project.deleted_at.is_(None),
+        )
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise NotFoundException("项目不存在")
+    return project
 
 
 def update_project_status(

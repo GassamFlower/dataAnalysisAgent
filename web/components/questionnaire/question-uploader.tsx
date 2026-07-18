@@ -35,11 +35,11 @@ export function QuestionUploader({
     if (!file) return;
 
     const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    if (![".txt", ".docx"].includes(ext)) {
+    if (![".txt", ".docx", ".xlsx", ".pdf"].includes(ext)) {
       onChange("");
       setFileName(null);
       // 让父组件通过清空 value 感知错误，实际可扩展为 onError 回调
-      alert("仅支持 .docx / .txt 文件");
+      alert("仅支持 .docx / .txt / .xlsx / .pdf 文件");
       return;
     }
 
@@ -118,7 +118,7 @@ export function QuestionUploader({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.docx"
+            accept=".txt,.docx,.xlsx,.pdf"
             className="hidden"
             onChange={handleFileChange}
             disabled={disabled || upload.isPending}
@@ -145,7 +145,7 @@ export function QuestionUploader({
             </>
           )}
           <p className="mt-1 text-caption text-ink-400">
-            支持 .docx / .txt，单文件 ≤ 2MB
+            支持 .docx / .txt / .xlsx / .pdf，单文件 ≤ 2MB
           </p>
           <Button
             type="button"

@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ReliabilityResultResponse(BaseModel):
@@ -13,9 +13,13 @@ class ReliabilityResultResponse(BaseModel):
     id: UUID
     report_id: UUID
     dimension: str
-    alpha: Decimal
-    kmo: Decimal
-    bartlett_p_value: Decimal
+    alpha: float
+    kmo: float
+    bartlett_p_value: float = Field(
+        ...,
+        validation_alias="bartlett_pvalue",
+        serialization_alias="bartlett_p_value",
+    )
     passed: bool
     # 分档等级与论文措辞（模型计算属性，不落库）
     alpha_grade: Optional[str] = None
@@ -25,7 +29,7 @@ class ReliabilityResultResponse(BaseModel):
     bartlett_grade: Optional[str] = None
     bartlett_wording: Optional[str] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class DiagnosisIssueResponse(BaseModel):
@@ -34,8 +38,8 @@ class DiagnosisIssueResponse(BaseModel):
     id: UUID
     dimension: str
     metric: str
-    value: Decimal
-    threshold: Decimal
+    value: float
+    threshold: float
     reason: str
     suggestion: str
 
@@ -83,7 +87,7 @@ class ReportResponse(BaseModel):
 
     id: UUID
     project_id: UUID
-    overall_alpha: Optional[Decimal] = None
+    overall_alpha: Optional[float] = None
     passed_count: Optional[int] = None
     total_count: Optional[int] = None
     reliability_results: List[ReliabilityResultResponse] = []

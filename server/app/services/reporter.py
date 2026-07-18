@@ -1,9 +1,10 @@
 """报告导出服务。
 
-Word（python-docx）+ Excel（openpyxl）。
+Word（python-docx）+ Excel（openpyxl）+ CSV。
 所有导出文件强制带 simulated 水印 + 免责声明。
 分档标签与论文段落模板来源：app/core/statistics_constants.py
 """
+import csv
 import io
 from datetime import datetime
 from typing import Dict, List, Any
@@ -190,11 +191,11 @@ def export_word(report_data: Dict[str, Any]) -> bytes:
 
     # 总体结果
     doc.add_heading("一、总体信效度", level=1)
-    overall_alpha = report_data.get("overall_alpha", 0)
+    overall_alpha = _to_float(report_data.get("overall_alpha"), 0.0)
     passed_count = report_data.get("passed_count", 0)
     total_count = report_data.get("total_count", 0)
 
-    doc.add_paragraph(f"整体 Cronbach's α：{overall_alpha}")
+    doc.add_paragraph(f"整体 Cronbach's α：{overall_alpha:.3f}")
     doc.add_paragraph(f"通过维度数：{passed_count} / {total_count}")
     doc.add_paragraph()
 
@@ -326,9 +327,9 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
         for r in reliability_results:
             ws_reliability.append([
                 r.get("dimension", ""),
-                float(r.get("alpha", 0)),
-                float(r.get("kmo", 0)),
-                float(r.get("bartlett_p_value", 0)),
+                _to_float(r.get("alpha"), 0.0),
+                _to_float(r.get("kmo"), 0.0),
+                _to_float(r.get("bartlett_p_value"), 0.0),
                 "通过" if r.get("passed") else "不通过"
             ])
 
@@ -360,8 +361,8 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
                 ws_issues.append([
                     issue.get("dimension", ""),
                     issue.get("metric", ""),
-                    float(issue.get("value", 0)),
-                    float(issue.get("threshold", 0)),
+                    _to_float(issue.get("value"), 0.0),
+                    _to_float(issue.get("threshold"), 0.0),
                     issue.get("reason", ""),
                     issue.get("suggestion", "")
                 ])
@@ -479,9 +480,12 @@ def export_dataset_excel(
             start_color="D3D3D3", end_color="D3D3D3", fill_type="solid"
         )
 
-    # 数据行
+    # 数据行：支持 dict 行与 list 行两种存储格式
     for row in data:
-        ws_data.append([row.get(col) for col in columns])
+        if isinstance(row, dict):
+            ws_data.append([row.get(col) for col in columns])
+        else:
+            ws_data.append(list(row))
 
     # Sheet2: 元数据（含水印）
     ws_meta = wb.create_sheet("元数据")
@@ -501,6 +505,37 @@ def export_dataset_excel(
     wb.save(buffer)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def export_dataset_csv(
+    columns: List[str], data: List[Dict[str, Any]], meta: Dict[str, Any]
+) -> bytes:
+    """导出模拟数据集 CSV。
+
+    第一行为维度列头，后续为原始数据行；UTF-8 BOM 编码，Excel 直接打开中文不乱码。
+    文件内容顶部通过注释行携带 simulated 水印与免责声明。
+    """
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    # 元数据注释行（不构成数据列）
+    writer.writerow(["# SIMULATED DATA - 模拟数据集"])
+    writer.writerow([f"# 生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"])
+    writer.writerow([f"# 项目 ID：{meta.get('project_id', 'N/A')}"])
+    writer.writerow([f"# 样本量：{len(data)}"])
+    writer.writerow([f"# 维度数：{len(columns)}"])
+    writer.writerow(["# 免责声明：本数据为模拟数据，仅供学术研究和教学演示使用，不代表真实数据。"])
+
+    # 表头 + 数据：支持 dict 行与 list 行两种存储格式
+    writer.writerow(columns)
+    for row in data:
+        if isinstance(row, dict):
+            writer.writerow([row.get(col, "") for col in columns])
+        else:
+            writer.writerow(list(row))
+
+    # UTF-8 BOM，保证 Excel 直接打开中文正常
+    return buffer.getvalue().encode("utf-8-sig")
 
 
 def _add_watermark(doc: Document) -> None:

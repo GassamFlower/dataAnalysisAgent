@@ -19,6 +19,11 @@ from typing import Optional
 
 import requests
 
+# Windows PowerShell 5 默认编码非 UTF-8，强制标准输出为 UTF-8 以避免中文乱码
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+
 BASE_URL = "http://localhost:8000/api/v1"
 HEALTH_URL = "http://localhost:8000/health"
 HEADERS = {"Authorization": "Bearer dev-token", "Content-Type": "application/json"}
@@ -75,6 +80,28 @@ def _delete_project(project_id: str) -> None:
     requests.delete(f"{BASE_URL}/projects/{project_id}", headers=HEADERS)
 
 
+def _activate_dev_subscription(plan_type: str = "single") -> None:
+    """为 dev 用户激活指定套餐，供需要付费权限的异常分支测试使用。"""
+    resp = requests.post(
+        f"{BASE_URL}/payment/orders",
+        json={"plan_type": plan_type},
+        headers=HEADERS,
+    )
+    assert resp.status_code == 200, f"创建订单失败: {resp.status_code} {resp.text}"
+    order_id = resp.json()["data"]["id"]
+
+    notify_resp = requests.post(
+        f"{BASE_URL}/payment/orders/{order_id}/notify",
+        json={
+            "channel": "wechat",
+            "transaction_id": f"e2e-{uuid.uuid4().hex[:8]}",
+            "status": "success",
+        },
+        headers=HEADERS,
+    )
+    assert notify_resp.status_code == 200, f"支付回调失败: {notify_resp.status_code} {notify_resp.text}"
+
+
 # ============================================================
 # 主流程（happy path）
 # ============================================================
@@ -88,7 +115,7 @@ def test_health() -> None:
     data = resp.json()
     assert data["code"] == 0
     assert data["data"]["status"] == "ok"
-    print("✓ 健康检查通过")
+    print("[OK] 健康检查通过")
 
 
 def test_create_project() -> str:
@@ -102,7 +129,7 @@ def test_create_project() -> str:
     _print_response(resp)
     assert resp.status_code == 201
     project_id = resp.json()["data"]["id"]
-    print(f"✓ 项目创建成功，ID: {project_id}")
+    print(f"[OK] 项目创建成功，ID: {project_id}")
     return project_id
 
 
@@ -123,7 +150,7 @@ def test_inspect_questions(project_id: str) -> None:
     data = resp.json()["data"]
     assert "questions" in data
     assert len(data["questions"]) == 10, f"题目数不对: {len(data['questions'])}"
-    print(f"✓ 题目体检完成，识别 {len(data['questions'])} 题")
+    print(f"[OK] 题目体检完成，识别 {len(data['questions'])} 题")
 
 
 def test_create_hypothesis(project_id: str) -> str:
@@ -132,7 +159,7 @@ def test_create_hypothesis(project_id: str) -> str:
     print("  调用 LLM，预计 3~10s...")
     t0 = time.time()
     resp = requests.post(
-        f"{BASE_URL}/simulation/hypothesis/{project_id}",
+        f"{BASE_URL}/simulation/{project_id}/hypothesis",
         json={"raw_text": SAMPLE_HYPOTHESIS},
         headers=HEADERS,
         timeout=120,
@@ -144,26 +171,22 @@ def test_create_hypothesis(project_id: str) -> str:
     hypothesis_id = data["id"]
     paths = data.get("paths", [])
     assert len(paths) >= 1, f"路径解析为空: {data}"
-    print(f"✓ 假设创建成功，ID: {hypothesis_id}，路径数: {len(paths)}")
+    print(f"[OK] 假设创建成功，ID: {hypothesis_id}，路径数: {len(paths)}")
     return hypothesis_id
 
 
-def test_generate_data(project_id: str, hypothesis_id: str) -> None:
+def test_generate_data(project_id: str) -> None:
     """5. 数据生成。"""
     _print_section("5. 数据生成")
     resp = requests.post(
-        f"{BASE_URL}/simulation/generate",
-        json={
-            "sample_size": 200,
-            "hypothesis_id": hypothesis_id,
-            "matrix_id": None,
-        },
+        f"{BASE_URL}/simulation/{project_id}/generate",
+        json={"sample_size": 200},
         headers=HEADERS,
         timeout=60,
     )
     _print_response(resp)
     assert resp.status_code == 200, f"数据生成失败: {resp.text}"
-    print("✓ 数据生成完成")
+    print("[OK] 数据生成完成")
 
 
 def test_analyze_report(project_id: str) -> str:
@@ -185,7 +208,7 @@ def test_analyze_report(project_id: str) -> str:
     # 验证信效度结果
     reliability = data.get("reliability_results", [])
     assert len(reliability) >= 1, "信效度结果为空"
-    print(f"✓ 信效度结果: {len(reliability)} 维度")
+    print(f"[OK] 信效度结果: {len(reliability)} 维度")
 
     # 验证差异检验结果（P1-1 新功能）
     diff_tests = data.get("diff_tests")
@@ -195,7 +218,7 @@ def test_analyze_report(project_id: str) -> str:
         first = diff_tests[0]
         for key in ("predictor", "outcome", "method", "statistic", "p_value"):
             assert key in first, f"diff_tests[0] 缺少字段 {key}: {first}"
-        print(f"✓ 差异检验: {len(diff_tests)} 条路径")
+        print(f"[OK] 差异检验: {len(diff_tests)} 条路径")
         for t in diff_tests:
             sig = "显著" if t.get("significant") else "不显著"
             p_val = t.get("p_value")
@@ -209,11 +232,11 @@ def test_analyze_report(project_id: str) -> str:
     # 验证诊断结果
     diagnosis = data.get("diagnosis")
     assert diagnosis is not None, "诊断结果缺失"
-    print(f"✓ 诊断结果: passed={diagnosis.get('passed')}，"
+    print(f"[OK] 诊断结果: passed={diagnosis.get('passed')}，"
           f"问题数={len(diagnosis.get('issues', []))}")
 
     report_id = data["id"]
-    print(f"✓ 报告生成完成，ID: {report_id}")
+    print(f"[OK] 报告生成完成，ID: {report_id}")
     return report_id
 
 
@@ -232,12 +255,12 @@ def test_get_report(project_id: str) -> None:
     # 验证不落库字段 diff_tests 通过 GET 端点仍可获取（实时计算）
     diff_tests = data.get("diff_tests")
     assert diff_tests is not None, "GET 报告 diff_tests 缺失"
-    print(f"✓ GET 报告含 diff_tests: {len(diff_tests)} 条路径")
+    print(f"[OK] GET 报告含 diff_tests: {len(diff_tests)} 条路径")
 
     # 验证信效度结果存在
     assert "reliability_results" in data
     assert "diagnosis" in data
-    print(f"✓ GET 报告字段完整")
+    print(f"[OK] GET 报告字段完整")
 
 
 def test_export_word(report_id: str) -> None:
@@ -263,7 +286,7 @@ def test_export_word(report_id: str) -> None:
         headings = [p.text for p in doc.paragraphs if p.style.name.startswith("Heading")]
         has_diff = any("差异分析" in h or "假设检验" in h for h in headings)
         assert has_diff, f"Word 缺少差异检验章节，现有章节: {headings}"
-        print(f"✓ Word 含差异检验章节: {len(resp.content)} bytes")
+        print(f"[OK] Word 含差异检验章节: {len(resp.content)} bytes")
         print(f"  章节列表: {headings}")
     except ImportError:
         print("  [跳过 docx 解析] python-docx 未安装")
@@ -292,7 +315,7 @@ def test_export_excel(report_id: str) -> None:
         assert "差异检验" in sheets, f"Excel 缺少差异检验 sheet，现有: {sheets}"
         ws = wb["差异检验"]
         headers = [c.value for c in ws[1]]
-        print(f"✓ Excel 含差异检验 sheet: {len(resp.content)} bytes")
+        print(f"[OK] Excel 含差异检验 sheet: {len(resp.content)} bytes")
         print(f"  sheets: {sheets}")
         print(f"  差异检验表头: {headers}")
         print(f"  差异检验数据行数: {ws.max_row - 1}")
@@ -309,7 +332,7 @@ def test_cleanup(project_id: str) -> None:
     )
     print(f"  状态码: {resp.status_code}")
     assert resp.status_code == 204, f"删除项目失败: {resp.text}"
-    print(f"✓ 项目已删除: {project_id}")
+    print(f"[OK] 项目已删除: {project_id}")
 
 
 # ============================================================
@@ -322,7 +345,7 @@ def test_no_auth() -> None:
     resp = requests.get(f"{BASE_URL}/projects/")
     _print_response(resp)
     assert resp.status_code == 401, f"期望 401，实际 {resp.status_code}"
-    print("✓ 未认证访问返回 401")
+    print("[OK] 未认证访问返回 401")
 
 
 def test_invalid_token() -> None:
@@ -334,7 +357,7 @@ def test_invalid_token() -> None:
     )
     _print_response(resp)
     assert resp.status_code == 401, f"期望 401，实际 {resp.status_code}"
-    print("✓ 错误 token 返回 401")
+    print("[OK] 错误 token 返回 401")
 
 
 def test_get_nonexistent_project() -> None:
@@ -347,12 +370,13 @@ def test_get_nonexistent_project() -> None:
     )
     _print_response(resp)
     assert resp.status_code == 404, f"期望 404，实际 {resp.status_code}"
-    print("✓ 不存在的项目返回 404")
+    print("[OK] 不存在的项目返回 404")
 
 
 def test_status_guard_analyze_draft() -> None:
-    """D. draft 项目直接 analyze → 400。"""
+    """D. draft 项目直接 analyze → 400（需先激活套餐以绕过付费守卫）。"""
     _print_section("异常 D: draft 状态调用 analyze")
+    _activate_dev_subscription("single")
     project_id = _create_draft_project("draft-analyze")
     try:
         resp = requests.post(
@@ -364,55 +388,50 @@ def test_status_guard_analyze_draft() -> None:
         _print_response(resp)
         assert resp.status_code == 400, f"期望 400，实际 {resp.status_code}"
         assert "状态" in resp.json().get("message", "") or "状态" in resp.text
-        print("✓ draft 状态调用 analyze 返回 400")
+        print("[OK] draft 状态调用 analyze 返回 400")
     finally:
         _delete_project(project_id)
 
 
 def test_status_guard_export_data_draft() -> None:
-    """E. draft 项目调用 export-data → 400。"""
+    """E. draft 项目调用 export-data → 400（需先激活套餐以绕过付费守卫）。"""
     _print_section("异常 E: draft 状态调用 export-data")
+    _activate_dev_subscription("single")
     project_id = _create_draft_project("draft-export")
     try:
         resp = requests.post(
-            f"{BASE_URL}/simulation/export-data/{project_id}",
+            f"{BASE_URL}/simulation/{project_id}/export-data",
+            json={"format": "excel"},
             headers=HEADERS,
             timeout=30,
         )
         _print_response(resp)
         assert resp.status_code == 400, f"期望 400，实际 {resp.status_code}"
-        print("✓ draft 状态调用 export-data 返回 400")
+        print("[OK] draft 状态调用 export-data 返回 400")
     finally:
         _delete_project(project_id)
 
 
-def test_generate_nonexistent_hypothesis() -> None:
-    """F. 不存在的 hypothesis_id 调用 generate → 404。"""
-    _print_section("异常 F: 不存在的 hypothesis_id")
+def test_generate_nonexistent_project() -> None:
+    """F. 不存在的 project_id 调用 generate → 404（需先激活套餐以绕过付费守卫）。"""
+    _print_section("异常 F: 不存在的 project_id")
+    _activate_dev_subscription("single")
     fake_id = str(uuid.uuid4())
     resp = requests.post(
-        f"{BASE_URL}/simulation/generate",
-        json={
-            "sample_size": 100,
-            "hypothesis_id": fake_id,
-            "matrix_id": None,
-        },
+        f"{BASE_URL}/simulation/{fake_id}/generate",
+        json={"sample_size": 100},
         headers=HEADERS,
         timeout=30,
     )
     _print_response(resp)
     assert resp.status_code == 404, f"期望 404，实际 {resp.status_code}"
-    print("✓ 不存在的 hypothesis_id 返回 404")
+    print("[OK] 不存在的 project_id 返回 404")
 
 
 def test_export_invalid_format() -> None:
-    """G. 导出不支持的格式 → 400。"""
+    """G. 不存在的 report_id 导出 → 404（需先激活套餐以绕过付费守卫）。"""
     _print_section("异常 G: 不支持的导出格式")
-    # 先创建一个 draft 项目，再用一个不存在的 report_id 测试
-    # 实际上 export 端点会先查 report，若 report 不存在会 404
-    # 这里我们用一个真实但 report_id 不存在来触发 format 校验前的 404
-    # 改为：用一个合法 report_id 才能测 format 校验
-    # 简化：用一个不存在的 report_id，预期 404（覆盖 404 分支）
+    _activate_dev_subscription("single")
     fake_report_id = str(uuid.uuid4())
     resp = requests.post(
         f"{BASE_URL}/report/export/{fake_report_id}",
@@ -423,7 +442,7 @@ def test_export_invalid_format() -> None:
     _print_response(resp)
     # 不存在的 report_id 先报 404
     assert resp.status_code == 404, f"期望 404，实际 {resp.status_code}"
-    print("✓ 不存在的 report_id 返回 404（format 校验未触发）")
+    print("[OK] 不存在的 report_id 返回 404（format 校验未触发）")
 
 
 def test_get_nonexistent_report() -> None:
@@ -438,7 +457,7 @@ def test_get_nonexistent_report() -> None:
         )
         _print_response(resp)
         assert resp.status_code == 404, f"期望 404，实际 {resp.status_code}"
-        print("✓ 项目无报告返回 404")
+        print("[OK] 项目无报告返回 404")
     finally:
         _delete_project(project_id)
 
@@ -448,12 +467,12 @@ def test_paid_endpoint_requires_auth() -> None:
     _print_section("异常 I: 未认证访问付费端点")
     fake_id = str(uuid.uuid4())
     resp = requests.post(
-        f"{BASE_URL}/simulation/hypothesis/{fake_id}",
+        f"{BASE_URL}/simulation/{fake_id}/hypothesis",
         json={"raw_text": "测试"},
     )
     _print_response(resp)
     assert resp.status_code == 401, f"期望 401，实际 {resp.status_code}"
-    print("✓ 未认证访问付费端点返回 401")
+    print("[OK] 未认证访问付费端点返回 401")
 
 
 # ============================================================
@@ -475,21 +494,23 @@ def run_happy_path() -> tuple:
         test_health()
         project_id = test_create_project()
         test_inspect_questions(project_id)
+        # 激活 single 套餐以通过后续付费端点（创建假设 / 生成 / 导出）
+        _activate_dev_subscription("single")
         hypothesis_id = test_create_hypothesis(project_id)
-        test_generate_data(project_id, hypothesis_id)
+        test_generate_data(project_id)
         report_id = test_analyze_report(project_id)
         test_get_report(project_id)
         test_export_word(report_id)
         test_export_excel(report_id)
         print("\n" + "=" * 60)
-        print("✓ 主流程全部通过")
+        print("[OK] 主流程全部通过")
         print("=" * 60)
         return project_id, True
     except AssertionError as e:
-        print(f"\n✗ 主流程失败: {e}")
+        print(f"\n[FAIL] 主流程失败: {e}")
         return project_id, False
     except Exception as e:
-        print(f"\n✗ 主流程异常: {type(e).__name__}: {e}")
+        print(f"\n[FAIL] 主流程异常: {type(e).__name__}: {e}")
         # 提示 LLM 连接问题
         if "Connection" in str(e) or "connection" in str(e):
             print("  提示：LLM 连接错误，请检查 .env 中 DEEPSEEK_API_KEY 是否为真实有效值")
@@ -508,7 +529,7 @@ def run_anomalies() -> int:
         test_get_nonexistent_project,
         test_status_guard_analyze_draft,
         test_status_guard_export_data_draft,
-        test_generate_nonexistent_hypothesis,
+        test_generate_nonexistent_project,
         test_export_invalid_format,
         test_get_nonexistent_report,
         test_paid_endpoint_requires_auth,
@@ -519,17 +540,17 @@ def run_anomalies() -> int:
         try:
             test_fn()
         except AssertionError as e:
-            print(f"✗ {test_fn.__name__} 失败: {e}")
+            print(f"[FAIL] {test_fn.__name__} 失败: {e}")
             failures += 1
         except Exception as e:
-            print(f"✗ {test_fn.__name__} 异常: {type(e).__name__}: {e}")
+            print(f"[FAIL] {test_fn.__name__} 异常: {type(e).__name__}: {e}")
             failures += 1
 
     print("\n" + "=" * 60)
     if failures == 0:
-        print("✓ 异常分支全部通过")
+        print("[OK] 异常分支全部通过")
     else:
-        print(f"✗ 异常分支失败: {failures}/{len(tests)}")
+        print(f"[FAIL] 异常分支失败: {failures}/{len(tests)}")
     print("=" * 60)
     return failures
 
@@ -550,12 +571,12 @@ def main() -> int:
     if project_id:
         _print_section("最终清理：删除主流程项目")
         _delete_project(project_id)
-        print(f"✓ 已清理主流程项目: {project_id}")
+        print(f"[OK] 已清理主流程项目: {project_id}")
 
     # 4. 汇总
     print("\n" + "=" * 60)
     if happy_success and failures == 0:
-        print("✓ 全部测试通过")
+        print("[OK] 全部测试通过")
         print("=" * 60)
         return 0
     elif not happy_success and failures == 0:
@@ -563,7 +584,7 @@ def main() -> int:
         print("=" * 60)
         return 1
     else:
-        print(f"✗ 测试失败（主流程: {'通过' if happy_success else '未通过'}，"
+        print(f"[FAIL] 测试失败（主流程: {'通过' if happy_success else '未通过'}，"
               f"异常分支失败数: {failures}）")
         print("=" * 60)
         return 1

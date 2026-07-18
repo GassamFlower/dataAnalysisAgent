@@ -12,7 +12,6 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_paid_plan
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException
-from app.models.project import Project
 from app.models.report import Report
 from app.models.reliability_result import ReliabilityResult
 from app.models.diagnosis import Diagnosis
@@ -20,7 +19,7 @@ from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.question import Question
 from app.models.simulation_config import SimulationConfig
 from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest
-from app.services.project_service import update_project_status
+from app.services.project_service import get_owned_project, update_project_status
 
 router = APIRouter(prefix="/report", tags=["report"])
 
@@ -108,16 +107,8 @@ async def get_report(
     current_user: dict = Depends(get_current_user)
 ):
     """按项目 ID 查询最新已存报告（含信效度结果、R4 诊断、差异检验）。"""
-    # 1. 验证项目归属
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目归属（含软删除过滤）
+    await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 查询最新报告（selectinload 关联数据）
     from sqlalchemy.orm import selectinload
@@ -159,16 +150,8 @@ async def analyze(
     current_user: dict = Depends(require_paid_plan)
 ):
     """跑标准统计套餐 + R4 诊断结论。"""
-    # 1. 验证项目存在且属于当前用户
-    result = await db.execute(
-        select(Project).where(
-            Project.id == project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 验证项目状态为 simulated
     if project.status != "simulated":
@@ -362,16 +345,8 @@ async def export(
     if not report:
         raise NotFoundException("报告不存在")
 
-    # 2. 验证项目归属
-    result = await db.execute(
-        select(Project).where(
-            Project.id == report.project_id,
-            Project.user_id == current_user["id"]
-        )
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise NotFoundException("项目不存在")
+    # 2. 验证项目归属（含软删除过滤）
+    await get_owned_project(db, report.project_id, current_user["id"])
 
     # 3. 实时计算差异检验（不落库，与 get_report/analyze 保持一致）
     diff_tests: List[Dict[str, Any]] = []

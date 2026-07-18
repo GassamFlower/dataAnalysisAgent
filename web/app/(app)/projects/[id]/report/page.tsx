@@ -21,72 +21,8 @@ import { Watermark } from "@/components/common/watermark";
 import { toast } from "@/components/ui/toaster";
 import { useReport, useAnalyzeReport, useExportReport } from "@/lib/hooks/use-report";
 import { useSimulation } from "@/lib/hooks/use-simulation";
-import type { ReliabilityResult, Diagnosis } from "@/types";
-
-// Fallback 示例数据：接口未就绪或无报告时展示（含后端分档等级字段）
-const fallbackReliability: ReliabilityResult[] = [
-  {
-    dimension: "学习动机",
-    alpha: 0.842,
-    kmo: 0.812,
-    bartlettPValue: 0.0001,
-    passed: true,
-    alphaGrade: "良好",
-    alphaWording: "信度良好",
-    kmoGrade: "良好",
-    kmoWording: "适合做因子分析",
-    bartlettGrade: "优秀",
-    bartlettWording: "极显著",
-  },
-  {
-    dimension: "自我效能感",
-    alpha: 0.681,
-    kmo: 0.723,
-    bartlettPValue: 0.001,
-    passed: false,
-    alphaGrade: "不达标",
-    alphaWording: "信度不足，需删题或调整量表",
-    kmoGrade: "可接受",
-    kmoWording: "勉强适合做因子分析",
-    bartlettGrade: "优秀",
-    bartlettWording: "极显著",
-  },
-  {
-    dimension: "学业表现",
-    alpha: 0.795,
-    kmo: 0.781,
-    bartlettPValue: 0.0005,
-    passed: true,
-    alphaGrade: "可接受",
-    alphaWording: "信度可接受",
-    kmoGrade: "可接受",
-    kmoWording: "勉强适合做因子分析",
-    bartlettGrade: "优秀",
-    bartlettWording: "极显著",
-  },
-];
-
-const fallbackDiagnosis: Diagnosis = {
-  passed: false,
-  issues: [
-    {
-      dimension: "自我效能感",
-      metric: "alpha",
-      value: 0.681,
-      threshold: 0.7,
-      reason: "α 系数低于 0.7，内部一致性不足。",
-      suggestion: "建议增加 1~2 道同向题，或删除与总分相关性最低的题项后重测。",
-    },
-    {
-      dimension: "",
-      metric: "cumulative_variance",
-      value: 0,
-      threshold: 0,
-      reason: "命中翻车点 P07：未报累计方差解释率",
-      suggestion: "因子分析应报告累计方差解释率，以说明公因子对原变量的解释能力。请补充该指标。",
-    },
-  ],
-};
+import { useAuthStore } from "@/lib/stores/auth-store";
+import type { ReliabilityResult } from "@/types";
 
 /**
  * 套用论文信效度段落模板（与后端 reporter._reliability_paragraph 一致）。
@@ -133,6 +69,7 @@ export default function ReportPage({
   const { data: simulationData } = useSimulation(params.id);
   const analyzeMutation = useAnalyzeReport();
   const exportMutation = useExportReport();
+  const isFreeUser = useAuthStore((state) => state.user?.plan === "free");
 
   /** 触发报告生成（后端跑统计套餐 + 诊断） */
   const handleAnalyze = () => {
@@ -213,18 +150,37 @@ export default function ReportPage({
     );
   }
 
-  // 真实数据优先；接口未就绪/无报告时回退示例数据（方便 demo）
-  const reliability = report?.reliability?.length
-    ? report.reliability
-    : fallbackReliability;
-  const diagnosis = report?.diagnosis ?? fallbackDiagnosis;
-  const overallAlpha =
-    report?.overallAlpha ??
-    reliability.reduce((s, r) => s + r.alpha, 0) / reliability.length;
-  const passedCount =
-    report?.passedCount ?? reliability.filter((r) => r.passed).length;
+  // 报告未生成：保持「尚未生成报告」卡片
+  if (!isLoading && !report) {
+    return (
+      <div>
+        <Button variant="ghost" size="sm" asChild className="mb-2">
+          <Link href={`/projects/${params.id}`}>
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
+            返回工作台
+          </Link>
+        </Button>
+        <StepNav projectId={params.id} current="report" />
+        <Card className="mt-6 p-8 text-center">
+          <FileText className="mx-auto mb-3 h-10 w-10 text-ink-400" />
+          <h3 className="text-h3 font-semibold text-ink-900">尚未生成报告</h3>
+          <p className="mt-1 text-body text-ink-500">
+            请先完成数据生成，再运行统计分析生成报告。
+          </p>
+          <Button className="mt-4" onClick={handleAnalyze}>
+            <FileText className="mr-1.5 h-4 w-4" />
+            生成报告
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const reliability = report?.reliability ?? [];
+  const diagnosis = report?.diagnosis ?? { passed: true, issues: [] };
+  const overallAlpha = report?.overallAlpha ?? 0;
+  const passedCount = report?.passedCount ?? 0;
   const totalCount = report?.totalCount ?? reliability.length;
-  const usingRealData = Boolean(report?.reliability?.length);
   const paragraph = buildReliabilityParagraph(reliability, overallAlpha);
 
   return (
@@ -245,6 +201,7 @@ export default function ReportPage({
           <ExportButton
             onExport={handleExport}
             disabled={exportMutation.isPending}
+            isFree={isFreeUser}
           />
         }
       />
@@ -255,12 +212,6 @@ export default function ReportPage({
         <div className="flex items-center gap-2 rounded-md border border-border bg-card p-4 text-ink-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           正在加载报告…
-        </div>
-      )}
-
-      {!isLoading && !usingRealData && (
-        <div className="mb-4 rounded-md border border-warning/40 bg-warning/5 p-3 text-small text-ink-600">
-          当前为示例数据。完成「体检 → 生成数据 → 分析」流程后将展示真实报告。
         </div>
       )}
 
@@ -361,6 +312,7 @@ export default function ReportPage({
           <ExportButton
             onExport={handleExport}
             disabled={exportMutation.isPending}
+            isFree={isFreeUser}
           />
         </div>
         {exportMutation.isPending && (

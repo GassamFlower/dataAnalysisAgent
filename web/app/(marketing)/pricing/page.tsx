@@ -1,13 +1,36 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { PriceTag } from "@/components/common/price-tag";
 import { PageHeader } from "@/components/common/page-header";
 import { PRICING, SIMULATED_WATERMARK } from "@/lib/constants";
-
-export const metadata = { title: "定价" };
+import { usePurchasePlan, useSubscription } from "@/lib/hooks/use-payment";
+import { useAuthStore } from "@/lib/stores/auth-store";
 
 export default function PricingPage() {
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const { data: subscription } = useSubscription();
+  const purchase = usePurchasePlan();
+
+  const handlePurchase = async (planType: "single" | "subscription") => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    try {
+      await purchase.mutateAsync(planType);
+      router.push("/settings");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "购买失败，请重试");
+    }
+  };
+
+  const currentPlan = subscription?.plan ?? "free";
+
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
@@ -25,6 +48,22 @@ export default function PricingPage() {
           description="免费体检确认可行性，付费生成数据与完整报告。开题季早鸟价进行中。"
         />
 
+        {subscription && (
+          <div className="mb-6 rounded-lg border border-border bg-card p-4 text-center text-body text-ink-700">
+            当前套餐：
+            <span className="font-semibold text-ink-900">
+              {currentPlan === "free" && "免费体检"}
+              {currentPlan === "single" && "单次报告"}
+              {currentPlan === "subscription" && "月度订阅"}
+            </span>
+            {subscription.isActive && subscription.expiresAt && (
+              <span className="ml-2 text-ink-500">
+                有效期至 {new Date(subscription.expiresAt).toLocaleDateString("zh-CN")}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <PriceTag
             plan={PRICING.free}
@@ -34,15 +73,15 @@ export default function PricingPage() {
           />
           <PriceTag
             plan={PRICING.single}
-            ctaLabel="购买单次"
+            ctaLabel={currentPlan === "single" ? "已拥有" : "购买单次"}
             highlighted
-            ctaHref="/login"
+            onCta={() => handlePurchase("single")}
           />
           <PriceTag
             plan={PRICING.subscription}
-            ctaLabel="订阅月度"
+            ctaLabel={currentPlan === "subscription" ? "已拥有" : "订阅月度"}
             highlighted={false}
-            ctaHref="/login"
+            onCta={() => handlePurchase("subscription")}
           />
         </div>
 

@@ -153,7 +153,10 @@ export async function POST(
   const json = await res.json();
   const report = transformReport(json.data as BackendReport);
   if (!report) {
-    return NextResponse.json({ error: "未生成报告" }, { status: 500 });
+    return NextResponse.json(
+      { code: 500, message: "未生成报告", data: null },
+      { status: 500 }
+    );
   }
-  return NextResponse.json(report);
+  return NextResponse.json({ code: 0, message: "ok", data: report });
 }

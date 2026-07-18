@@ -10,12 +10,17 @@ import { PageHeader } from "@/components/common/page-header";
 import { ProjectStatusCard } from "@/components/common/project-status-card";
 import { StepNav } from "@/components/layout/step-nav";
 import { QuestionTable } from "@/components/questionnaire/question-table";
+import { DimensionEditor } from "@/components/questionnaire/dimension-editor";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { toast } from "@/components/ui/toaster";
 import { useProject } from "@/lib/hooks/use-project";
-import { useQuestionnaire, useUpdateQuestion } from "@/lib/hooks/use-questionnaire";
+import {
+  useQuestionnaire,
+  useUpdateQuestion,
+  useDimensions,
+} from "@/lib/hooks/use-questionnaire";
 import { PRICING } from "@/lib/constants";
 
 export default function WorkbenchPage({
@@ -26,12 +31,13 @@ export default function WorkbenchPage({
   // 接入真实数据 hooks
   const { data: project, isLoading: projectLoading, error: projectError } = useProject(params.id);
   const { data: questionnaire, isLoading: questionnaireLoading, error: questionnaireError } = useQuestionnaire(params.id);
+  const { data: dimensionsData, isLoading: dimensionsLoading } = useDimensions(params.id);
   const updateQuestionMutation = useUpdateQuestion();
 
-  const isLoading = projectLoading || questionnaireLoading;
+  const isLoading = projectLoading || questionnaireLoading || dimensionsLoading;
   const error = projectError || questionnaireError;
   const questions = questionnaire?.structure?.questions ?? [];
-  const dimensions = questionnaire?.structure?.dimensions ?? [];
+  const dimensions = dimensionsData?.dimensions ?? questionnaire?.structure?.dimensions ?? [];
   const reverseCount = questions.filter(q => q.isReverse).length;
 
   /** 更新单题（维度 / 反向题） */
@@ -141,14 +147,17 @@ export default function WorkbenchPage({
           </Badge>
         </div>
         <p className="mb-3 text-body text-ink-500">
-          AI 识别可能有误，点击维度下拉或反向题徽章可直接修正。
+          AI 识别可能有误，点击维度下拉或反向题徽章可直接修正。也可新增或重命名维度。
         </p>
-        <QuestionTable
-          questions={questions}
-          dimensions={dimensions}
-          onUpdateQuestion={handleUpdateQuestion}
-          updatingIndex={updatingIndex}
-        />
+        <DimensionEditor projectId={params.id} dimensions={dimensions} />
+        <div className="mt-4">
+          <QuestionTable
+            questions={questions}
+            dimensions={dimensions}
+            onUpdateQuestion={handleUpdateQuestion}
+            updatingIndex={updatingIndex}
+          />
+        </div>
       </div>
 
       {/* 免费层边界：付费解锁 */}

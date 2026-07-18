@@ -6,13 +6,18 @@ import { apiClient } from "@/lib/api/client";
 import { questionnaireApi } from "@/lib/api/questionnaire";
 import type { Question, QuestionnaireStructure } from "@/types";
 
+const questionnaireKeys = {
+  structure: (projectId: string) => ["questionnaire", projectId],
+  dimensions: (projectId: string) => ["dimensions", projectId],
+};
+
 /**
  * 题目体检 hooks。
  * 对应后端：POST /api/questionnaire/parse。
  */
 export function useQuestionnaire(projectId: string) {
   return useQuery({
-    queryKey: ["questionnaire", projectId],
+    queryKey: questionnaireKeys.structure(projectId),
     queryFn: () =>
       apiClient.get<{ structure: QuestionnaireStructure }>(
         `/api/questionnaire/${projectId}`
@@ -33,7 +38,7 @@ export function useParseQuestionnaire() {
       ),
     onSuccess: (data, variables) => {
       queryClient.setQueryData(
-        ["questionnaire", variables.projectId],
+        questionnaireKeys.structure(variables.projectId),
         { structure: data.structure }
       );
     },
@@ -63,7 +68,41 @@ export function useUpdateQuestion() {
     onSuccess: (_data, variables) => {
       // 简单策略：invalidate 重新拉取最新结构（保证 dimensions 数组同步更新）
       queryClient.invalidateQueries({
-        queryKey: ["questionnaire", variables.projectId],
+        queryKey: questionnaireKeys.structure(variables.projectId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: questionnaireKeys.dimensions(variables.projectId),
+      });
+    },
+  });
+}
+
+/** 获取维度列表 */
+export function useDimensions(projectId: string) {
+  return useQuery({
+    queryKey: questionnaireKeys.dimensions(projectId),
+    queryFn: () => questionnaireApi.getDimensions(projectId),
+    enabled: !!projectId,
+  });
+}
+
+/** 新增/重命名维度 */
+export function useUpdateDimensions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      projectId: string;
+      action: "add" | "rename";
+      name: string;
+      oldName?: string;
+    }) => questionnaireApi.updateDimensions(params.projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: questionnaireKeys.dimensions(variables.projectId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: questionnaireKeys.structure(variables.projectId),
       });
     },
   });
