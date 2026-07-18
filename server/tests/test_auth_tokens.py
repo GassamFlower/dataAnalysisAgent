@@ -9,20 +9,32 @@
 - logout 清空 refresh token，使 refresh 失效
 """
 
+import uuid
 from datetime import timedelta
 
+import jwt
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 
+from app.api.v1.auth import (
+    _create_reset_token,
+    _hash_email_verification_code,
+    _verify_reset_token,
+)
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.security import create_access_token
+from app.models.user import User
 
 
 @pytest.fixture(autouse=True)
 def ensure_jwt_secret():
-    """确保测试环境有 JWT 密钥，避免空 key 导致 jwt.encode 失败。"""
+    """确保测试环境有 JWT 与密码重置 JWT 密钥，避免空 key 导致 jwt.encode 失败。"""
     if not settings.JWT_SECRET_KEY:
         settings.JWT_SECRET_KEY = "test-jwt-secret-do-not-use-in-production"
+    if not settings.RESET_JWT_SECRET_KEY:
+        settings.RESET_JWT_SECRET_KEY = "test-reset-jwt-secret-do-not-use-in-production"
 
 
 @pytest.mark.anyio
@@ -120,3 +132,57 @@ async def test_logout_invalidates_refresh_token(client: AsyncClient):
         json={"refresh_token": tokens["refresh_token"]},
     )
     assert refresh_resp.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_reset_token_uses_independent_secret(client: AsyncClient):
+    """密码重置 token 必须使用独立的 RESET_JWT_SECRET_KEY 签发与验证。"""
+    user_id = uuid.uuid4()
+    token = _create_reset_token(user_id)
+
+    # 独立密钥可验证
+    assert _verify_reset_token(token) == user_id
+
+    # 登录 JWT 密钥不应能解码该 token
+    with pytest.raises(jwt.InvalidSignatureError):
+        jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+
+
+@pytest.mark.anyio
+async def test_email_verification_code_is_hashed(client: AsyncClient):
+    """邮箱验证码入库为哈希，且仅正确明文可通过验证。"""
+    email = f"test-hash-{uuid.uuid4().hex}@example.com"
+    password = "123456"
+
+    # 注册会创建用户（SMTP 未配置时邮件发送失败，但用户已落库）
+    resp = await client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password, "nickname": "Hash Test"},
+    )
+    assert resp.status_code == 200
+
+    # 在数据库中写入一个已知哈希的验证码
+    async for db in get_db():
+        user = (
+            await db.execute(select(User).where(User.email == email))
+        ).scalar_one()
+        assert user.email_verify_code_hash is not None
+        assert user.email_verify_code_hash != "123456"  # 不是明文
+        user.email_verify_code_hash = _hash_email_verification_code("654321")
+        await db.commit()
+        break
+
+    # 正确验证码通过
+    ok_resp = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"email": email, "code": "654321"},
+    )
+    assert ok_resp.status_code == 200
+    assert "access_token" in ok_resp.json()["data"]
+
+    # 错误验证码失败
+    bad_resp = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"email": email, "code": "000000"},
+    )
+    assert bad_resp.status_code == 400

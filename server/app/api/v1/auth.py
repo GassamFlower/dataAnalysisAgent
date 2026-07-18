@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import quote_plus
 
+import bcrypt
 import httpx
 import jwt
 from fastapi import APIRouter, Depends, Query
@@ -210,21 +211,37 @@ def _generate_code(length: int = 6) -> str:
     return "".join(random.choices(string.digits, k=length))
 
 
+def _hash_email_verification_code(code: str) -> str:
+    """对邮箱验证码做 bcrypt 哈希后入库。"""
+    return bcrypt.hashpw(code.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def _verify_email_verification_code(code: str, hashed: str) -> bool:
+    """校验邮箱验证码与数据库哈希是否匹配。"""
+    try:
+        return bcrypt.checkpw(code.encode("utf-8"), hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
+
+
 def _create_reset_token(user_id: uuid.UUID) -> str:
-    """生成密码重置 JWT token（30 分钟有效）。"""
+    """生成密码重置 JWT token（30 分钟有效）。
+
+    使用独立的 RESET_JWT_SECRET_KEY，避免与登录 JWT 共用密钥。
+    """
     payload = {
         "sub": str(user_id),
         "type": RESET_TOKEN_TYPE,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
         "iat": datetime.now(timezone.utc),
     }
-    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return jwt.encode(payload, settings.RESET_JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 def _verify_reset_token(token: str) -> Optional[uuid.UUID]:
     """验证密码重置 token，返回 user_id 或 None。"""
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, settings.RESET_JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("type") != RESET_TOKEN_TYPE:
             return None
         return uuid.UUID(payload["sub"])
@@ -318,9 +335,9 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.flush()
 
-    # 生成验证码并存储
+    # 生成验证码并存储哈希（禁止明文入库）
     code = _generate_code()
-    user.email_verify_code = code
+    user.email_verify_code_hash = _hash_email_verification_code(code)
     user.email_verify_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
     # 先提交用户数据（确保即使邮件发送失败用户也已创建）
@@ -349,18 +366,18 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
     if user.email_verified:
         raise ValidationException("邮箱已验证，无需重复验证")
 
-    if not user.email_verify_code or not user.email_verify_expires_at:
+    if not user.email_verify_code_hash or not user.email_verify_expires_at:
         raise ValidationException("请先获取验证码")
 
     if datetime.now(timezone.utc) > user.email_verify_expires_at:
         raise ValidationException("验证码已过期，请重新获取")
 
-    if user.email_verify_code != req.code:
+    if not _verify_email_verification_code(req.code, user.email_verify_code_hash):
         raise ValidationException("验证码错误")
 
     # 验证成功
     user.email_verified = True
-    user.email_verify_code = None
+    user.email_verify_code_hash = None
     user.email_verify_expires_at = None
 
     tokens = await _issue_tokens(user, db)
@@ -392,7 +409,7 @@ async def resend_code(req: ResendCodeRequest, db: AsyncSession = Depends(get_db)
         raise ValidationException("邮箱已验证，无需重复验证")
 
     code = _generate_code()
-    user.email_verify_code = code
+    user.email_verify_code_hash = _hash_email_verification_code(code)
     user.email_verify_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
     try:

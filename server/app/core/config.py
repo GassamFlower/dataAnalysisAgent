@@ -1,6 +1,6 @@
 """应用配置。从环境变量 / .env 读取。"""
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env 文件路径相对于本文件所在目录（server/），确保从任何 CWD 都能正确加载
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # 服务
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    DEBUG: bool = True
+    DEBUG: bool = False  # 生产默认关闭，开发环境在 .env 中显式开启
 
     # 前端（CORS）
     FRONTEND_URL: str = "http://localhost:3000"
@@ -42,9 +42,12 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 15  # access token 15 分钟
     JWT_REFRESH_EXPIRE_MINUTES: int = 60 * 24 * 7  # refresh token 7 天
 
+    # 安全（密码重置 JWT）—— 必须与登录 JWT 密钥不同
+    RESET_JWT_SECRET_KEY: str = ""  # 生产环境必须设置
+
     # 开发模式（仅 DEBUG=True 时允许 dev-token）
-    DEV_TOKEN: str = "dev-token"
-    ALLOW_DEV_TOKEN: bool = True  # 生产环境设为 False
+    DEV_TOKEN: str = ""  # 默认空，开发环境在 .env 中显式设置
+    ALLOW_DEV_TOKEN: bool = False  # 生产环境必须保持 False
 
     # 微信公众号网页授权
     WECHAT_APP_ID: str = ""
@@ -69,9 +72,10 @@ class Settings(BaseSettings):
     FREE_PLAN_SIMULATION_LIMIT_PER_WEEK: int = 3
     FREE_PLAN_EXPORT_LIMIT_PER_WEEK: int = 3
 
-    class Config:
-        env_file = str(_ENV_FILE)
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=str(_ENV_FILE),
+        case_sensitive=True,
+    )
 
 
 settings = Settings()

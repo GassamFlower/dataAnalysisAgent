@@ -24,10 +24,31 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+def _validate_production_settings() -> None:
+    """生产环境启动前强制校验关键安全配置。
+
+    校验失败直接抛出异常，阻止服务以不安全配置启动。
+    """
+    if settings.ENVIRONMENT != "production":
+        return
+
+    if settings.DEBUG:
+        raise RuntimeError("生产环境必须设置 DEBUG=False")
+    if settings.ALLOW_DEV_TOKEN:
+        raise RuntimeError("生产环境必须设置 ALLOW_DEV_TOKEN=False")
+    if not settings.JWT_SECRET_KEY or len(settings.JWT_SECRET_KEY) < 32:
+        raise RuntimeError("生产环境 JWT_SECRET_KEY 必须至少 32 位")
+    if not settings.RESET_JWT_SECRET_KEY or len(settings.RESET_JWT_SECRET_KEY) < 32:
+        raise RuntimeError("生产环境 RESET_JWT_SECRET_KEY 必须至少 32 位")
+    if settings.RESET_JWT_SECRET_KEY == settings.JWT_SECRET_KEY:
+        raise RuntimeError("生产环境 RESET_JWT_SECRET_KEY 必须与 JWT_SECRET_KEY 不同")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理。"""
     # 启动时
+    _validate_production_settings()
     logger.info("启动数据分析智能体 API...")
     await init_db()
     logger.info("数据库初始化完成")
