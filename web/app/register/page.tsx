@@ -9,14 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuthStore } from "@/lib/stores/auth-store";
+import { useAuthMutations } from "@/lib/hooks/use-auth";
+import { toast } from "@/components/ui/toaster";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
+
+  const {
+    register,
+    verifyEmail,
+    resendCode,
+  } = useAuthMutations();
 
   const [step, setStep] = useState<"register" | "verify">("register");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 注册表单
@@ -27,6 +32,8 @@ export default function RegisterPage() {
 
   // 验证码
   const [code, setCode] = useState("");
+
+  const loading = register.isPending || verifyEmail.isPending || resendCode.isPending;
 
   /** 提交注册 → 发送验证码 */
   const handleRegister = async (e: React.FormEvent) => {
@@ -42,76 +49,49 @@ export default function RegisterPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, nickname }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.detail || "注册失败");
+    register.mutate(
+      { email, password, nickname },
+      {
+        onSuccess: (data) => {
+          toast.success(data.message || "验证码已发送");
+          setStep("verify");
+        },
+        onError: (e) => {
+          setError(e instanceof Error ? e.message : "注册失败，请重试");
+        },
       }
-      setStep("verify");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "注册失败，请重试");
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   /** 验证邮箱 → 登录 */
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.detail || "验证失败");
-      }
-      const { token, user } = data.data;
-      setAuth(
-        {
-          id: user.id,
-          nickname: user.nickname,
-          plan: user.plan ?? "free",
+    verifyEmail.mutate(
+      { email, code },
+      {
+        onSuccess: () => {
+          toast.success("验证成功");
+          router.push("/projects");
         },
-        token
-      );
-      router.push("/projects");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "验证失败，请重试");
-    } finally {
-      setLoading(false);
-    }
+        onError: (e) => {
+          setError(e instanceof Error ? e.message : "验证失败，请重试");
+        },
+      }
+    );
   };
 
   /** 重新发送验证码 */
   const handleResend = async () => {
     setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/resend-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.detail || "发送失败");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "发送失败，请重试");
-    } finally {
-      setLoading(false);
-    }
+    resendCode.mutate(email, {
+      onSuccess: (data) => {
+        toast.success(data.message || "验证码已重新发送");
+      },
+      onError: (e) => {
+        setError(e instanceof Error ? e.message : "发送失败，请重试");
+      },
+    });
   };
 
   return (

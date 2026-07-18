@@ -38,7 +38,12 @@ export async function GET(request: Request) {
     createdAt: item.created_at as string,
     updatedAt: item.updated_at as string,
   }));
-  return NextResponse.json({ projects: items });
+  return NextResponse.json({
+    projects: items,
+    total: json.data?.total ?? 0,
+    page: json.data?.page ?? 1,
+    pageSize: json.data?.page_size ?? 20,
+  });
 }
 
 export async function POST(request: Request) {

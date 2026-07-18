@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Noto_Sans_SC } from "next/font/google";
 
 import { Providers } from "@/lib/providers";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -34,7 +35,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className={`${fraunces.variable} ${notoSansSC.variable}`}>
       <body className="bg-background text-foreground antialiased">
-        <Providers>{children}</Providers>
+        <ThemeProvider>
+          <Providers>{children}</Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

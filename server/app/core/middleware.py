@@ -1,6 +1,6 @@
 """中间件：速率限制 + 请求日志。"""
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable
 
 from fastapi import Request, Response
@@ -13,15 +13,23 @@ from app.core.config import settings
 
 # 修复 Windows GBK 编码问题：starlette.Config 读取 .env 默认用系统编码（GBK），
 # 而 .env 文件可能包含中文注释（UTF-8）。monkey-patch _read_file 强制 UTF-8。
+# 新版 starlette 的 _read_file 签名变为 (file_name, encoding) 并返回 dict，
+# 此处兼容新旧两种签名。
 _original_read_file = StarletteConfig._read_file
 
 
-def _utf8_read_file(self, env_file):
+def _utf8_read_file(self, env_file, encoding=None):
+    file_values = {}
     try:
-        with open(env_file, encoding="utf-8") as f:
-            return f.readlines()
+        with open(env_file, encoding=encoding or "utf-8") as f:
+            for line in f.readlines():
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    file_values[key.strip()] = value.strip().strip("\"'")
     except (FileNotFoundError, OSError):
-        return []
+        pass
+    return file_values
 
 
 StarletteConfig._read_file = _utf8_read_file
@@ -50,7 +58,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # 日志格式：[时间] 方法 路径 状态码 耗时
         log_line = (
-            f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}] "
+            f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}] "
             f"{request.method} {request.url.path} "
             f"{response.status_code} {process_time:.3f}s"
         )

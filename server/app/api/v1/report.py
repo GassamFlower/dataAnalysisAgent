@@ -20,6 +20,7 @@ from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.question import Question
 from app.models.simulation_config import SimulationConfig
 from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest
+from app.services.project_service import update_project_status
 
 router = APIRouter(prefix="/report", tags=["report"])
 
@@ -314,7 +315,7 @@ async def analyze(
         db.add(diagnosis_issue)
 
     # 13. 更新项目状态
-    project.status = "analyzed"
+    update_project_status(project, "analyzed", reason="报告分析完成")
     await db.flush()
 
     # 14. 返回报告 + 差异检验（diff_tests 已在步骤 8b 计算，显式加载关系）

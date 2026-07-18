@@ -1,3 +1,5 @@
+"use client";
+
 import { User, Receipt, Crown } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -5,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/common/page-header";
 import { PRICING } from "@/lib/constants";
-
-export const metadata = { title: "设置" };
+import { useLogout } from "@/lib/hooks/use-auth";
 
 export default function SettingsPage() {
+  const logout = useLogout();
+
   return (
     <div>
       <PageHeader title="设置" description="账号信息、订阅与订单。" />
@@ -24,7 +27,7 @@ export default function SettingsPage() {
               <h3 className="text-h3 font-semibold text-ink-900">账号</h3>
               <p className="text-body text-ink-500">微信用户 · 已登录</p>
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={logout}>
               退出登录
             </Button>
           </div>

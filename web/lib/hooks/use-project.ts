@@ -3,13 +3,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
+import { projectsApi, type ProjectListParams } from "@/lib/api/projects";
 import type { Project } from "@/types";
 
-/** 项目列表 */
-export function useProjects() {
+const DEFAULT_PAGE_SIZE = 8;
+
+/** 项目列表（分页） */
+export function useProjects(params: ProjectListParams = {}) {
+  const page = params.page ?? 1;
+  const pageSize = params.pageSize ?? DEFAULT_PAGE_SIZE;
+
   return useQuery({
-    queryKey: ["projects"],
-    queryFn: () => apiClient.get<{ projects: Project[] }>("/api/projects"),
+    queryKey: ["projects", page, pageSize],
+    queryFn: () => projectsApi.list({ page, pageSize }),
   });
 }
 
@@ -31,6 +37,27 @@ export function useCreateProject() {
       apiClient.post<Project>("/api/projects", { name: params.name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+/** 更新项目（当前仅支持重命名） */
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      name,
+    }: {
+      projectId: string;
+      name: string;
+    }) => projectsApi.update(projectId, { name }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.projectId],
+      });
     },
   });
 }

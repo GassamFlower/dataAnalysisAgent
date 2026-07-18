@@ -3,11 +3,14 @@ import { NextResponse } from "next/server";
 /**
  * 微信授权回调 BFF 路由。
  * 微信授权后重定向到此路由，带 code 和 state 参数。
- * 此路由将 code POST 到后端 /api/v1/auth/wechat/callback 交换 JWT，
- * 然后通过 HTML 页面将 token 写入 localStorage 并跳转到 state 指定的前端路径。
+ * 此路由将 code POST 到后端 /api/v1/auth/wechat/callback 交换双 token，
+ * 然后通过 HTML 页面将 access token 写入 localStorage/cookie 并跳转到 state 指定的前端路径。
  */
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
+
+const REFRESH_COOKIE_NAME = "refresh-token";
+const REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 天
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -36,11 +39,13 @@ export async function GET(request: Request) {
   }
 
   const json = await backendRes.json();
-  // 后端返回 {code, message, data: {token, user: {id, nickname, avatar, plan}}}
-  const { token, user } = json.data;
+  // 后端返回 {code, message, data: {access_token, refresh_token, user}}
+  const { access_token, refresh_token, user } = json.data;
 
-  // 通过 HTML 页面写入 localStorage 后跳转（因为 httpOnly cookie 无法被客户端 JS 读取）
-  // 使用 postMessage 或直接内联 script 写入 localStorage
+  // access token：cookie 与 localStorage 双写
+  // - cookie 供 middleware 做路由保护
+  // - localStorage 供 auth-store 在客户端即时恢复状态
+
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>登录中...</title></head>
@@ -51,7 +56,7 @@ export async function GET(request: Request) {
     localStorage.setItem('auth-storage', JSON.stringify({
       state: {
         user: ${JSON.stringify(user)},
-        token: ${JSON.stringify(token)},
+        accessToken: ${JSON.stringify(access_token)},
         isAuthenticated: true,
       },
       version: 0,
@@ -64,7 +69,26 @@ export async function GET(request: Request) {
 </body>
 </html>`;
 
-  return new NextResponse(html, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+  const response = new NextResponse(html, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+    },
   });
+
+  response.cookies.set("auth-token", access_token, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  response.cookies.set(REFRESH_COOKIE_NAME, refresh_token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: REFRESH_COOKIE_MAX_AGE,
+  });
+
+  return response;
 }

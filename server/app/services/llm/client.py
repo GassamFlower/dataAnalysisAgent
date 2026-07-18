@@ -1,8 +1,8 @@
 """DeepSeek LLM 客户端。
 
 双模型架构：
-- V3（deepseek-chat）：R1~R3 理解 / 推断 / 解析，高频低成本
-- R1（deepseek-reasoner）：R4 硬伤诊断推理，思维链适合因果诊断
+- V4 Flash：R1~R3 理解 / 推断 / 解析 / 轻量诊断，高频低成本
+- V4 Pro：R4 复杂因果诊断推理
 """
 from openai import OpenAI
 
@@ -18,28 +18,28 @@ def _get_client() -> OpenAI:
 
 
 def chat_v3(prompt: str, system: str = "") -> str:
-    """R1~R3 调用：题目理解 / 维度推断 / 假设解析。"""
+    """R1~R3 调用：题目理解 / 维度推断 / 假设解析。使用 V4 Flash。"""
     client = _get_client()
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     resp = client.chat.completions.create(
-        model=settings.DEEPSEEK_V3_MODEL,
+        model=settings.DEEPSEEK_V4_FLASH_MODEL,
         messages=messages,
     )
     return resp.choices[0].message.content or ""
 
 
 def chat_r1(prompt: str, system: str = "") -> str:
-    """R4 调用：硬伤诊断推理（为什么信效度不达标）。"""
+    """R4 调用：硬伤诊断推理（为什么信效度不达标）。使用 V4 Pro。"""
     client = _get_client()
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     resp = client.chat.completions.create(
-        model=settings.DEEPSEEK_R1_MODEL,
+        model=settings.DEEPSEEK_V4_PRO_MODEL,
         messages=messages,
     )
     return resp.choices[0].message.content or ""

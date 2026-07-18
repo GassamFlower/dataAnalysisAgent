@@ -1,5 +1,6 @@
 """安全工具（JWT 生成与验证）。"""
-from datetime import datetime, timedelta
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -45,45 +46,58 @@ def hash_password(password: str) -> str:
     return hashed.decode("utf-8")
 
 
-def create_access_token(
+def _create_token(
     user_id: UUID,
-    expires_delta: Optional[timedelta] = None,
+    expires_delta: Optional[timedelta],
+    token_type: str,
 ) -> str:
-    """生成 JWT access token。
-
-    Args:
-        user_id: 用户 ID
-        expires_delta: 过期时间增量（默认 7 天）
-
-    Returns:
-        JWT token 字符串
-    """
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    """生成 JWT token（access / refresh 通用内部实现）。"""
+    now = datetime.now(timezone.utc)
+    expire = now + (expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES))
 
     to_encode = {
         "sub": str(user_id),
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": now,
+        "type": token_type,
+        "jti": secrets.token_urlsafe(16),
     }
-    encoded_jwt = jwt.encode(
+    return jwt.encode(
         to_encode,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )
-    return encoded_jwt
 
 
-def verify_token(token: str) -> Optional[dict]:
+def create_access_token(
+    user_id: UUID,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """生成 JWT access token（默认 15 分钟）。"""
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    return _create_token(user_id, expires_delta, token_type="access")
+
+
+def create_refresh_token(
+    user_id: UUID,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """生成 JWT refresh token（默认 7 天）。"""
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=settings.JWT_REFRESH_EXPIRE_MINUTES)
+    return _create_token(user_id, expires_delta, token_type="refresh")
+
+
+def verify_token(token: str, expected_type: str = "access") -> Optional[dict]:
     """验证 JWT token。
 
     Args:
         token: JWT token 字符串
+        expected_type: 期望的 token 类型（access / refresh）
 
     Returns:
-        解码后的 payload（包含 sub, exp, iat），验证失败返回 None
+        解码后的 payload（包含 sub, exp, iat, type），验证失败返回 None
     """
     if not settings.JWT_SECRET_KEY:
         return None
@@ -93,6 +107,8 @@ def verify_token(token: str) -> Optional[dict]:
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
+        if payload.get("type") != expected_type:
+            return None
         return payload
     except jwt.PyJWTError:
         # 捕获所有 JWT 相关异常（含 ExpiredSignatureError, InvalidTokenError, InvalidKeyError 等）

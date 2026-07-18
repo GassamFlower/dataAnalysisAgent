@@ -50,6 +50,35 @@ export async function GET(
   return NextResponse.json(project);
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const body = await request.json();
+
+  const res = await fetch(`${BACKEND_URL}/api/v1/projects/${params.id}`, {
+    method: "PATCH",
+    headers: {
+      ...getBackendHeaders(request),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    return NextResponse.json(
+      { error: `后端错误: ${res.status}`, detail: text },
+      { status: res.status }
+    );
+  }
+
+  const json = await res.json();
+  const project = transformProject(json.data as BackendProject);
+  return NextResponse.json(project);
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }

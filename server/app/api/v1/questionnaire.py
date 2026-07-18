@@ -19,6 +19,7 @@ from app.schemas.questionnaire import (
     QuestionUpdateRequest,
 )
 from app.services.inspector import inspect as inspect_service
+from app.services.project_service import update_project_status
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
@@ -70,7 +71,7 @@ async def inspect(
         db.add(question)
 
     # 4. 更新项目状态为 inspected
-    project.status = "inspected"
+    update_project_status(project, "inspected", reason="题目体检完成")
     await db.flush()
 
     return ResponseModel(data=questionnaire_structure)

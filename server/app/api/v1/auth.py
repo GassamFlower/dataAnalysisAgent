@@ -1,4 +1,5 @@
 """认证相关 API。"""
+import hashlib
 import re
 import uuid
 import random
@@ -16,9 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.core.exceptions import UnauthorizedException, ValidationException
 from app.core.responses import success_response
-from app.core.security import create_access_token
+from app.core.security import create_access_token, create_refresh_token, verify_token
 from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["认证"])
@@ -27,13 +29,40 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 
+def _hash_refresh_token(token: str) -> str:
+    """对 refresh token 做 SHA256 哈希后入库。"""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+async def _issue_tokens(user: User, db: AsyncSession) -> dict:
+    """签发双 token 并将 refresh token 哈希写入用户表。"""
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+    user.refresh_token = _hash_refresh_token(refresh_token)
+    await db.commit()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "user": {
+            "id": str(user.id),
+            "nickname": user.nickname,
+            "avatar": user.avatar,
+            "email": user.email,
+            "plan": user.plan,
+        },
+    }
+
+
 @router.post("/dev-login")
 async def dev_login(db: AsyncSession = Depends(get_db)):
-    """测试账号登录，返回 JWT。
+    """测试账号登录，返回双 token。
 
-    该端点仅通过 BFF 层（/api/auth/login）暴露，不直接对外。
-    生产环境接入真实认证（如微信扫码）后应移除此端点。
+    该端点仅在 DEBUG=True 时可用，生产环境必须禁用。
     """
+    if not settings.DEBUG:
+        raise UnauthorizedException("测试账号登录仅在开发环境可用")
+
     # 获取或创建测试用户
     user = await db.get(User, TEST_USER_ID)
     if not user:
@@ -46,17 +75,8 @@ async def dev_login(db: AsyncSession = Depends(get_db)):
         db.add(user)
         await db.flush()
 
-    # 生成 JWT
-    token = create_access_token(user.id)
-
-    return success_response(data={
-        "token": token,
-        "user": {
-            "id": str(user.id),
-            "nickname": user.nickname,
-            "plan": user.plan,
-        }
-    })
+    tokens = await _issue_tokens(user, db)
+    return success_response(data=tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -172,18 +192,9 @@ async def wechat_callback(
         if avatar:
             user.avatar = avatar
 
-    # 4. 签发 JWT
-    token = create_access_token(user.id)
-
-    return success_response(data={
-        "token": token,
-        "user": {
-            "id": str(user.id),
-            "nickname": user.nickname,
-            "avatar": user.avatar,
-            "plan": user.plan,
-        }
-    })
+    # 4. 签发双 token
+    tokens = await _issue_tokens(user, db)
+    return success_response(data=tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -352,17 +363,8 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
     user.email_verify_code = None
     user.email_verify_expires_at = None
 
-    token = create_access_token(user.id)
-
-    return success_response(data={
-        "token": token,
-        "user": {
-            "id": str(user.id),
-            "nickname": user.nickname,
-            "email": user.email,
-            "plan": user.plan,
-        }
-    })
+    tokens = await _issue_tokens(user, db)
+    return success_response(data=tokens)
 
 
 class ResendCodeRequest(BaseModel):
@@ -417,17 +419,8 @@ async def email_login(req: EmailLoginRequest, db: AsyncSession = Depends(get_db)
     if not user.email_verified:
         raise ValidationException("邮箱未验证，请先完成邮箱验证")
 
-    token = create_access_token(user.id)
-
-    return success_response(data={
-        "token": token,
-        "user": {
-            "id": str(user.id),
-            "nickname": user.nickname,
-            "email": user.email,
-            "plan": user.plan,
-        }
-    })
+    tokens = await _issue_tokens(user, db)
+    return success_response(data=tokens)
 
 
 @router.post("/forgot-password")
@@ -472,3 +465,44 @@ async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(g
     user.password_hash = hash_password(req.new_password)
 
     return success_response(message="密码重置成功，请使用新密码登录")
+
+
+class RefreshRequest(BaseModel):
+    """刷新 token 请求。"""
+    refresh_token: str
+
+
+@router.post("/refresh")
+async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    """使用 refresh token 换发新的双 token。"""
+    payload = verify_token(req.refresh_token, expected_type="refresh")
+    if not payload:
+        raise UnauthorizedException("refresh token 无效或已过期")
+
+    try:
+        user_id = uuid.UUID(payload["sub"])
+    except (KeyError, ValueError):
+        raise UnauthorizedException("refresh token 无效")
+
+    user = await db.get(User, user_id)
+    if not user or not user.refresh_token:
+        raise UnauthorizedException("用户不存在或已登出")
+
+    if user.refresh_token != _hash_refresh_token(req.refresh_token):
+        raise UnauthorizedException("refresh token 无效")
+
+    tokens = await _issue_tokens(user, db)
+    return success_response(data=tokens)
+
+
+@router.post("/logout")
+async def logout(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """退出登录：清空用户表中存储的 refresh token 哈希，使当前 refresh token 失效。"""
+    user = await db.get(User, current_user["id"])
+    if user:
+        user.refresh_token = None
+        await db.commit()
+    return success_response(message="已退出登录")

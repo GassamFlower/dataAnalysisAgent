@@ -28,6 +28,7 @@ from app.schemas.simulation import (
     MatrixSaveResponse,
 )
 from app.services.hypothesis_parser import parse_hypothesis
+from app.services.project_service import update_project_status
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
 
@@ -303,7 +304,7 @@ async def create_hypothesis(
         db.add(path)
 
     # 6. 更新项目状态
-    project.status = "hypothesized"
+    update_project_status(project, "hypothesized", reason="假设输入完成")
     await db.flush()
 
     # 7. 返回结果（显式加载 paths 关系）
@@ -420,7 +421,7 @@ async def generate(
     db.add(dataset)
 
     # 9. 更新项目状态
-    project.status = "simulated"
+    update_project_status(project, "simulated", reason="数据预演完成")
     await db.flush()
 
     return ResponseModel(data=config)

@@ -49,7 +49,7 @@ async def get_current_user(
         return {
             "id": user.id,
             "nickname": user.nickname,
-            "is_admin": False,
+            "is_admin": True,
             "plan": user.plan,
             "plan_expires_at": user.plan_expires_at,
         }
@@ -75,7 +75,7 @@ async def get_current_user(
     return {
         "id": user.id,
         "nickname": user.nickname,
-        "is_admin": user.is_admin if hasattr(user, "is_admin") else False,
+        "is_admin": user.is_admin,
         "plan": user.plan,
         "plan_expires_at": user.plan_expires_at,
     }
@@ -90,4 +90,11 @@ async def require_paid_plan(user: dict = Depends(get_current_user)) -> dict:
         raise ForbiddenException("该功能需要付费套餐（单次解锁或订阅）")
     if user["plan_expires_at"] and user["plan_expires_at"] < datetime.now(timezone.utc):
         raise ForbiddenException("套餐已过期，请续费")
+    return user
+
+
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    """要求管理员权限。"""
+    if not user.get("is_admin"):
+        raise ForbiddenException("需要管理员权限")
     return user

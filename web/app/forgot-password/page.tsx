@@ -8,33 +8,29 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuthMutations } from "@/lib/hooks/use-auth";
+import { toast } from "@/components/ui/toaster";
 
 export default function ForgotPasswordPage() {
-  const [loading, setLoading] = useState(false);
+  const { forgotPassword } = useAuthMutations();
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [email, setEmail] = useState("");
 
+  const loading = forgotPassword.isPending;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.detail || "请求失败");
-      }
-      setSent(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "请求失败，请重试");
-    } finally {
-      setLoading(false);
-    }
+    forgotPassword.mutate(email, {
+      onSuccess: (data) => {
+        toast.success(data.message || "重置链接已发送");
+        setSent(true);
+      },
+      onError: (e) => {
+        setError(e instanceof Error ? e.message : "请求失败，请重试");
+      },
+    });
   };
 
   return (

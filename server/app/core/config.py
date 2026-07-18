@@ -7,11 +7,23 @@ _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
+    # 环境标识
+    ENVIRONMENT: str = "development"
+
     # DeepSeek
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
-    DEEPSEEK_V3_MODEL: str = "deepseek-chat"      # R1~R3 理解 / 推断 / 解析
-    DEEPSEEK_R1_MODEL: str = "deepseek-reasoner"  # R4 硬伤诊断推理
+    DEEPSEEK_V4_FLASH_MODEL: str = "deepseek-v4-flash"  # 默认模型：理解 / 推断 / 解析 / 轻量诊断
+    DEEPSEEK_V4_PRO_MODEL: str = "deepseek-v4-pro"      # 复杂推理备选：深度因果诊断
+
+    # 备选 LLM（Kimi / Qwen）
+    KIMI_API_KEY: str = ""
+    KIMI_BASE_URL: str = "https://api.moonshot.cn/v1"
+    KIMI_K3_MODEL: str = "kimi-k3"
+    QWEN_API_KEY: str = ""
+    QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    QWEN_37_MAX_MODEL: str = "qwen3.7-max"
+    QWEN_36_FLASH_MODEL: str = "qwen3.6-flash"
 
     # 服务
     HOST: str = "0.0.0.0"
@@ -27,7 +39,8 @@ class Settings(BaseSettings):
     # 安全（JWT）
     JWT_SECRET_KEY: str = ""  # 生产环境必须设置
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 天
+    JWT_EXPIRE_MINUTES: int = 15  # access token 15 分钟
+    JWT_REFRESH_EXPIRE_MINUTES: int = 60 * 24 * 7  # refresh token 7 天
 
     # 开发模式（仅 DEBUG=True 时允许 dev-token）
     DEV_TOKEN: str = "dev-token"
@@ -50,6 +63,11 @@ class Settings(BaseSettings):
 
     # 速率限制
     RATE_LIMIT_PER_MINUTE: int = 60
+
+    # 套餐限制
+    FREE_PLAN_PROJECT_LIMIT: int = 3
+    FREE_PLAN_SIMULATION_LIMIT_PER_WEEK: int = 3
+    FREE_PLAN_EXPORT_LIMIT_PER_WEEK: int = 3
 
     class Config:
         env_file = str(_ENV_FILE)

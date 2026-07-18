@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -15,7 +16,7 @@ from app.core.logging import setup_logging
 from app.core.database import init_db, close_db
 from app.core.exceptions import AppException
 from app.core.middleware import RequestLoggingMiddleware, limiter
-from app.core.responses import error_response
+from app.core.responses import error_response, success_response
 from app.api.v1 import router as v1_router
 
 # 配置日志
@@ -66,6 +67,22 @@ app.add_middleware(
 
 
 # 全局异常处理
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """处理 Starlette HTTP 异常（404 等），统一为 ErrorResponse 格式。"""
+    if exc.status_code == 404:
+        logger.info(f"路由未找到: {request.method} {request.url.path}")
+        return JSONResponse(
+            status_code=404,
+            content=error_response(40400, "请求的资源不存在"),
+        )
+    logger.warning(f"HTTP 异常: {exc.status_code} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response(exc.status_code * 100, str(exc.detail)),
+    )
+
+
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     """处理自定义异常。"""
@@ -117,4 +134,4 @@ app.include_router(v1_router, prefix="/api")
 @app.get("/health")
 async def health():
     """健康检查。"""
-    return {"status": "ok", "service": "data-analysis-agent"}
+    return success_response(data={"status": "ok", "service": "data-analysis-agent"})

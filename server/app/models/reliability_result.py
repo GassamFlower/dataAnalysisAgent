@@ -1,32 +1,46 @@
 """信效度结果模型。"""
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Optional
 
-from sqlalchemy import String, Boolean, Numeric, ForeignKey, Index
+from sqlalchemy import String, Boolean, Numeric, ForeignKey, Index, UniqueConstraint, CheckConstraint
 from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.statistics_constants import grade_alpha, grade_bartlett, grade_kmo
-from app.models import Base
+from app.models import Base, UTCDateTime
 
 
 class ReliabilityResult(Base):
     """各维度信效度结果。"""
 
     __tablename__ = "reliability_results"
-    __table_args__ = (Index("idx_reliability_results_report_id", "report_id"),)
+    __table_args__ = (
+        Index("idx_reliability_results_report_id", "report_id"),
+        Index("idx_reliability_results_deleted_at", "deleted_at"),
+        UniqueConstraint("report_id", "dimension"),
+        CheckConstraint("passed IN (0, 1)", name="ck_reliability_results_passed"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid, primary_key=True, default=uuid.uuid4
     )
     report_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("reports.id"), nullable=False
+        Uuid, ForeignKey("reports.id", ondelete="CASCADE"), nullable=False
     )
     dimension: Mapped[str] = mapped_column(String(100), nullable=False)
     alpha: Mapped[Decimal] = mapped_column(Numeric(4, 3), nullable=False)
     kmo: Mapped[Decimal] = mapped_column(Numeric(4, 3), nullable=False)
-    bartlett_p_value: Mapped[Decimal] = mapped_column(Numeric(6, 5), nullable=False)
+    bartlett_p_value: Mapped[Decimal] = mapped_column(Numeric(12, 10), nullable=False)
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime, default=datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
 
     # 关联
     report: Mapped["Report"] = relationship(back_populates="reliability_results")

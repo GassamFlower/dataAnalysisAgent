@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuthMutations } from "@/lib/hooks/use-auth";
+import { toast } from "@/components/ui/toaster";
 
 export default function ResetPasswordPage() {
   return (
@@ -30,11 +32,14 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
-  const [loading, setLoading] = useState(false);
+  const { resetPassword } = useAuthMutations();
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const loading = resetPassword.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,24 +54,19 @@ function ResetPasswordForm() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, new_password: newPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.detail || "重置失败");
+    resetPassword.mutate(
+      { token, newPassword },
+      {
+        onSuccess: (data) => {
+          toast.success(data.message || "密码重置成功");
+          setSuccess(true);
+          setTimeout(() => router.push("/login"), 3000);
+        },
+        onError: (e) => {
+          setError(e instanceof Error ? e.message : "重置失败，请重试");
+        },
       }
-      setSuccess(true);
-      setTimeout(() => router.push("/login"), 3000);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "重置失败，请重试");
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   return (

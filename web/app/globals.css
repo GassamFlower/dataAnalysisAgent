@@ -5,6 +5,14 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply bg-background text-foreground;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
@@ -15,6 +23,13 @@
   h3,
   h4 {
     font-family: var(--font-display);
+    color: var(--ink-900);
+  }
+
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4 {
     color: var(--ink-900);
   }
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { createAuthResponse } from "../_utils";
+
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(request: Request) {
@@ -15,5 +17,6 @@ export async function POST(request: Request) {
   if (!res.ok) {
     return NextResponse.json(json, { status: res.status });
   }
-  return NextResponse.json(json);
+
+  return createAuthResponse(json);
 }

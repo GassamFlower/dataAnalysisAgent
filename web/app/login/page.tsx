@@ -18,7 +18,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DISCLAIMER } from "@/lib/constants";
-import { useAuthStore } from "@/lib/stores/auth-store";
+import { useAuthMutations } from "@/lib/hooks/use-auth";
+import { authApi } from "@/lib/api/auth";
+import { toast } from "@/components/ui/toaster";
+import { isDevelopment } from "@/lib/env";
 
 /**
  * 登录页入口：包裹 Suspense 边界（useSearchParams 要求）。
@@ -40,11 +43,14 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setAuth = useAuthStore((s) => s.setAuth);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
+
+  const {
+    emailLogin,
+    devLogin,
+  } = useAuthMutations();
 
   // 邮箱登录表单
   const [email, setEmail] = useState("");
@@ -67,7 +73,7 @@ function LoginForm() {
       const raw = localStorage.getItem("auth-storage");
       if (!raw) return false;
       const parsed = JSON.parse(raw);
-      return parsed?.state?.isAuthenticated && parsed?.state?.token;
+      return parsed?.state?.isAuthenticated && parsed?.state?.accessToken;
     } catch {
       return false;
     }
@@ -85,81 +91,49 @@ function LoginForm() {
     return () => clearInterval(interval);
   }, [qrOpen, redirectPath, router, checkLoginStatus]);
 
+  const loading = emailLogin.isPending || devLogin.isPending;
+
   /** 邮箱登录 */
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/auth/email-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.detail || "登录失败");
-      }
-      // 后端返回 {code, message, data: {token, user}}
-      const { token, user } = data.data;
-      setAuth(
-        {
-          id: user.id,
-          nickname: user.nickname,
-          plan: user.plan ?? "free",
+    emailLogin.mutate(
+      { email, password },
+      {
+        onSuccess: () => {
+          toast.success("登录成功");
+          router.push(redirectPath);
         },
-        token
-      );
-      router.push(redirectPath);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "登录失败，请重试");
-    } finally {
-      setLoading(false);
-    }
+        onError: (e) => {
+          setError(e instanceof Error ? e.message : "登录失败，请重试");
+        },
+      }
+    );
   };
 
   /** 测试账号登录 */
   const handleDevLogin = async () => {
-    setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/auth/login", { method: "POST" });
-      if (!res.ok) throw new Error(`登录失败: ${res.status}`);
-      const data = await res.json();
-      setAuth(
-        {
-          id: data.user.id,
-          nickname: data.user.nickname,
-          plan: data.user.plan ?? "subscription",
-        },
-        data.token
-      );
-      router.push(redirectPath);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "登录失败，请重试");
-    } finally {
-      setLoading(false);
-    }
+    devLogin.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("测试账号登录成功");
+        router.push(redirectPath);
+      },
+      onError: (e) => {
+        setError(e instanceof Error ? e.message : "登录失败，请重试");
+      },
+    });
   };
 
   /** 微信扫码登录 */
   const handleWechatLogin = async () => {
-    setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/auth/wechat-url?redirect=${encodeURIComponent(redirectPath)}`
-      );
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.message || "微信登录未配置");
-      }
-      setQrUrl(data.url);
+      const { url } = await authApi.getWechatUrl(redirectPath);
+      setQrUrl(url);
       setQrOpen(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "微信登录失败，请重试");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -262,15 +236,17 @@ function LoginForm() {
             微信扫码登录
           </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDevLogin}
-            disabled={loading}
-            className="text-ink-500"
-          >
-            测试账号登录
-          </Button>
+          {isDevelopment && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDevLogin}
+              disabled={loading}
+              className="text-ink-500"
+            >
+              测试账号登录
+            </Button>
+          )}
         </div>
 
         <p className="mt-6 text-center text-caption text-ink-400">

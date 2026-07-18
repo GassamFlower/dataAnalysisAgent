@@ -1,13 +1,13 @@
 """项目模型。"""
 import uuid
-from datetime import datetime
-from typing import List
+from datetime import datetime, timezone
+from typing import List, Optional
 
-from sqlalchemy import String, DateTime, ForeignKey, Index
+from sqlalchemy import String, ForeignKey, Index, CheckConstraint
 from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models import Base
+from app.models import Base, UTCDateTime
 
 
 class Project(Base):
@@ -17,22 +17,29 @@ class Project(Base):
     __table_args__ = (
         Index("idx_projects_user_id", "user_id"),
         Index("idx_projects_status", "status"),
+        Index("idx_projects_user_id_status", "user_id", "status"),
+        Index("idx_projects_deleted_at", "deleted_at"),
+        CheckConstraint(
+            "status IN ('draft', 'inspected', 'hypothesized', 'simulated', 'analyzed')",
+            name="ck_projects_status",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid, primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id"), nullable=False
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="draft")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow
+        UTCDateTime, default=datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        UTCDateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
 
     # 关联
     user: Mapped["User"] = relationship(back_populates="projects")
