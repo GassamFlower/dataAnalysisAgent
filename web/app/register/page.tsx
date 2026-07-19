@@ -182,6 +182,10 @@ export default function RegisterPage() {
               <p className="text-center text-caption text-red-600">{error}</p>
             )}
 
+            <p className="text-center text-caption text-ink-400">
+              若该邮箱已注册但未验证，将更新密码与昵称，重新发送验证码并跳转至验证页。
+            </p>
+
             <Button type="submit" size="lg" disabled={loading}>
               {loading ? (
                 <>
