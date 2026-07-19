@@ -179,7 +179,7 @@ function ProjectCard({
       </div>
       {/* 删除确认对话框 */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
+        <DialogContent onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>确认删除项目？</DialogTitle>
             <DialogDescription>
@@ -198,7 +198,7 @@ function ProjectCard({
       </Dialog>
       {/* 重命名对话框 */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
+        <DialogContent onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>重命名项目</DialogTitle>
             <DialogDescription>
