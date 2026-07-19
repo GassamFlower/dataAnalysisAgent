@@ -241,6 +241,7 @@ function ProjectCard({
 const PAGE_SIZE = 8;
 
 export function ProjectsList() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, error, refetch } = useProjects({
     page,
@@ -286,6 +287,8 @@ export function ProjectsList() {
     deleteMutation.mutate(id, {
       onSuccess: () => {
         toast.success("项目已删除");
+        // 删除成功后显式回到项目列表，避免旧 Link 事件或异常状态留在已删除项目页
+        router.push("/projects");
       },
       onError: () => {
         toast.error("删除失败，请重试");
