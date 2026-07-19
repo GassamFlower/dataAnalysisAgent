@@ -9,14 +9,16 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# 升级 pip 并使用国内镜像源
-RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+# 升级 pip
+RUN pip install --upgrade pip
 
 # 复制依赖文件
 COPY requirements.txt .
 
-# 安装 Python 依赖（使用清华镜像源加速）
-RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
+# 安装 Python 依赖（默认使用 PyPI；国内环境可通过 docker build --build-arg PIP_INDEX_URL=... 指定镜像）
+ARG PIP_INDEX_URL
+ARG PIP_TRUSTED_HOST
+RUN pip install --no-cache-dir -r requirements.txt ${PIP_INDEX_URL:+-i $PIP_INDEX_URL} ${PIP_TRUSTED_HOST:+--trusted-host $PIP_TRUSTED_HOST}
 
 # 复制应用代码
 COPY . .
