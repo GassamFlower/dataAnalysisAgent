@@ -16,14 +16,21 @@ const AUTH_COOKIE_NAME = "auth-token";
 // 实际 access token 15 分钟过期后由 client.ts 自动续期。
 const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 天
 
+function isSecureContext(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.protocol === "https:";
+}
+
 function setAuthCookie(token: string): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; max-age=${AUTH_COOKIE_MAX_AGE}; SameSite=Lax`;
+  const secure = isSecureContext() ? "; Secure" : "";
+  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; max-age=${AUTH_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
 }
 
 function clearAuthCookie(): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
+  const secure = isSecureContext() ? "; Secure" : "";
+  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax${secure}`;
 }
 
 interface AuthState {

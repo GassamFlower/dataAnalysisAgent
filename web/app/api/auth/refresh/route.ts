@@ -32,5 +32,5 @@ export async function POST() {
     return NextResponse.json(json, { status: res.status });
   }
 
-  return createAuthResponse(json);
+  return createAuthResponse(json, request);
 }

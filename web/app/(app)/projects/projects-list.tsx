@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   FolderOpen,
@@ -76,10 +76,16 @@ function ProjectCard({
   onDelete: (id: string) => void;
   deleting: boolean;
 }) {
+  const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(project.name);
   const updateMutation = useUpdateProject();
+
+  const handleCardClick = () => {
+    if (deleting) return;
+    router.push(`/projects/${project.id}`);
+  };
 
   const config = PROJECT_STATUS[project.status];
   const variant = STATUS_TO_VARIANT[project.status] ?? "secondary";
@@ -125,109 +131,110 @@ function ProjectCard({
   };
 
   return (
-    <Link href={`/projects/${project.id}`}>
-      <Card className="group relative p-5 transition-colors hover:border-primary/50 hover:bg-cream-surface">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-h3 font-semibold text-ink-900 group-hover:text-primary">
-              {project.name}
-            </h3>
-            <p className="mt-1 text-caption text-ink-500">
-              更新于 {new Date(project.updatedAt).toLocaleDateString("zh-CN")}
-            </p>
-            <div className="mt-3 flex items-center gap-3 text-small text-ink-600">
-              <span>{questionCount} 道题目</span>
-              {dimensionCount > 0 ? (
-                <span>· {dimensionCount} 个维度</span>
-              ) : null}
-            </div>
+    <Card
+      className="group relative cursor-pointer p-5 transition-colors hover:border-primary/50 hover:bg-cream-surface"
+      onClick={handleCardClick}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-h3 font-semibold text-ink-900 group-hover:text-primary">
+            {project.name}
+          </h3>
+          <p className="mt-1 text-caption text-ink-500">
+            更新于 {new Date(project.updatedAt).toLocaleDateString("zh-CN")}
+          </p>
+          <div className="mt-3 flex items-center gap-3 text-small text-ink-600">
+            <span>{questionCount} 道题目</span>
+            {dimensionCount > 0 ? (
+              <span>· {dimensionCount} 个维度</span>
+            ) : null}
           </div>
-          <Badge variant={variant} className="shrink-0">
-            {config.label}
-          </Badge>
         </div>
-        {/* 操作按钮（hover 显示） */}
-        <div className="absolute right-2 top-2 flex opacity-0 transition-opacity group-hover:opacity-100">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleRenameClick}
-            aria-label="重命名项目"
-            disabled={updateMutation.isPending}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleDeleteClick}
-            aria-label="删除项目"
-            disabled={deleting}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-        {/* 删除确认对话框 */}
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>确认删除项目？</DialogTitle>
-              <DialogDescription>
-                即将删除「{project.name}」，删除后项目不会出现在列表中。
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">取消</Button>
-              </DialogClose>
-              <Button variant="destructive" onClick={handleConfirmDelete}>
-                确认删除
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        {/* 重命名对话框 */}
-        <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>重命名项目</DialogTitle>
-              <DialogDescription>
-                修改后点击保存，项目所有关联数据保持不变。
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
-              <Label htmlFor={`rename-${project.id}`}>项目名称</Label>
-              <Input
-                id={`rename-${project.id}`}
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                placeholder="请输入项目名称"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirmRename();
-                }}
-              />
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">取消</Button>
-              </DialogClose>
-              <Button
-                onClick={handleConfirmRename}
-                disabled={
-                  updateMutation.isPending ||
-                  !renameValue.trim() ||
-                  renameValue.trim() === project.name
-                }
-              >
-                {updateMutation.isPending ? "保存中..." : "保存"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </Card>
-    </Link>
+        <Badge variant={variant} className="shrink-0">
+          {config.label}
+        </Badge>
+      </div>
+      {/* 操作按钮（hover 显示） */}
+      <div className="absolute right-2 top-2 flex opacity-0 transition-opacity group-hover:opacity-100">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={handleRenameClick}
+          aria-label="重命名项目"
+          disabled={updateMutation.isPending}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={handleDeleteClick}
+          aria-label="删除项目"
+          disabled={deleting}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      {/* 删除确认对话框 */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除项目？</DialogTitle>
+            <DialogDescription>
+              即将删除「{project.name}」，删除后项目不会出现在列表中。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">取消</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              确认删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* 重命名对话框 */}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>重命名项目</DialogTitle>
+            <DialogDescription>
+              修改后点击保存，项目所有关联数据保持不变。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor={`rename-${project.id}`}>项目名称</Label>
+            <Input
+              id={`rename-${project.id}`}
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="请输入项目名称"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleConfirmRename();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">取消</Button>
+            </DialogClose>
+            <Button
+              onClick={handleConfirmRename}
+              disabled={
+                updateMutation.isPending ||
+                !renameValue.trim() ||
+                renameValue.trim() === project.name
+              }
+            >
+              {updateMutation.isPending ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }
 

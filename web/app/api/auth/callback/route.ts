@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { isSecureRequest } from "../_utils";
+
 /**
  * 微信授权回调 BFF 路由。
  * 微信授权后重定向到此路由，带 code 和 state 参数。
@@ -75,16 +77,18 @@ export async function GET(request: Request) {
     },
   });
 
+  const secure = isSecureRequest(request);
+
   response.cookies.set("auth-token", access_token, {
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure,
   });
 
   response.cookies.set(REFRESH_COOKIE_NAME, refresh_token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax",
     path: "/",
     maxAge: REFRESH_COOKIE_MAX_AGE,

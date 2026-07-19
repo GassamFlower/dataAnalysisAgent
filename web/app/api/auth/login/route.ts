@@ -14,7 +14,7 @@ function isDevelopment(): boolean {
   return process.env.NODE_ENV !== "production";
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   if (!isDevelopment()) {
     return NextResponse.json(
       { code: 40400, message: "测试账号登录仅在开发环境可用" },
@@ -32,5 +32,5 @@ export async function POST() {
     return NextResponse.json(json, { status: res.status });
   }
 
-  return createAuthResponse(json);
+  return createAuthResponse(json, request);
 }

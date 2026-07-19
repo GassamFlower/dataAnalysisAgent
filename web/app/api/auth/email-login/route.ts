@@ -18,5 +18,5 @@ export async function POST(request: Request) {
     return NextResponse.json(json, { status: res.status });
   }
 
-  return createAuthResponse(json);
+  return createAuthResponse(json, request);
 }

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     data: null,
   });
 
-  clearAuthCookie(response);
-  clearRefreshCookie(response);
+  clearAuthCookie(response, request);
+  clearRefreshCookie(response, request);
   return response;
 }
