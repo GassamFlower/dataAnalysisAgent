@@ -42,8 +42,12 @@ export async function GET(
     strength: p.strength as "weak" | "medium" | "strong",
   }));
   return NextResponse.json({
-    matrix,
-    hypothesisText: data.hypothesis_text ?? null,
-    paths,
+    code: 0,
+    message: "success",
+    data: {
+      matrix,
+      hypothesisText: data.hypothesis_text ?? null,
+      paths,
+    },
   });
 }

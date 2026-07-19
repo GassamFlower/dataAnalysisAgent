@@ -47,7 +47,7 @@ export async function GET(
 
   const json = await res.json();
   const project = transformProject(json.data as BackendProject);
-  return NextResponse.json(project);
+  return NextResponse.json({ code: 0, message: "success", data: project });
 }
 
 export async function PATCH(
@@ -76,7 +76,7 @@ export async function PATCH(
 
   const json = await res.json();
   const project = transformProject(json.data as BackendProject);
-  return NextResponse.json(project);
+  return NextResponse.json({ code: 0, message: "success", data: project });
 }
 
 export async function DELETE(
@@ -97,5 +97,5 @@ export async function DELETE(
     );
   }
 
-  return NextResponse.json({ success: true, id: params.id });
+  return NextResponse.json({ code: 0, message: "success", data: { success: true, id: params.id } });
 }

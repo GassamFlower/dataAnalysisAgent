@@ -51,6 +51,8 @@ export async function PATCH(
   const json = await res.json();
   const q = json.data as BackendQuestion;
   return NextResponse.json({
+    code: 0,
+    message: "success",
     data: {
       id: q.id,
       index: q.index,

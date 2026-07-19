@@ -50,5 +50,5 @@ export async function POST(
   }
 
   const json = await res.json();
-  return NextResponse.json(json.data ?? json);
+  return NextResponse.json({ code: 0, message: "success", data: json.data ?? json });
 }

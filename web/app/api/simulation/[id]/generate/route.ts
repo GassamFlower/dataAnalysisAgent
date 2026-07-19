@@ -63,5 +63,5 @@ export async function POST(
     };
   }
 
-  return NextResponse.json({ matrix: matrixData });
+  return NextResponse.json({ code: 0, message: "success", data: { matrix: matrixData } });
 }

@@ -71,5 +71,5 @@ export async function GET(
 
   const json = await res.json();
   const questions = (json.data ?? []) as BackendQuestion[];
-  return NextResponse.json(transformQuestions(questions));
+  return NextResponse.json({ code: 0, message: "success", data: transformQuestions(questions) });
 }

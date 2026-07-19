@@ -74,5 +74,5 @@ export async function POST(
 
   const json = await res.json();
   const structure = json.data as BackendStructure;
-  return NextResponse.json(transformStructure(structure));
+  return NextResponse.json({ code: 0, message: "success", data: transformStructure(structure) });
 }

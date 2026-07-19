@@ -39,10 +39,14 @@ export async function GET(request: Request) {
     updatedAt: item.updated_at as string,
   }));
   return NextResponse.json({
-    projects: items,
-    total: json.data?.total ?? 0,
-    page: json.data?.page ?? 1,
-    pageSize: json.data?.page_size ?? 20,
+    code: 0,
+    message: "success",
+    data: {
+      projects: items,
+      total: json.data?.total ?? 0,
+      page: json.data?.page ?? 1,
+      pageSize: json.data?.page_size ?? 20,
+    },
   });
 }
 
@@ -75,5 +79,8 @@ export async function POST(request: Request) {
     createdAt: item.created_at,
     updatedAt: item.updated_at,
   };
-  return NextResponse.json(project, { status: 201 });
+  return NextResponse.json(
+    { code: 0, message: "success", data: project },
+    { status: 201 }
+  );
 }

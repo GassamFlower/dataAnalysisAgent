@@ -57,7 +57,11 @@ export async function PUT(
   const json = await res.json();
   const data = json.data ?? {};
   return NextResponse.json({
-    matrixId: data.matrix_id,
-    projectId: data.project_id,
+    code: 0,
+    message: "success",
+    data: {
+      matrixId: data.matrix_id,
+      projectId: data.project_id,
+    },
   });
 }

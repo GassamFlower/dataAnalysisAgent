@@ -58,7 +58,11 @@ export async function POST(
     })
   );
   return NextResponse.json({
-    hypothesisId: data.id,
-    paths,
+    code: 0,
+    message: "success",
+    data: {
+      hypothesisId: data.id,
+      paths,
+    },
   });
 }

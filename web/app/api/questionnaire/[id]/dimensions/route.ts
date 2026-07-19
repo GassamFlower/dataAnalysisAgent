@@ -31,7 +31,7 @@ export async function GET(
 
   const json = await res.json();
   const data = json.data ?? { dimensions: [] };
-  return NextResponse.json({ dimensions: data.dimensions ?? [] });
+  return NextResponse.json({ code: 0, message: "success", data: { dimensions: data.dimensions ?? [] } });
 }
 
 export async function POST(
@@ -72,5 +72,5 @@ export async function POST(
 
   const json = await res.json();
   const data = json.data ?? { dimensions: [] };
-  return NextResponse.json({ dimensions: data.dimensions ?? [] });
+  return NextResponse.json({ code: 0, message: "success", data: { dimensions: data.dimensions ?? [] } });
 }

@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   }
 
   const json = await res.json();
-  return NextResponse.json(json);
+  return NextResponse.json({ code: 0, message: "success", data: json });
 }
 
 export async function POST(request: Request) {
@@ -59,5 +59,5 @@ export async function POST(request: Request) {
   }
 
   const json = await res.json();
-  return NextResponse.json(json);
+  return NextResponse.json({ code: 0, message: "success", data: json });
 }
