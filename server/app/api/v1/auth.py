@@ -320,20 +320,29 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
     # 检查邮箱是否已注册
     result = await db.execute(select(User).where(User.email == req.email))
-    if result.scalar_one_or_none():
-        raise ValidationException("该邮箱已注册")
+    existing_user = result.scalar_one_or_none()
 
-    # 创建用户（email_verified=False）
     from app.core.security import hash_password
-    user = User(
-        email=req.email,
-        password_hash=hash_password(req.password),
-        nickname=req.nickname or req.email.split("@")[0],
-        plan="free",
-        email_verified=False,
-    )
-    db.add(user)
-    await db.flush()
+
+    if existing_user:
+        if existing_user.email_verified:
+            raise ValidationException("该邮箱已注册")
+        # 已注册但未验证：更新密码、昵称和验证码，重新发送
+        user = existing_user
+        user.password_hash = hash_password(req.password)
+        if req.nickname:
+            user.nickname = req.nickname
+    else:
+        # 创建用户（email_verified=False）
+        user = User(
+            email=req.email,
+            password_hash=hash_password(req.password),
+            nickname=req.nickname or req.email.split("@")[0],
+            plan="free",
+            email_verified=False,
+        )
+        db.add(user)
+        await db.flush()
 
     # 生成验证码并存储哈希（禁止明文入库）
     code = _generate_code()
