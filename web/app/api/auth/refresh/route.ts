@@ -10,7 +10,7 @@ import { createAuthResponse } from "../_utils";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
-export async function POST() {
+export async function POST(request: Request) {
   const cookieStore = cookies();
   const refreshToken = cookieStore.get("refresh-token")?.value;
 
