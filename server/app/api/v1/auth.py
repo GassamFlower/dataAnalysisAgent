@@ -356,12 +356,11 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     from app.services.email_service import send_verification_code
     try:
         await send_verification_code(req.email, code)
+        msg = "注册成功，请查收邮箱并输入验证码完成验证"
     except Exception as e:
-        return success_response(
-            message=f"注册成功但验证码邮件发送失败: {e}，请稍后重试发送验证码"
-        )
+        msg = f"注册成功但验证码邮件发送失败: {e}，请稍后重试发送验证码"
 
-    return success_response(message="注册成功，请查收邮箱并输入验证码完成验证")
+    return success_response(data={"message": msg})
 
 
 @router.post("/verify-email")
