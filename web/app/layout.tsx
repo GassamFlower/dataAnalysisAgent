@@ -1,22 +1,8 @@
 import type { Metadata } from "next";
-import { Fraunces, Noto_Sans_SC } from "next/font/google";
 
 import { Providers } from "@/lib/providers";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-});
-
-const notoSansSC = Noto_Sans_SC({
-  weight: ["400", "500", "700"],
-  variable: "--font-noto-sans",
-  preload: false,
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -33,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN" className={`${fraunces.variable} ${notoSansSC.variable}`}>
+    <html lang="zh-CN">
       <body className="bg-background text-foreground antialiased">
         <ThemeProvider>
           <Providers>{children}</Providers>

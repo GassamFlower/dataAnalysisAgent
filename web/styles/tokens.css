@@ -91,8 +91,8 @@
   --border-style: solid;
 
   /* ===== 字体 ===== */
-  --font-display: var(--font-fraunces), "Noto Serif SC", Georgia, serif;
-  --font-sans: var(--font-noto-sans), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-fraunces), "Noto Serif SC", Georgia, "Songti SC", serif;
+  --font-sans: var(--font-noto-sans), "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* ===== 动效 ===== */
