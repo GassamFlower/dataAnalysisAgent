@@ -40,6 +40,7 @@ from app.models.reliability_result import ReliabilityResult
 from app.models.diagnosis import Diagnosis
 from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.order import Order
+from app.models.llm_config import LlmConfig
 
 __all__ = [
     "Base",
@@ -56,4 +57,5 @@ __all__ = [
     "Diagnosis",
     "DiagnosisIssue",
     "Order",
+    "LlmConfig",
 ]

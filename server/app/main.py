@@ -18,6 +18,7 @@ from app.core.exceptions import AppException
 from app.core.middleware import RequestLoggingMiddleware, limiter
 from app.core.responses import error_response, success_response
 from app.api.v1 import router as v1_router
+from app.services.llm.config_service import reload_from_db
 
 # 配置日志
 setup_logging()
@@ -52,6 +53,8 @@ async def lifespan(app: FastAPI):
     logger.info("启动数据分析智能体 API...")
     await init_db()
     logger.info("数据库初始化完成")
+    await reload_from_db()
+    logger.info("LLM 配置加载完成")
     yield
     # 关闭时
     logger.info("关闭数据分析智能体 API...")
