@@ -47,12 +47,14 @@ async def get_current_user(
             db.add(user)
             await db.flush()
         return {
-            "id": user.id,
-            "nickname": user.nickname,
-            "is_admin": True,
-            "plan": user.plan,
-            "plan_expires_at": user.plan_expires_at,
-        }
+        "id": user.id,
+        "email": user.email,
+        "nickname": user.nickname,
+        "email_verified": user.email_verified,
+        "is_admin": True,
+        "plan": user.plan,
+        "plan_expires_at": user.plan_expires_at,
+    }
 
     # JWT 验证
     payload = verify_token(token)
@@ -74,7 +76,9 @@ async def get_current_user(
 
     return {
         "id": user.id,
+        "email": user.email,
         "nickname": user.nickname,
+        "email_verified": user.email_verified,
         "is_admin": user.is_admin,
         "plan": user.plan,
         "plan_expires_at": user.plan_expires_at,
