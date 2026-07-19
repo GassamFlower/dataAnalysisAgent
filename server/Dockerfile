@@ -15,10 +15,12 @@ RUN pip install --upgrade pip
 # 复制依赖文件
 COPY requirements.txt .
 
-# 安装 Python 依赖（默认使用 PyPI；国内环境可通过 docker build --build-arg PIP_INDEX_URL=... 指定镜像）
-ARG PIP_INDEX_URL
-ARG PIP_TRUSTED_HOST
-RUN pip install --no-cache-dir -r requirements.txt ${PIP_INDEX_URL:+-i $PIP_INDEX_URL} ${PIP_TRUSTED_HOST:+--trusted-host $PIP_TRUSTED_HOST}
+# 安装 Python 依赖（默认使用阿里云 PyPI 镜像；可通过 build-arg 覆盖）
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
+ARG PIP_TRUSTED_HOST=mirrors.aliyun.com
+RUN pip install --no-cache-dir --timeout 120 --retries 5 -r requirements.txt \
+    ${PIP_INDEX_URL:+-i $PIP_INDEX_URL} \
+    ${PIP_TRUSTED_HOST:+--trusted-host $PIP_TRUSTED_HOST}
 
 # 复制应用代码
 COPY . .
