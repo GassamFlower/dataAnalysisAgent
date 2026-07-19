@@ -355,7 +355,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     # 发送验证码邮件（失败不影响用户创建）
     from app.services.email_service import send_verification_code
     try:
-        send_verification_code(req.email, code)
+        await send_verification_code(req.email, code)
     except Exception as e:
         return success_response(
             message=f"注册成功但验证码邮件发送失败: {e}，请稍后重试发送验证码"
@@ -422,7 +422,7 @@ async def resend_code(req: ResendCodeRequest, db: AsyncSession = Depends(get_db)
     user.email_verify_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
     try:
-        send_verification_code(req.email, code)
+        await send_verification_code(req.email, code)
     except Exception as e:
         raise ValidationException(f"验证码邮件发送失败: {e}")
 
@@ -464,7 +464,7 @@ async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends
         token = _create_reset_token(user.id)
         reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={token}"
         try:
-            send_password_reset_email(req.email, reset_link)
+            await send_password_reset_email(req.email, reset_link)
         except Exception:
             # 邮件发送失败不暴露给用户
             pass

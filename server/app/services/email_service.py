@@ -3,6 +3,7 @@
 用于发送邮箱验证码和密码重置链接邮件。
 SMTP 配置在 .env 中：SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD
 """
+import asyncio
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -16,17 +17,8 @@ def _check_smtp_configured() -> bool:
     return bool(settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD)
 
 
-def _send_email(to_email: str, subject: str, html_body: str) -> None:
-    """发送 HTML 邮件。
-
-    Args:
-        to_email: 收件人邮箱
-        subject: 邮件主题
-        html_body: HTML 邮件正文
-
-    Raises:
-        RuntimeError: SMTP 未配置或发送失败
-    """
+def _send_email_sync(to_email: str, subject: str, html_body: str) -> None:
+    """在线程池中执行的同步邮件发送逻辑。"""
     if not _check_smtp_configured():
         raise RuntimeError("SMTP 未配置，请在 .env 中设置 SMTP_HOST / SMTP_USER / SMTP_PASSWORD")
 
@@ -50,7 +42,21 @@ def _send_email(to_email: str, subject: str, html_body: str) -> None:
         server.quit()
 
 
-def send_verification_code(to_email: str, code: str) -> None:
+async def _send_email(to_email: str, subject: str, html_body: str) -> None:
+    """发送 HTML 邮件（在线程池中执行，避免阻塞 async 事件循环）。
+
+    Args:
+        to_email: 收件人邮箱
+        subject: 邮件主题
+        html_body: HTML 邮件正文
+
+    Raises:
+        RuntimeError: SMTP 未配置或发送失败
+    """
+    await asyncio.to_thread(_send_email_sync, to_email, subject, html_body)
+
+
+async def send_verification_code(to_email: str, code: str) -> None:
     """发送邮箱验证码邮件。
 
     Args:
@@ -72,10 +78,10 @@ def send_verification_code(to_email: str, code: str) -> None:
         </p>
     </div>
     """
-    _send_email(to_email, "【预演】邮箱验证码", html)
+    await _send_email(to_email, "【预演】邮箱验证码", html)
 
 
-def send_password_reset_email(to_email: str, reset_link: str) -> None:
+async def send_password_reset_email(to_email: str, reset_link: str) -> None:
     """发送密码重置链接邮件。
 
     Args:
@@ -99,4 +105,4 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
         </p>
     </div>
     """
-    _send_email(to_email, "【预演】重置密码", html)
+    await _send_email(to_email, "【预演】重置密码", html)
