@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MarketingHeader } from "@/components/layout/marketing-header";
 import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
 
 const stepIcons = [FileSearch, FlaskConical, FileBarChart, Download];
@@ -72,28 +73,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* 顶部导航 */}
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-xl font-bold text-ink-900">预演</span>
-          <Badge variant="outline" className="font-normal text-ink-500">
-            研究预演工具
-          </Badge>
-        </div>
-        <nav className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/pricing">定价</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/about">关于</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/login">登录</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/projects/new">免费体检</Link>
-          </Button>
-        </nav>
-      </header>
+      <MarketingHeader />
 
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-12 text-center">
