@@ -50,12 +50,13 @@ export function PaidActionGuard({
   title = "解锁此功能",
 }: PaidActionGuardProps) {
   const [open, setOpen] = useState(false);
-  const { data: quotaData } = useQuota();
+  const { data: quotaData, isLoading } = useQuota();
 
   const isFree = plan === "free";
   const quota = actionType && quotaData?.quotas?.[actionType];
-  const remaining = quota?.remaining ?? 0;
-  const exhausted = isFree && actionType && remaining <= 0;
+  // 加载中时放行，避免误判为额度用尽
+  const remaining = isLoading ? 999 : (quota?.remaining ?? 0);
+  const exhausted = isFree && actionType && !isLoading && remaining <= 0;
 
   // 付费用户或无 actionType 时直接透传
   if (!isFree || !actionType) {
