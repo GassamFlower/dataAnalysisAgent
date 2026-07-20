@@ -94,7 +94,7 @@ async def check_and_consume_quota(
             action_type=action_type,
             period_key=period_key,
             used_count=1,
-            limit=limit,
+            max_count=limit,
             reset_at=reset_at,
         )
         db.add(quota)
