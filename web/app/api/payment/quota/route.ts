@@ -23,5 +23,5 @@ export async function GET(request: Request) {
   }
 
   const json = await res.json();
-  return NextResponse.json({ code: 0, message: "success", data: json });
+  return NextResponse.json({ code: 0, message: "success", data: json.data ?? json });
 }
