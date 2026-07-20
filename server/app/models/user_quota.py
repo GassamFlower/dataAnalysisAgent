@@ -31,7 +31,7 @@ class UserQuota(Base):
     action_type: Mapped[str] = mapped_column(String(50), nullable=False)
     period_key: Mapped[str] = mapped_column(String(20), nullable=False, comment="YYYY-Www 格式")
     used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    max_count: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    max_count: Mapped[int] = mapped_column(Integer, nullable=False, default=6)
     reset_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime, default=datetime.now(timezone.utc)

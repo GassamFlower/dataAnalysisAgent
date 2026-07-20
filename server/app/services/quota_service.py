@@ -15,9 +15,9 @@ from app.models.user_quota import UserQuota
 
 # 免费额度配置（每周）
 FREE_LIMITS = {
-    "simulation": 3,
-    "export": 3,
-    "analysis": 3,
+    "simulation": 6,
+    "export": 6,
+    "analysis": 6,
 }
 
 
