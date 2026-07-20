@@ -25,6 +25,6 @@ export async function GET(request: Request) {
   }
 
   const json = await res.json();
-  // 后端返回 {code, message, data: {url}}
-  return NextResponse.json(json.data);
+  // 后端返回 {code, message, data: {url}}，包装为标准 BFF 格式
+  return NextResponse.json({ code: 0, message: "success", data: json.data ?? json });
 }
