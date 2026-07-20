@@ -15,12 +15,14 @@ import { DiffTestTable } from "@/components/report/diff-test-table";
 import { EffectSizeChart } from "@/components/report/effect-size-chart";
 import { DiagnosisAlert } from "@/components/report/diagnosis-alert";
 import { ExportButton } from "@/components/report/export-button";
+import { PaidActionGuard } from "@/components/common/paid-action-guard";
 import { ErrorState } from "@/components/common/error-state";
 import { LoadingState } from "@/components/common/loading-state";
 import { Watermark } from "@/components/common/watermark";
 import { toast } from "@/components/ui/toaster";
 import { useReport, useAnalyzeReport, useExportReport } from "@/lib/hooks/use-report";
 import { useSimulation } from "@/lib/hooks/use-simulation";
+import { useQuota } from "@/lib/hooks/use-payment";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { ReliabilityResult } from "@/types";
 
@@ -69,7 +71,10 @@ export default function ReportPage({
   const { data: simulationData } = useSimulation(params.id);
   const analyzeMutation = useAnalyzeReport();
   const exportMutation = useExportReport();
-  const isFreeUser = useAuthStore((state) => state.user?.plan === "free");
+  const userPlan = useAuthStore((state) => state.user?.plan ?? "free");
+  const { data: quotaData } = useQuota();
+  const isFreeUser = userPlan === "free";
+  const exportQuota = quotaData?.quotas?.export;
 
   /** 触发报告生成（后端跑统计套餐 + 诊断） */
   const handleAnalyze = () => {
@@ -130,10 +135,12 @@ export default function ReportPage({
             <p className="mt-1 text-body text-ink-500">
               请先完成数据生成，再运行统计分析生成报告。
             </p>
-            <Button className="mt-4" onClick={handleAnalyze}>
-              <FileText className="mr-1.5 h-4 w-4" />
-              生成报告
-            </Button>
+            <PaidActionGuard plan={userPlan} actionType="analysis">
+              <Button className="mt-4" onClick={handleAnalyze}>
+                <FileText className="mr-1.5 h-4 w-4" />
+                生成报告
+              </Button>
+            </PaidActionGuard>
           </Card>
         </div>
       );
@@ -167,10 +174,12 @@ export default function ReportPage({
           <p className="mt-1 text-body text-ink-500">
             请先完成数据生成，再运行统计分析生成报告。
           </p>
-          <Button className="mt-4" onClick={handleAnalyze}>
-            <FileText className="mr-1.5 h-4 w-4" />
-            生成报告
-          </Button>
+          <PaidActionGuard plan={userPlan} actionType="analysis">
+            <Button className="mt-4" onClick={handleAnalyze}>
+              <FileText className="mr-1.5 h-4 w-4" />
+              生成报告
+            </Button>
+          </PaidActionGuard>
         </Card>
       </div>
     );
@@ -202,6 +211,8 @@ export default function ReportPage({
             onExport={handleExport}
             disabled={exportMutation.isPending}
             isFree={isFreeUser}
+            remaining={exportQuota?.remaining}
+            limit={exportQuota?.limit}
           />
         }
       />
@@ -313,6 +324,8 @@ export default function ReportPage({
             onExport={handleExport}
             disabled={exportMutation.isPending}
             isFree={isFreeUser}
+            remaining={exportQuota?.remaining}
+            limit={exportQuota?.limit}
           />
         </div>
         {exportMutation.isPending && (

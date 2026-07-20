@@ -20,7 +20,7 @@ from app.schemas.payment import (
     OrderResponse,
     SubscriptionResponse,
 )
-from app.services import payment_service
+from app.services import payment_service, quota_service
 
 router = APIRouter(prefix="/payment", tags=["payment"])
 
@@ -42,6 +42,26 @@ async def get_subscription(
 
     status = payment_service.get_subscription_status(user)
     return ResponseModel(data=SubscriptionResponse(**status))
+
+
+@router.get(
+    "/quota",
+    summary="当前用户本周用量额度",
+    description="返回当前用户各操作类型的本周已用次数、上限及剩余次数。",
+)
+async def get_quota(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """获取当前用户本周用量额度。"""
+    user = await db.get(User, current_user["id"])
+    if not user:
+        raise NotFoundException("用户不存在")
+
+    status = payment_service.get_subscription_status(user)
+    plan = status.get("plan_type", "free")
+    quota = await quota_service.get_quota_status(db, current_user["id"], plan)
+    return ResponseModel(data=quota)
 
 
 @router.post(

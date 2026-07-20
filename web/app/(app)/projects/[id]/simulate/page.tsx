@@ -333,7 +333,7 @@ export default function SimulatePage({
           </div>
           <div className="mt-6 flex items-center justify-end gap-3">
             {hasMatrix && (
-              <PaidActionGuard plan={userPlan}>
+              <PaidActionGuard plan={userPlan} actionType="export">
                 <Button
                   variant="outline"
                   onClick={handleExportDataset}
@@ -348,7 +348,7 @@ export default function SimulatePage({
                 </Button>
               </PaidActionGuard>
             )}
-            <PaidActionGuard plan={userPlan}>
+            <PaidActionGuard plan={userPlan} actionType="simulation">
               <Button
                 size="lg"
                 onClick={handleGenerate}

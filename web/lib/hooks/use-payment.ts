@@ -3,9 +3,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { paymentApi } from "@/lib/api/payment";
-import type { CreateOrderRequest, OrderType, PaymentChannel } from "@/types/payment";
+import type { CreateOrderRequest, OrderType, PaymentChannel, QuotaStatus } from "@/types/payment";
 
 export { useSubscription } from "@/lib/hooks/use-subscription";
+
+/** 当前周用量额度 */
+export function useQuota() {
+  return useQuery({
+    queryKey: ["quota"],
+    queryFn: () => paymentApi.getQuota(),
+    staleTime: 30_000,
+  });
+}
 
 /** 订单列表 */
 export function useOrders(page = 1, pageSize = 10) {

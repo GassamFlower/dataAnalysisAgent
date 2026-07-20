@@ -53,3 +53,18 @@ export interface PaymentNotifyRequest {
   transactionId: string;
   status: "success" | "failed";
 }
+
+/** 单个操作类型的额度信息 */
+export interface QuotaItem {
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
+/** 用量额度响应 */
+export interface QuotaStatus {
+  plan: PlanType;
+  period: string;
+  resetAt: string;
+  quotas: Record<string, QuotaItem>;
+}

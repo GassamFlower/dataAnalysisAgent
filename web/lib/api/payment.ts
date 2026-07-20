@@ -10,6 +10,7 @@ import type {
   OrderListResponse,
   OrderType,
   PaymentChannel,
+  QuotaStatus,
   Subscription,
 } from "@/types/payment";
 
@@ -94,4 +95,8 @@ export const paymentApi = {
         body: JSON.stringify(data),
       }
     ),
+
+  /** 获取当前用户本周用量额度 */
+  getQuota: (): Promise<QuotaStatus> =>
+    request<QuotaStatus>("/api/payment/quota"),
 };

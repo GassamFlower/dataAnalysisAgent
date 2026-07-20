@@ -19,17 +19,36 @@ export function ExportButton({
   onExport,
   disabled,
   isFree = false,
+  remaining,
+  limit,
 }: {
   onExport?: (format: "word" | "excel") => void;
   disabled?: boolean;
   isFree?: boolean;
+  remaining?: number;
+  limit?: number;
 }) {
   if (isFree) {
+    if (remaining !== undefined && remaining <= 0) {
+      return (
+        <Button variant="outline" asChild>
+          <Link href="/pricing">
+            <Lock className="mr-1.5 h-4 w-4" />
+            本周导出已用完，升级解锁
+          </Link>
+        </Button>
+      );
+    }
     return (
       <Button variant="outline" asChild>
         <Link href="/pricing">
           <Lock className="mr-1.5 h-4 w-4" />
           升级解锁导出
+          {limit !== undefined && remaining !== undefined && (
+            <span className="ml-1 text-xs opacity-70">
+              （剩余 {remaining}/{limit}）
+            </span>
+          )}
         </Link>
       </Button>
     );
