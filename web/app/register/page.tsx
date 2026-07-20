@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AgreementCheckbox } from "@/components/compliance/agreement-checkbox";
 import { useAuthMutations } from "@/lib/hooks/use-auth";
 import { toast } from "@/components/ui/toaster";
 
@@ -32,6 +33,7 @@ export default function RegisterPage() {
 
   // 验证码
   const [code, setCode] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   const loading = register.isPending || verifyEmail.isPending || resendCode.isPending;
 
@@ -48,9 +50,13 @@ export default function RegisterPage() {
       setError("密码长度需在 6~32 位之间");
       return;
     }
+    if (!agreed) {
+      setError("请先阅读并同意服务条款和学术诚信承诺");
+      return;
+    }
 
     register.mutate(
-      { email, password, nickname },
+      { email, password, nickname, agreedTerms: agreed },
       {
         onSuccess: (data) => {
           toast.success(data.message || "验证码已发送");
@@ -182,11 +188,17 @@ export default function RegisterPage() {
               <p className="text-center text-caption text-red-600">{error}</p>
             )}
 
+            <AgreementCheckbox
+              checked={agreed}
+              onCheckedChange={(checked) => setAgreed(checked === true)}
+              disabled={loading}
+            />
+
             <p className="text-center text-caption text-ink-400">
               若该邮箱已注册但未验证，将更新密码与昵称，重新发送验证码并跳转至验证页。
             </p>
 
-            <Button type="submit" size="lg" disabled={loading}>
+            <Button type="submit" size="lg" disabled={loading || !agreed}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

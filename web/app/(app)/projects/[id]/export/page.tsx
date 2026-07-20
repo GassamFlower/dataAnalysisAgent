@@ -14,17 +14,26 @@ import { ExportFormatSelector, type ExportFormat } from "@/components/export/exp
 import { DataPreview } from "@/components/export/data-preview";
 import { DownloadButton } from "@/components/export/download-button";
 import { WatermarkNotice } from "@/components/export/watermark-notice";
+import { DataSourceConfirmDialog } from "@/components/compliance/data-source-confirm-dialog";
 import { useSimulation, useExportDataset } from "@/lib/hooks/use-simulation";
+import { useProject } from "@/lib/hooks/use-project";
 import { toast } from "@/components/ui/toaster";
 
 export default function ExportPage({ params }: { params: { id: string } }) {
   const { data: simulationData, isLoading, isError, error } = useSimulation(params.id);
+  const { data: project } = useProject(params.id);
   const exportMutation = useExportDataset();
   const [exportFormat, setExportFormat] = useState<ExportFormat>("excel");
+  const [showDataSourceDialog, setShowDataSourceDialog] = useState(false);
 
-  const handleDownload = () => {
+  const handleDownloadClick = () => {
+    setShowDataSourceDialog(true);
+  };
+
+  const handleDownloadConfirm = (dataSource: "real" | "simulated") => {
+    setShowDataSourceDialog(false);
     exportMutation.mutate(
-      { projectId: params.id, format: exportFormat },
+      { projectId: params.id, format: exportFormat, dataSource },
       {
         onSuccess: ({ blob, filename }) => {
           const url = URL.createObjectURL(blob);
@@ -115,9 +124,18 @@ export default function ExportPage({ params }: { params: { id: string } }) {
         <DownloadButton
           format={exportFormat}
           isPending={exportMutation.isPending}
-          onDownload={handleDownload}
+          onDownload={handleDownloadClick}
         />
       </div>
+
+      {/* 数据来源确认弹窗 */}
+      <DataSourceConfirmDialog
+        open={showDataSourceDialog}
+        onOpenChange={setShowDataSourceDialog}
+        onConfirm={handleDownloadConfirm}
+        onCancel={() => setShowDataSourceDialog(false)}
+        projectMode={project?.mode}
+      />
     </div>
   );
 }

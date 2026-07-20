@@ -37,10 +37,11 @@ export function useExportReport() {
     mutationFn: (params: {
       projectId: string;
       format: "word" | "excel";
+      dataSource: "real" | "simulated";
     }) =>
       apiClient.postBlob(
         `/api/report/${params.projectId}/export`,
-        { format: params.format }
+        { format: params.format, data_source: params.dataSource }
       ),
   });
 }

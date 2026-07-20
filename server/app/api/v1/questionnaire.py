@@ -4,7 +4,7 @@ import os
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,7 @@ from app.schemas.questionnaire import (
 )
 from app.services.inspector import inspect as inspect_service
 from app.services.project_service import get_owned_project, update_project_status
+from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
@@ -248,6 +249,7 @@ async def update_question(
     project_id: UUID,
     question_index: int,
     request: QuestionUpdateRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -266,13 +268,42 @@ async def update_question(
     if not question:
         raise NotFoundException("题目不存在")
 
-    # 3. 应用更新（仅非 None 字段）
+    # 3. 记录变更前的值（用于审计日志）
+    old_dimension = question.dimension
+    old_is_reverse = question.is_reverse
+
+    # 4. 应用更新（仅非 None 字段）
     if request.dimension is not None:
         question.dimension = request.dimension
     if request.is_reverse is not None:
         question.is_reverse = request.is_reverse
     if request.confidence is not None:
         question.confidence = request.confidence
+
+    # 5. 记录审计日志
+    action_details = {"question_index": question_index}
+    if request.dimension is not None and request.dimension != old_dimension:
+        action_details["dimension_changed"] = {"from": old_dimension, "to": request.dimension}
+        await AuditService.log_action(
+            db=db,
+            user_id=current_user["id"],
+            action_type=ACTION_TYPES["DIMENSION_EDIT"],
+            project_id=project_id,
+            action_detail=action_details,
+            ip_address=http_request.client.host if http_request.client else None,
+            user_agent=http_request.headers.get("user-agent"),
+        )
+    if request.is_reverse is not None and request.is_reverse != old_is_reverse:
+        action_details["reverse_changed"] = {"from": old_is_reverse, "to": request.is_reverse}
+        await AuditService.log_action(
+            db=db,
+            user_id=current_user["id"],
+            action_type=ACTION_TYPES["REVERSE_TOGGLE"],
+            project_id=project_id,
+            action_detail=action_details,
+            ip_address=http_request.client.host if http_request.client else None,
+            user_agent=http_request.headers.get("user-agent"),
+        )
 
     await db.flush()
     return ResponseModel(data=question)

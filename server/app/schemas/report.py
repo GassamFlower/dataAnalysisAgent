@@ -105,3 +105,4 @@ class ExportRequest(BaseModel):
     """导出请求。"""
 
     format: str = "word"  # word / excel
+    data_source: str = "simulated"  # real / simulated

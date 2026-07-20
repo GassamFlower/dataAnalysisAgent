@@ -42,6 +42,9 @@ class User(Base):
     plan_expires_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     refresh_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # 合规字段（F-SYS-005）
+    agreed_terms_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    agreed_terms_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime, default=datetime.now(timezone.utc)
     )

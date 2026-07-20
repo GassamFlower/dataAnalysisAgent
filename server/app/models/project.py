@@ -17,11 +17,16 @@ class Project(Base):
     __table_args__ = (
         Index("idx_projects_user_id", "user_id"),
         Index("idx_projects_status", "status"),
+        Index("idx_projects_mode", "mode"),
         Index("idx_projects_user_id_status", "user_id", "status"),
         Index("idx_projects_deleted_at", "deleted_at"),
         CheckConstraint(
             "status IN ('draft', 'inspected', 'hypothesized', 'simulated', 'analyzed')",
             name="ck_projects_status",
+        ),
+        CheckConstraint(
+            "mode IN ('real', 'simulation')",
+            name="ck_projects_mode",
         ),
     )
 
@@ -32,6 +37,8 @@ class Project(Base):
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # 合规字段（F-SYS-007）：项目模式，区分真实数据分析与模拟预演
+    mode: Mapped[str] = mapped_column(String(20), default="real")
     status: Mapped[str] = mapped_column(String(20), default="draft")
     created_at: Mapped[datetime] = mapped_column(
         UTCDateTime, default=datetime.now(timezone.utc)

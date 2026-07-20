@@ -13,7 +13,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const body = await request.json();
-  const { format } = body;
+  const { format, data_source = "simulated" } = body;
 
   if (!["word", "excel"].includes(format)) {
     return NextResponse.json(
@@ -46,7 +46,7 @@ export async function POST(
     {
       method: "POST",
       headers: getBackendHeaders(request),
-      body: JSON.stringify({ format }),
+      body: JSON.stringify({ format, data_source }),
       cache: "no-store",
     }
   );

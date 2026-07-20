@@ -12,7 +12,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const body = await request.json().catch(() => ({ format: "excel" }));
-  const { format = "excel" } = body;
+  const { format = "excel", data_source = "simulated" } = body;
 
   const exportRes = await fetch(
     `${BACKEND_URL}/api/v1/simulation/${params.id}/export-data`,
@@ -22,7 +22,7 @@ export async function POST(
         ...getBackendHeaders(request),
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ format }),
+      body: JSON.stringify({ format, data_source }),
       cache: "no-store",
     }
   );

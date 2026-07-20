@@ -24,6 +24,7 @@ class ProjectResponse(BaseModel):
     id: UUID
     user_id: UUID
     name: str
+    mode: str
     status: str
     created_at: datetime
     updated_at: datetime
@@ -36,6 +37,7 @@ class ProjectListResponse(BaseModel):
 
     id: UUID
     name: str
+    mode: str
     status: str
     created_at: datetime
     updated_at: datetime

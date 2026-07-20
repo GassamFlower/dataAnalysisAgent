@@ -83,9 +83,14 @@ export function useSaveMatrix() {
 /** 导出模拟数据集（Excel / CSV） */
 export function useExportDataset() {
   return useMutation({
-    mutationFn: (params: { projectId: string; format: "excel" | "csv" }) =>
+    mutationFn: (params: {
+      projectId: string;
+      format: "excel" | "csv";
+      dataSource: "real" | "simulated";
+    }) =>
       apiClient.postBlob(`/api/simulation/${params.projectId}/export-data`, {
         format: params.format,
+        data_source: params.dataSource,
       }),
   });
 }

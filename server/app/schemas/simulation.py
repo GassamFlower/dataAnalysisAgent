@@ -138,3 +138,6 @@ class DatasetExportRequest(BaseModel):
     format: Literal["excel", "csv"] = Field(
         default="excel", description="导出格式：excel 或 csv"
     )
+    data_source: Literal["real", "simulated"] = Field(
+        default="simulated", description="数据来源类型：真实数据或模拟数据"
+    )

@@ -5,6 +5,7 @@ LLM client 同步读取缓存，未配置时 fallback 到环境变量。
 配置更新后调用 reload_from_db() 重新加载。
 """
 import logging
+from typing import Dict
 
 from sqlalchemy import select
 
@@ -18,13 +19,13 @@ logger = logging.getLogger(__name__)
 VALID_PROVIDERS = ("deepseek", "kimi", "qwen")
 
 # 内存缓存（启动时加载，配置更新时重新加载）
-_config_cache: dict[str, str] = {}
+_config_cache: Dict[str, str] = {}
 
 
 async def reload_from_db():
     """从数据库重新加载配置到缓存。"""
     global _config_cache
-    new_cache: dict[str, str] = {}
+    new_cache: Dict[str, str] = {}
     try:
         async with async_session() as session:
             result = await session.execute(
@@ -58,6 +59,6 @@ def get_pro_model() -> str:
     return get_config("llm.pro_model", settings.DEEPSEEK_V4_PRO_MODEL)
 
 
-def get_all_configs() -> dict[str, str]:
+def get_all_configs() -> Dict[str, str]:
     """获取所有缓存配置。"""
     return dict(_config_cache)

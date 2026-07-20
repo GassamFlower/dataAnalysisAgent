@@ -11,7 +11,7 @@ from urllib.parse import quote_plus
 import bcrypt
 import httpx
 import jwt
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -254,6 +254,7 @@ class RegisterRequest(BaseModel):
     email: str
     password: str  # 6~32 位
     nickname: str = ""
+    agreed_terms: bool = False  # 合规 F-SYS-005：必须同意用户协议
 
     @field_validator("email")
     @classmethod
@@ -261,6 +262,13 @@ class RegisterRequest(BaseModel):
         if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
             raise ValueError("邮箱格式不正确")
         return v.lower()
+
+    @field_validator("agreed_terms")
+    @classmethod
+    def validate_agreed_terms(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("必须同意用户协议和学术诚信承诺")
+        return v
 
 
 class VerifyEmailRequest(BaseModel):
@@ -308,12 +316,16 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/register")
-async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """邮箱注册：创建用户 → 发送验证码邮件。
 
     注册后用户 email_verified=False，需调用 /verify-email 验证后才能登录。
     邮件发送失败不影响用户创建，用户可调用 /resend-code 重新获取验证码。
     """
+    # 合规 F-SYS-005：必须同意用户协议
+    if not req.agreed_terms:
+        raise ValidationException("必须同意用户协议和学术诚信承诺")
+
     # 密码长度校验
     if len(req.password) < 6 or len(req.password) > 32:
         raise ValidationException("密码长度需在 6~32 位之间")
@@ -323,6 +335,11 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing_user = result.scalar_one_or_none()
 
     from app.core.security import hash_password
+    from app.services.agreement_service import AgreementService, AGREEMENT_VERSIONS
+
+    # 获取客户端信息用于审计
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent", "")
 
     if existing_user:
         if existing_user.email_verified:
@@ -343,6 +360,30 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
         )
         db.add(user)
         await db.flush()
+
+    # 合规 F-SYS-005：记录用户同意协议
+    await AgreementService.record_agreement(
+        db=db,
+        user_id=user.id,
+        agreement_type="terms_of_service",
+        agreement_version=AGREEMENT_VERSIONS["terms_of_service"],
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await AgreementService.record_agreement(
+        db=db,
+        user_id=user.id,
+        agreement_type="academic_integrity",
+        agreement_version=AGREEMENT_VERSIONS["academic_integrity"],
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    # 更新用户的 agreed_terms_version
+    await AgreementService.update_user_agreed_terms(
+        db=db,
+        user_id=user.id,
+        agreement_version=AGREEMENT_VERSIONS["terms_of_service"],
+    )
 
     # 生成验证码并存储哈希（禁止明文入库）
     code = _generate_code()

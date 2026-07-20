@@ -22,6 +22,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Disclaimer } from "@/components/compliance/disclaimer";
 
 const navItems = [
   { href: "/projects", label: "我的项目", icon: LayoutDashboard },
@@ -133,6 +134,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-4xl px-4 py-6 md:px-8 md:py-10">
           {children}
         </div>
+        
+        {/* 页脚免责声明 */}
+        <footer className="border-t border-border bg-cream-surface px-4 py-6 md:px-8">
+          <div className="mx-auto max-w-4xl">
+            <Disclaimer variant="short" />
+          </div>
+        </footer>
       </main>
     </div>
   );

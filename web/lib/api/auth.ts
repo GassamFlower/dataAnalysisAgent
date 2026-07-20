@@ -74,11 +74,17 @@ export const authApi = {
   register: (
     email: string,
     password: string,
-    nickname?: string
+    nickname?: string,
+    agreedTerms?: boolean
   ): Promise<MessageResponse> =>
     bffRequest<MessageResponse>("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, nickname }),
+      body: JSON.stringify({
+        email,
+        password,
+        nickname,
+        agreed_terms: agreedTerms ?? true,
+      }),
     }),
 
   /** 验证邮箱：校验验证码并完成登录 */

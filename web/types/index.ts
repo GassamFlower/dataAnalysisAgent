@@ -112,6 +112,8 @@ export interface DiffTestResult {
 export interface Project {
   id: string;
   name: string;
+  /** 数据模式：真实数据项目 vs 模拟预演项目 */
+  mode: "real" | "simulation";
   status: "draft" | "inspected" | "hypothesized" | "simulated" | "analyzed";
   createdAt: string;
   updatedAt: string;

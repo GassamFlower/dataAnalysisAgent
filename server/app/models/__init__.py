@@ -42,6 +42,8 @@ from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.order import Order
 from app.models.llm_config import LlmConfig
 from app.models.user_quota import UserQuota
+from app.models.user_agreements import UserAgreement
+from app.models.audit_logs import AuditLog
 
 __all__ = [
     "Base",
@@ -60,4 +62,6 @@ __all__ = [
     "Order",
     "LlmConfig",
     "UserQuota",
+    "UserAgreement",
+    "AuditLog",
 ]

@@ -1,7 +1,7 @@
 """数据生成路由（A 体验 + C 底层）。"""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +30,7 @@ from app.schemas.simulation import (
 from app.services.hypothesis_parser import parse_hypothesis
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.quota_service import check_and_consume_quota
+from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
 
@@ -312,6 +313,7 @@ async def create_hypothesis(
 async def generate(
     project_id: UUID,
     request: SimulationGenerateRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -408,8 +410,25 @@ async def generate(
     )
     db.add(dataset)
 
-    # 9. 更新项目状态
+    # 9. 更新项目状态与模式
     update_project_status(project, "simulated", reason="数据预演完成")
+    project.mode = "simulation"
+
+    # 9.5 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["SIMULATION_GENERATE"],
+        project_id=project_id,
+        action_detail={
+            "sample_size": request.sample_size,
+            "hypothesis_id": str(hypothesis.id),
+            "matrix_id": str(matrix.id) if matrix else None,
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+
     await db.flush()
 
     return ResponseModel(data=config)
@@ -423,6 +442,7 @@ async def generate(
 async def export_data(
     project_id: UUID,
     request: DatasetExportRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -448,6 +468,20 @@ async def export_data(
     if not dataset:
         raise NotFoundException("未找到模拟数据集，请先生成数据")
 
+    # 3.5 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["DATA_EXPORT"],
+        project_id=project_id,
+        action_detail={
+            "format": request.format,
+            "sample_size": dataset.sample_size,
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+
     # 4. 调用导出服务
     from app.services.reporter import export_dataset_excel, export_dataset_csv
 
@@ -456,13 +490,17 @@ async def export_data(
         "sample_size": dataset.sample_size,
     }
 
+    # 合规：模拟数据或用户声明模拟数据时，文件名强制包含 simulated 标识
+    is_simulated = project.mode == "simulation" or request.data_source == "simulated"
+    suffix = "simulated" if is_simulated else "real"
+
     if request.format == "csv":
         file_bytes = export_dataset_csv(
             columns=dataset.columns,
             data=dataset.data,
             meta=meta,
         )
-        filename = f"dataset_{project_id}_simulated.csv"
+        filename = f"dataset_{project_id}_{suffix}.csv"
         media_type = "text/csv; charset=utf-8"
     else:
         file_bytes = export_dataset_excel(
@@ -470,7 +508,7 @@ async def export_data(
             data=dataset.data,
             meta=meta,
         )
-        filename = f"dataset_{project_id}_simulated.xlsx"
+        filename = f"dataset_{project_id}_{suffix}.xlsx"
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
     # 5. 返回文件

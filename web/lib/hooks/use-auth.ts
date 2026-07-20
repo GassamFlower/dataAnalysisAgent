@@ -44,7 +44,14 @@ export function useAuthMutations() {
       email: string;
       password: string;
       nickname?: string;
-    }) => authApi.register(params.email, params.password, params.nickname),
+      agreedTerms?: boolean;
+    }) =>
+      authApi.register(
+        params.email,
+        params.password,
+        params.nickname,
+        params.agreedTerms
+      ),
   });
 
   const verifyEmail = useMutation({

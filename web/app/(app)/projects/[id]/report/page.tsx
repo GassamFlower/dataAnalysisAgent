@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 
@@ -19,9 +20,13 @@ import { PaidActionGuard } from "@/components/common/paid-action-guard";
 import { ErrorState } from "@/components/common/error-state";
 import { LoadingState } from "@/components/common/loading-state";
 import { Watermark } from "@/components/common/watermark";
+import { SimulationReportBanner } from "@/components/compliance/simulation-report-banner";
+import { Disclaimer } from "@/components/compliance/disclaimer";
+import { DataSourceConfirmDialog } from "@/components/compliance/data-source-confirm-dialog";
 import { toast } from "@/components/ui/toaster";
 import { useReport, useAnalyzeReport, useExportReport } from "@/lib/hooks/use-report";
 import { useSimulation } from "@/lib/hooks/use-simulation";
+import { useProject } from "@/lib/hooks/use-project";
 import { useQuota } from "@/lib/hooks/use-payment";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { ReliabilityResult } from "@/types";
@@ -69,12 +74,17 @@ export default function ReportPage({
 }) {
   const { data: report, isLoading, isError, error } = useReport(params.id);
   const { data: simulationData } = useSimulation(params.id);
+  const { data: project } = useProject(params.id);
   const analyzeMutation = useAnalyzeReport();
   const exportMutation = useExportReport();
   const userPlan = useAuthStore((state) => state.user?.plan ?? "free");
   const { data: quotaData } = useQuota();
   const isFreeUser = userPlan === "free";
   const exportQuota = quotaData?.quotas?.export;
+  const [showDataSourceDialog, setShowDataSourceDialog] = useState(false);
+  const [pendingExportFormat, setPendingExportFormat] = useState<
+    "word" | "excel" | null
+  >(null);
 
   /** 触发报告生成（后端跑统计套餐 + 诊断） */
   const handleAnalyze = () => {
@@ -88,10 +98,21 @@ export default function ReportPage({
     });
   };
 
-  /** 触发浏览器下载导出文件 */
-  const handleExport = (format: "word" | "excel") => {
+  /** 点击导出按钮：先弹出数据来源确认 */
+  const handleExportClick = (format: "word" | "excel") => {
+    setPendingExportFormat(format);
+    setShowDataSourceDialog(true);
+  };
+
+  /** 确认数据来源后触发浏览器下载 */
+  const handleExportConfirm = (dataSource: "real" | "simulated") => {
+    if (!pendingExportFormat) return;
+    const format = pendingExportFormat;
+    setShowDataSourceDialog(false);
+    setPendingExportFormat(null);
+
     exportMutation.mutate(
-      { projectId: params.id, format },
+      { projectId: params.id, format, dataSource },
       {
         onSuccess: ({ blob, filename }) => {
           const url = URL.createObjectURL(blob);
@@ -208,7 +229,7 @@ export default function ReportPage({
         description="统计结果、R4 诊断与导出。仅用于研究预演。"
         actions={
           <ExportButton
-            onExport={handleExport}
+            onExport={handleExportClick}
             disabled={exportMutation.isPending}
             isFree={isFreeUser}
             remaining={exportQuota?.remaining}
@@ -218,6 +239,9 @@ export default function ReportPage({
       />
 
       <Watermark className="mb-4" />
+
+      {/* 模拟数据报告 Banner（不可关闭） */}
+      <SimulationReportBanner projectMode={project?.mode} />
 
       {isLoading && (
         <div className="flex items-center gap-2 rounded-md border border-border bg-card p-4 text-ink-500">
@@ -321,7 +345,7 @@ export default function ReportPage({
         </p>
         <div className="mt-4">
           <ExportButton
-            onExport={handleExport}
+            onExport={handleExportClick}
             disabled={exportMutation.isPending}
             isFree={isFreeUser}
             remaining={exportQuota?.remaining}
@@ -335,6 +359,23 @@ export default function ReportPage({
           </p>
         )}
       </Card>
+
+      {/* 免责声明 */}
+      <div className="mt-8">
+        <Disclaimer variant="full" />
+      </div>
+
+      {/* 数据来源确认弹窗 */}
+      <DataSourceConfirmDialog
+        open={showDataSourceDialog}
+        onOpenChange={setShowDataSourceDialog}
+        onConfirm={handleExportConfirm}
+        onCancel={() => {
+          setShowDataSourceDialog(false);
+          setPendingExportFormat(null);
+        }}
+        projectMode={project?.mode}
+      />
     </div>
   );
 }

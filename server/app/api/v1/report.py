@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import pandas as pd
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ from app.models.simulation_config import SimulationConfig
 from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.quota_service import check_and_consume_quota
+from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/report", tags=["report"])
 
@@ -147,6 +148,7 @@ async def get_report(
 )
 async def analyze(
     project_id: UUID,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -303,6 +305,23 @@ async def analyze(
 
     # 13. 更新项目状态
     update_project_status(project, "analyzed", reason="报告分析完成")
+
+    # 13.5 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["ANALYSIS_RUN"],
+        project_id=project_id,
+        action_detail={
+            "overall_alpha": overall_alpha,
+            "passed_count": passed_count,
+            "total_count": len(reliability_results),
+            "diagnosis_passed": diagnosis_result["passed"],
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+
     await db.flush()
 
     # 14. 返回报告 + 差异检验（diff_tests 已在步骤 8b 计算，显式加载关系）
@@ -331,6 +350,7 @@ async def analyze(
 async def export(
     report_id: UUID,
     request: ExportRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -353,7 +373,21 @@ async def export(
         raise NotFoundException("报告不存在")
 
     # 2. 验证项目归属（含软删除过滤）
-    await get_owned_project(db, report.project_id, current_user["id"])
+    project = await get_owned_project(db, report.project_id, current_user["id"])
+
+    # 2.5 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["REPORT_EXPORT"],
+        project_id=report.project_id,
+        action_detail={
+            "report_id": str(report_id),
+            "format": request.format,
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
 
     # 3. 实时计算差异检验（不落库，与 get_report/analyze 保持一致）
     diff_tests: List[Dict[str, Any]] = []
@@ -397,14 +431,18 @@ async def export(
     # 5. 调用导出服务
     from app.services.reporter import export_word, export_excel
 
+    # 合规：模拟数据或用户声明模拟数据时，文件名强制包含 simulated 标识
+    is_simulated = project.mode == "simulation" or request.data_source == "simulated"
+    suffix = "simulated" if is_simulated else "real"
+
     if request.format == "word":
         file_bytes = export_word(report_data)
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        filename = f"report_{report_id}.docx"
+        filename = f"report_{report_id}_{suffix}.docx"
     elif request.format == "excel":
         file_bytes = export_excel(report_data)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = f"report_{report_id}.xlsx"
+        filename = f"report_{report_id}_{suffix}.xlsx"
     else:
         raise ValidationException("不支持的导出格式")
 

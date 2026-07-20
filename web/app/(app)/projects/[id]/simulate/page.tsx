@@ -17,6 +17,8 @@ import { Watermark } from "@/components/common/watermark";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { PaidActionGuard } from "@/components/common/paid-action-guard";
+import { SimulationCommitmentDialog } from "@/components/compliance/simulation-commitment-dialog";
+import { DataSourceConfirmDialog } from "@/components/compliance/data-source-confirm-dialog";
 import { toast } from "@/components/ui/toaster";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useSimulationStore } from "@/lib/stores/simulation-store";
@@ -27,6 +29,11 @@ import {
   useSaveMatrix,
   useExportDataset,
 } from "@/lib/hooks/use-simulation";
+import { useProject } from "@/lib/hooks/use-project";
+import {
+  useSimulationDisclaimerCheck,
+  useConfirmSimulationDisclaimer,
+} from "@/lib/hooks/use-compliance";
 import {
   STRENGTH_TO_R,
   nextStrength,
@@ -46,13 +53,18 @@ export default function SimulatePage({
   const [parseError, setParseError] = useState<string | null>(null);
   /** 本地编辑副本：初始/生成后与服务端同步，用户编辑只改本地 */
   const [localMatrix, setLocalMatrix] = useState<Matrix | null>(null);
+  const [showCommitmentDialog, setShowCommitmentDialog] = useState(false);
+  const [showDataSourceDialog, setShowDataSourceDialog] = useState(false);
 
-  // 查询已生成的矩阵 + 已保存假设
+  // 查询项目、已生成的矩阵 + 已保存假设
+  const { data: project } = useProject(params.id);
   const { data: simulationData, isLoading, error, refetch } = useSimulation(params.id);
   const parseHypothesisMutation = useParseHypothesis();
   const generateMutation = useGenerateSimulation();
   const saveMatrixMutation = useSaveMatrix();
   const exportDatasetMutation = useExportDataset();
+  const { data: disclaimerCheck } = useSimulationDisclaimerCheck();
+  const confirmDisclaimerMutation = useConfirmSimulationDisclaimer();
 
   /** debounce 自动保存矩阵（用户编辑后 800ms 触发） */
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -159,18 +171,8 @@ export default function SimulatePage({
     );
   };
 
-  // 生成数据
-  const handleGenerate = async () => {
-    if (!hypothesisText.trim()) {
-      toast.warning("请先输入并解析研究假设");
-      return;
-    }
-
-    if (paths.length === 0) {
-      toast.warning("假设路径为空，请先解析假设");
-      return;
-    }
-
+  // 实际执行模拟数据生成
+  const executeGenerate = async () => {
     try {
       await generateMutation.mutateAsync({
         projectId: params.id,
@@ -184,26 +186,66 @@ export default function SimulatePage({
     }
   };
 
-  /** 导出模拟数据集（Excel） */
-  const handleExportDataset = () => {
+  // 生成数据 - 首次使用需先同意模拟数据承诺
+  const handleGenerate = async () => {
+    if (!hypothesisText.trim()) {
+      toast.warning("请先输入并解析研究假设");
+      return;
+    }
+
+    if (paths.length === 0) {
+      toast.warning("假设路径为空，请先解析假设");
+      return;
+    }
+
+    if (!disclaimerCheck?.has_agreed) {
+      setShowCommitmentDialog(true);
+      return;
+    }
+
+    await executeGenerate();
+  };
+
+  // 承诺确认后，记录同意并执行生成
+  const handleCommitmentConfirm = async () => {
+    setShowCommitmentDialog(false);
+
+    try {
+      await confirmDisclaimerMutation.mutateAsync();
+      await executeGenerate();
+    } catch (err) {
+      console.error("承诺记录失败:", err);
+      toast.error(err instanceof Error ? err.message : "承诺记录失败，请重试");
+    }
+  };
+
+  /** 点击导出按钮：先弹出数据来源确认 */
+  const handleExportDatasetClick = () => {
+    setShowDataSourceDialog(true);
+  };
+
+  /** 确认数据来源后导出模拟数据集 */
+  const handleExportDatasetConfirm = (dataSource: "real" | "simulated") => {
+    setShowDataSourceDialog(false);
     exportDatasetMutation.mutate(
-      { projectId: params.id, format: "excel" },
+      { projectId: params.id, format: "excel", dataSource },
       {
-      onSuccess: ({ blob, filename }) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename || `dataset_${params.id}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success("数据集导出成功，请检查浏览器下载列表");
-      },
-      onError: (err) => {
-        toast.error(err instanceof Error ? err.message : "导出失败，请重试");
-      },
-    });
+        onSuccess: ({ blob, filename }) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename || `dataset_${params.id}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success("数据集导出成功，请检查浏览器下载列表");
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "导出失败，请重试");
+        },
+      }
+    );
   };
 
   // Loading 状态
@@ -336,7 +378,7 @@ export default function SimulatePage({
               <PaidActionGuard plan={userPlan} actionType="export">
                 <Button
                   variant="outline"
-                  onClick={handleExportDataset}
+                  onClick={handleExportDatasetClick}
                   disabled={exportDatasetMutation.isPending}
                 >
                   {exportDatasetMutation.isPending ? (
@@ -368,6 +410,23 @@ export default function SimulatePage({
           )}
         </Card>
       </div>
+
+      {/* 模拟数据承诺框 */}
+      <SimulationCommitmentDialog
+        open={showCommitmentDialog}
+        onOpenChange={setShowCommitmentDialog}
+        onConfirm={handleCommitmentConfirm}
+        onCancel={() => setShowCommitmentDialog(false)}
+      />
+
+      {/* 数据来源确认弹窗 */}
+      <DataSourceConfirmDialog
+        open={showDataSourceDialog}
+        onOpenChange={setShowDataSourceDialog}
+        onConfirm={handleExportDatasetConfirm}
+        onCancel={() => setShowDataSourceDialog(false)}
+        projectMode={project?.mode}
+      />
     </div>
   );
 }

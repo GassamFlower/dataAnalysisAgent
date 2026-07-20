@@ -12,6 +12,13 @@ export const reportApi = {
     apiClient.get<Report>(`/api/report/${projectId}`),
 
   /** 导出报告（返回二进制 Blob + 文件名） */
-  export: (projectId: string, format: "word" | "excel") =>
-    apiClient.postBlob(`/api/report/${projectId}/export`, { format }),
+  export: (
+    projectId: string,
+    format: "word" | "excel",
+    dataSource: "real" | "simulated"
+  ) =>
+    apiClient.postBlob(`/api/report/${projectId}/export`, {
+      format,
+      data_source: dataSource,
+    }),
 };
