@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, cloneElement, isValidElement } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Lock, AlertCircle } from "lucide-react";
 
@@ -20,7 +20,7 @@ interface PaidActionGuardProps {
   /** 付费操作类型：simulation / export / analysis */
   actionType?: "simulation" | "export" | "analysis";
   /** 付费操作触发按钮或任意可点击元素 */
-  children: React.ReactElement<{ onClick?: (e: unknown) => void }>;
+  children: React.ReactElement;
   /** 弹窗标题，默认"解锁此功能" */
   title?: string;
   /** 弹窗描述，默认提示升级文案 */
@@ -36,16 +36,18 @@ const ACTION_LABELS: Record<string, string> = {
 /**
  * 付费能力前端引导包装器。
  *
- * - 付费用户直接透传点击事件，不挂载弹窗。
- * - 免费用户有剩余额度时放行，并在按钮上显示剩余次数。
- * - 免费用户额度用尽时拦截点击并弹出升级引导弹窗。
+ * - 付费用户直接透传，不挂载弹窗。
+ * - 免费用户有剩余额度时放行，并显示剩余次数徽章。
+ * - 免费用户额度用尽时拦截点击，弹升级引导弹窗。
+ *
+ * 注意：使用外层 div 拦截点击（而非 cloneElement），
+ * 因为 Radix/Slot 组件的 onClick 合并行为会导致 cloneElement 无法覆盖原 handler。
  */
 export function PaidActionGuard({
   plan,
   actionType,
   children,
   title = "解锁此功能",
-  description = "当前为免费计划，升级后可生成模拟数据、导出数据集并使用完整分析能力。",
 }: PaidActionGuardProps) {
   const [open, setOpen] = useState(false);
   const { data: quotaData } = useQuota();
@@ -53,39 +55,38 @@ export function PaidActionGuard({
   const isFree = plan === "free";
   const quota = actionType && quotaData?.quotas?.[actionType];
   const remaining = quota?.remaining ?? 0;
-  const exhausted = isFree && quota && remaining <= 0;
+  const exhausted = isFree && actionType && remaining <= 0;
 
   // 付费用户或无 actionType 时直接透传
   if (!isFree || !actionType) {
     return children;
   }
 
-  // 额度用尽：拦截点击，弹升级弹窗
+  const actionLabel = ACTION_LABELS[actionType] ?? "此功能";
+  const resetDate = quotaData?.resetAt
+    ? new Date(quotaData.resetAt).toLocaleDateString("zh-CN", {
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+      })
+    : "下周一";
+
+  // 额度用尽：用透明覆盖层拦截点击（pointer-events 方案）
+  // Radix/Slot 组件会合并 onClick 而非替换，所以必须用 CSS 层阻止点击到达子元素
   if (exhausted) {
-    const wrappedChild = isValidElement(children)
-      ? cloneElement(children, {
-          onClick: (e: React.MouseEvent | unknown) => {
-            if (e && typeof e === "object") {
-              (e as { preventDefault?: () => void }).preventDefault?.();
-              (e as { stopPropagation?: () => void }).stopPropagation?.();
-            }
-            setOpen(true);
-          },
-        })
-      : children;
-
-    const actionLabel = ACTION_LABELS[actionType] ?? "此功能";
-    const resetDate = quotaData?.resetAt
-      ? new Date(quotaData.resetAt).toLocaleDateString("zh-CN", {
-          month: "long",
-          day: "numeric",
-          weekday: "long",
-        })
-      : "下周一";
-
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        {wrappedChild}
+        <div className="relative inline-flex">
+          <div className="pointer-events-none">{children}</div>
+          <div
+            className="absolute inset-0 cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(true);
+            }}
+          />
+        </div>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

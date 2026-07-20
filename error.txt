@@ -1,0 +1,53 @@
+ubuntu@VM-0-12-ubuntu:/opt/dataAnalysisAgent$ docker compose logs backend --tail=50
+WARN[0000] /opt/dataAnalysisAgent/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+daa-backend  |     rec.execute(self)
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 641, in execute
+daa-backend  |     util.preloaded.orm_persistence.save_obj(
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 94, in save_obj
+daa-backend  |     _emit_insert_statements(
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 1144, in _emit_insert_statements
+daa-backend  |     result = connection.execute(
+daa-backend  |              ^^^^^^^^^^^^^^^^^^^
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
+daa-backend  |     return meth(
+daa-backend  |            ^^^^^
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+daa-backend  |     return connection._execute_clauseelement(
+daa-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
+daa-backend  |     ret = self._execute_context(
+daa-backend  |           ^^^^^^^^^^^^^^^^^^^^^^
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+daa-backend  |     return self._exec_insertmany_context(dialect, context)
+daa-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2135, in _exec_insertmany_context
+daa-backend  |     self._handle_dbapi_exception(
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
+daa-backend  |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2127, in _exec_insertmany_context
+daa-backend  |     dialect.do_execute(
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+daa-backend  |     cursor.execute(statement, parameters)
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 585, in execute
+daa-backend  |     self._adapt_connection.await_(
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+daa-backend  |     return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+daa-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+daa-backend  |     value = await result
+daa-backend  |             ^^^^^^^^^^^^
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 563, in _prepare_and_execute
+daa-backend  |     self._handle_exception(error)
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 513, in _handle_exception
+daa-backend  |     self._adapt_connection._handle_exception(error)
+daa-backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 797, in _handle_exception
+daa-backend  |     raise translated_error from error
+daa-backend  | sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) <class 'asyncpg.exceptions.UndefinedColumnError'>: column "updated_at" of relation "questions" does not exist
+daa-backend  | [SQL: INSERT INTO questions (id, project_id, index, text, question_type, dimension, is_reverse, confidence, created_at, updated_at, deleted_at) VALUES ($1::UUID, $2::UUID, $3::INTEGER, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR, $7::BOOLEAN, $8::VARCHAR, $9::TI ... 1392 characters truncated ... ARCHAR, $86::TIMESTAMP WITH TIME ZONE, $87::TIMESTAMP WITH TIME ZONE, $88::TIMESTAMP WITH TIME ZONE)]
+daa-backend  | [parameters: (UUID('b7fee813-41e0-428d-b526-8a0618a91429'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 1, '我对目前的工作内容感到满意', 'likert5', '内在满意度', False, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None, UUID('ebcd0e94-dbf7-4671-93b5-21987d5ee5fd'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 2, '我与同事之间的关系融洽', 'likert5', '外在满意度', False, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None, UUID('408c4d62-d741-42e6-9353-c7b42437532f'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 3, '我对工作环境感到舒适', 'likert5', '外在满意度', False, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None, UUID('00fa49fe-5451-4dc5-9665-6e6f778b48ee'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 4, '我对公司的薪酬福利感到满意', 'likert5', '外在满意度', False, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None, UUID('d316ca18-9c1e-4641-9375-9e9162fd24bd'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 5, '我对自己的职业发展前景充满信心', 'likert5', '内在满意度', False, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None, UUID('b5d4978c-19eb-4738-9152-8dae61b39e09'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 6, '工作压力有时让我感到疲惫', 'likert5', '工作压力', True, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None, UUID('bb5eda54-ca7d-48d2-a71c-0d5efd7dfcff'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 7, '我认同组织的价值观和企业文化', 'likert5', '内在满意度', False, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None, UUID('61e557fd-28ce-4cdd-bd21-0b0841412c88'), UUID('3ec133ba-85a4-44e5-8ca6-6bb4dd84841c'), 8, '工作与生活能够保持良好的平衡', 'likert5', '外在满意度', False, 'high', datetime.datetime(2026, 7, 19, 14, 31, 15, 103766, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 7, 19, 14, 31, 15, 103799, tzinfo=datetime.timezone.utc), None)]
+daa-backend  | (Background on this error at: https://sqlalche.me/e/20/f405)
+daa-backend  | 2026-07-19 14:37:50 | INFO     | app.core.middleware:75 | [2026-07-19 14:37:50] GET /health 200 0.001s
+daa-backend  | 2026-07-19 14:37:55 | INFO     | app.core.middleware:75 | [2026-07-19 14:37:55] POST /api/v1/projects/ 201 0.005s
+daa-backend  | 2026-07-19 14:37:56 | INFO     | app.services.llm.client:44 | 调用 LLM provider: DeepSeek, model: deepseek-v4-flash
+daa-backend  | 2026-07-19 14:37:56 | INFO     | httpx:1025 | HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK"
+ubuntu@VM-0-12-ubuntu:/opt/dataAnalysisAgent$ 
