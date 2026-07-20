@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_paid_plan
+from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException
 from app.models.report import Report
@@ -20,6 +20,7 @@ from app.models.question import Question
 from app.models.simulation_config import SimulationConfig
 from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest
 from app.services.project_service import get_owned_project, update_project_status
+from app.services.quota_service import check_and_consume_quota
 
 router = APIRouter(prefix="/report", tags=["report"])
 
@@ -147,9 +148,12 @@ async def get_report(
 async def analyze(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_paid_plan)
+    current_user: dict = Depends(get_current_user)
 ):
     """跑标准统计套餐 + R4 诊断结论。"""
+    # 0. 校验并扣减免费额度
+    await check_and_consume_quota(db, current_user["id"], "analysis", current_user["plan"])
+
     # 1. 验证项目存在且属于当前用户（含软删除过滤）
     project = await get_owned_project(db, project_id, current_user["id"])
 
@@ -328,9 +332,12 @@ async def export(
     report_id: UUID,
     request: ExportRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_paid_plan)
+    current_user: dict = Depends(get_current_user)
 ):
     """导出报告（word / excel），含 simulated 水印。"""
+    # 0. 校验并扣减免费额度
+    await check_and_consume_quota(db, current_user["id"], "export", current_user["plan"])
+
     # 1. 加载报告及关联数据
     from sqlalchemy.orm import selectinload
     result = await db.execute(

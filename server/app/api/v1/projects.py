@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import NotFoundException, ValidationException, ForbiddenException
 from app.models.project import Project
 from app.schemas.project import (
     ProjectCreate,
@@ -92,6 +92,17 @@ async def create_project(
     current_user: dict = Depends(get_current_user)
 ):
     """创建新的预演项目。"""
+    # 免费用户项目数限制（3 个）
+    if current_user["plan"] == "free":
+        count_result = await db.execute(
+            select(Project).where(
+                Project.user_id == current_user["id"],
+                Project.deleted_at.is_(None),
+            )
+        )
+        if len(count_result.scalars().all()) >= 3:
+            raise ForbiddenException("免费用户最多创建 3 个项目，请升级套餐或清理旧项目")
+
     project = Project(
         user_id=current_user["id"],
         name=request.name,

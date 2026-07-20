@@ -41,6 +41,7 @@ from app.models.diagnosis import Diagnosis
 from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.order import Order
 from app.models.llm_config import LlmConfig
+from app.models.user_quota import UserQuota
 
 __all__ = [
     "Base",
@@ -58,4 +59,5 @@ __all__ = [
     "DiagnosisIssue",
     "Order",
     "LlmConfig",
+    "UserQuota",
 ]
