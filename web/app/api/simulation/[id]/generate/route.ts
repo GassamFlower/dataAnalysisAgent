@@ -13,8 +13,8 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const body = (await request.json()) as { sampleSize?: number };
-  const sampleSize = body.sampleSize;
+  const body = (await request.json()) as { sampleSize?: number; sample_size?: number };
+  const sampleSize = body.sampleSize ?? body.sample_size;
 
   if (!sampleSize || sampleSize <= 0) {
     return NextResponse.json(
