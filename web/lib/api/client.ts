@@ -136,7 +136,7 @@ function getDefaultTimeout(method: string): number {
     case "POST":
     case "PUT":
     case "PATCH":
-      return 15_000;
+      return 60_000;
     case "DELETE":
       return 10_000;
     default:
