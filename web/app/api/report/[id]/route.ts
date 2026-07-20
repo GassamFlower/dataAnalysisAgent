@@ -139,9 +139,15 @@ export async function GET(
   });
 
   if (!res.ok) {
+    if (res.status === 404) {
+      return NextResponse.json(
+        { code: 40400, message: "未找到报告，请先完成分析", data: null },
+        { status: 404 }
+      );
+    }
     const text = await res.text().catch(() => "");
     return NextResponse.json(
-      { error: `后端错误: ${res.status}`, detail: text },
+      { code: res.status * 100, message: `后端错误: ${res.status}`, detail: text, data: null },
       { status: res.status }
     );
   }
