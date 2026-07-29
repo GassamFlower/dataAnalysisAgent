@@ -202,10 +202,9 @@ async def test_payment_notify_idempotent(
         "status": "success",
     }
 
-    # 第一次回调
+    # 第一次回调（DEBUG 模式放行，无需 auth_headers）
     resp1 = await client.post(
         f"/api/v1/payment/orders/{order_id}/notify",
-        headers=auth_headers,
         json=payload,
     )
     assert resp1.status_code == 200
@@ -220,7 +219,6 @@ async def test_payment_notify_idempotent(
     # 第二次回调（同一流水号）
     resp2 = await client.post(
         f"/api/v1/payment/orders/{order_id}/notify",
-        headers=auth_headers,
         json=payload,
     )
     assert resp2.status_code == 200
@@ -286,3 +284,98 @@ async def test_paid_endpoint_rejects_free_user(client: AsyncClient, auth_headers
     )
     assert resp.status_code == 403
     assert "付费" in resp.json().get("message", "")
+
+
+@pytest.mark.anyio
+async def test_payment_notify_rejects_without_signature_in_prod(
+    client: AsyncClient, auth_headers: dict
+):
+    """生产模式（DEBUG=False）下，无签名头的回调请求应被拒绝。"""
+    order_resp = await client.post(
+        "/api/v1/payment/orders",
+        headers=auth_headers,
+        json={"plan_type": "single"},
+    )
+    order_id = order_resp.json()["data"]["id"]
+
+    # 临时关闭 DEBUG 模拟生产环境
+    original_debug = settings.DEBUG
+    original_token = settings.PAYMENT_CALLBACK_TOKEN
+    settings.DEBUG = False
+    settings.PAYMENT_CALLBACK_TOKEN = "prod-secret-token"
+    try:
+        # 无签名头 → 401
+        resp = await client.post(
+            f"/api/v1/payment/orders/{order_id}/notify",
+            json={
+                "channel": "wechat",
+                "transaction_id": f"wx-nosig-{uuid.uuid4().hex[:8]}",
+                "status": "success",
+            },
+        )
+        assert resp.status_code == 401
+        assert "签名" in resp.json().get("message", "")
+
+        # 错误签名 → 401
+        resp = await client.post(
+            f"/api/v1/payment/orders/{order_id}/notify",
+            headers={"X-Payment-Signature": "wrong-token"},
+            json={
+                "channel": "wechat",
+                "transaction_id": f"wx-badsig-{uuid.uuid4().hex[:8]}",
+                "status": "success",
+            },
+        )
+        assert resp.status_code == 401
+
+        # 正确签名 → 200
+        resp = await client.post(
+            f"/api/v1/payment/orders/{order_id}/notify",
+            headers={"X-Payment-Signature": "prod-secret-token"},
+            json={
+                "channel": "wechat",
+                "transaction_id": f"wx-ok-{uuid.uuid4().hex[:8]}",
+                "status": "success",
+            },
+        )
+        assert resp.status_code == 200
+    finally:
+        settings.DEBUG = original_debug
+        settings.PAYMENT_CALLBACK_TOKEN = original_token
+
+
+@pytest.mark.anyio
+async def test_payment_notify_ip_whitelist(
+    client: AsyncClient, auth_headers: dict
+):
+    """生产模式下，IP 不在白名单内应被拒绝。"""
+    order_resp = await client.post(
+        "/api/v1/payment/orders",
+        headers=auth_headers,
+        json={"plan_type": "single"},
+    )
+    order_id = order_resp.json()["data"]["id"]
+
+    original_debug = settings.DEBUG
+    original_token = settings.PAYMENT_CALLBACK_TOKEN
+    original_ips = settings.PAYMENT_ALLOWED_IPS
+    settings.DEBUG = False
+    settings.PAYMENT_CALLBACK_TOKEN = "prod-secret-token"
+    # 配置一个不可能匹配的 IP 白名单
+    settings.PAYMENT_ALLOWED_IPS = "1.2.3.4,5.6.7.8"
+    try:
+        resp = await client.post(
+            f"/api/v1/payment/orders/{order_id}/notify",
+            headers={"X-Payment-Signature": "prod-secret-token"},
+            json={
+                "channel": "wechat",
+                "transaction_id": f"wx-ip-{uuid.uuid4().hex[:8]}",
+                "status": "success",
+            },
+        )
+        assert resp.status_code == 401
+        assert "白名单" in resp.json().get("message", "")
+    finally:
+        settings.DEBUG = original_debug
+        settings.PAYMENT_CALLBACK_TOKEN = original_token
+        settings.PAYMENT_ALLOWED_IPS = original_ips

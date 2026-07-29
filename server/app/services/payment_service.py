@@ -165,6 +165,27 @@ async def get_order_detail(
     return order
 
 
+async def get_order_by_id(
+    db: AsyncSession,
+    order_id: uuid.UUID,
+) -> Order:
+    """按订单 ID 查询（不限制 user_id）。
+
+    仅供支付回调使用：回调由支付渠道触发，无登录态，
+    通过签名 + IP 白名单校验后可直接按 order_id 查询。
+    """
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.deleted_at.is_(None),
+        )
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundException("订单不存在")
+    return order
+
+
 async def process_payment_notification(
     db: AsyncSession,
     order_id: uuid.UUID,

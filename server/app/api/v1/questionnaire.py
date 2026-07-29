@@ -1,7 +1,7 @@
 """题目体检路由（R1~R3：题型识别 / 维度归属 / 反向题标记）。"""
 import io
 import os
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, UploadFile, Request
@@ -32,6 +32,67 @@ router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 # 文件上传限制
 _MAX_UPLOAD_SIZE = 2 * 1024 * 1024  # 2MB
 _ALLOWED_EXTENSIONS = {".txt", ".docx", ".xlsx", ".pdf"}
+
+# 扩展名 → 允许的 MIME 类型白名单（大小写不敏感）
+_ALLOWED_MIME_TYPES: dict[str, set[str]] = {
+    ".txt": {"text/plain", "application/octet-stream"},
+    ".docx": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/octet-stream",
+    },
+    ".xlsx": {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/octet-stream",
+    },
+    ".pdf": {"application/pdf", "application/octet-stream"},
+}
+
+# 扩展名 → 文件头魔数（前 N 字节）；.txt 无固定魔数，跳过魔数校验
+_FILE_MAGIC_BYTES: dict[str, list[bytes]] = {
+    # .docx / .xlsx 本质是 ZIP 容器，魔数为 PK\x03\x04
+    ".docx": [b"PK\x03\x04"],
+    ".xlsx": [b"PK\x03\x04"],
+    ".pdf": [b"%PDF"],
+}
+
+
+def _validate_file_mime(filename: str, content_type: Optional[str]) -> None:
+    """校验文件 MIME 类型与扩展名是否匹配。
+
+    浏览器可能传 application/octet-stream（通用二进制），允许通过。
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    allowed = _ALLOWED_MIME_TYPES.get(ext)
+    if not allowed:
+        return  # 扩展名已在调用方校验，此处兜底放行
+
+    if content_type and content_type not in allowed:
+        raise ValidationException(
+            f"文件 MIME 类型 {content_type} 与扩展名 {ext} 不匹配，疑似伪造文件"
+        )
+
+
+def _validate_file_magic(filename: str, content: bytes) -> None:
+    """校验文件头魔数，防止扩展名伪装攻击。
+
+    .txt 无固定魔数，跳过；其余格式按 _FILE_MAGIC_BYTES 校验。
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    magic_list = _FILE_MAGIC_BYTES.get(ext)
+    if not magic_list:
+        return  # .txt 等无魔数格式跳过
+
+    # 文件内容不足以包含魔数 → 异常
+    if len(content) < 4:
+        raise ValidationException("文件内容过短，疑似损坏或伪造")
+
+    for magic in magic_list:
+        if content.startswith(magic):
+            return
+
+    raise ValidationException(
+        f"文件头魔数与 {ext} 格式不匹配，疑似伪装文件"
+    )
 
 
 def _read_text_file(content: bytes) -> str:
@@ -192,6 +253,10 @@ async def upload_questionnaire_file(
 
     if not content:
         raise ValidationException("文件内容为空")
+
+    # 3.5 校验 MIME 类型与文件头魔数（防止伪装文件攻击）
+    _validate_file_mime(file.filename, file.content_type)
+    _validate_file_magic(file.filename, content)
 
     # 4. 提取文本
     try:

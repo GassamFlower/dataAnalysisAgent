@@ -4,12 +4,13 @@ from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.exceptions import ForbiddenException, NotFoundException
+from app.core.exceptions import ForbiddenException, NotFoundException, UnauthorizedException
 from app.core.responses import ResponseModel
 from app.models.user import User
 from app.schemas.payment import (
@@ -21,6 +22,7 @@ from app.schemas.payment import (
     SubscriptionResponse,
 )
 from app.services import payment_service, quota_service
+from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/payment", tags=["payment"])
 
@@ -122,29 +124,78 @@ async def get_order(
     return ResponseModel(data=order)
 
 
+def _verify_payment_callback(request: Request) -> None:
+    """校验支付回调请求的合法性与来源。
+
+    校验顺序：
+    1. DEBUG 模式放行（开发/测试环境，便于本地联调）
+    2. X-Payment-Signature 请求头与配置的 PAYMENT_CALLBACK_TOKEN 匹配
+    3. 请求 IP 在 PAYMENT_ALLOWED_IPS 白名单内（若已配置）
+
+    生产环境必须同时配置 TOKEN 与 IP 白名单。
+    """
+    if settings.DEBUG:
+        return
+
+    # 1. 签名校验
+    token = settings.PAYMENT_CALLBACK_TOKEN
+    if not token:
+        raise UnauthorizedException("支付回调未配置签名 token，拒绝访问")
+    signature = request.headers.get("X-Payment-Signature", "")
+    if signature != token:
+        raise UnauthorizedException("支付回调签名校验失败")
+
+    # 2. IP 白名单校验（若已配置）
+    allowed_ips_str = settings.PAYMENT_ALLOWED_IPS
+    if allowed_ips_str:
+        allowed_ips = {ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()}
+        client_ip = request.client.host if request.client else ""
+        if client_ip and client_ip not in allowed_ips:
+            raise UnauthorizedException(f"请求 IP {client_ip} 不在支付回调白名单内")
+
+
 @router.post(
     "/orders/{order_id}/notify",
     response_model=ResponseModel[OrderNotifyResponse],
     summary="支付回调",
-    description="支付渠道回调接口（本轮为 mock 签名）。成功则更新订单状态并激活用户套餐。",
+    description="支付渠道回调接口。通过签名 token + IP 白名单校验，无登录态要求。成功则更新订单状态并激活用户套餐。",
 )
 async def payment_notify(
     order_id: UUID,
     request: OrderNotifyRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
 ):
     """处理支付回调。
 
-    注意：真实微信支付回调应由渠道服务端触发，需校验签名与 IP 白名单。
-    本轮为开发验证，允许登录用户直接调用以模拟支付成功。
+    安全策略：
+    - 不要求登录态（支付渠道服务端触发，无 JWT）
+    - DEBUG 模式放行（开发联调）
+    - 生产环境校验 X-Payment-Signature 与 IP 白名单
+    - 通过 order_id 直接查询订单（不再过滤 user_id）
     """
-    # 简单权限校验：仅允许订单所有者或管理员触发（mock 阶段）
-    order = await payment_service.get_order_detail(db, current_user["id"], order_id)
-    if order.user_id != current_user["id"] and not current_user.get("is_admin"):
-        raise ForbiddenException("无权处理该订单")
+    _verify_payment_callback(http_request)
+
+    # 按 order_id 查询（不限制 user_id，回调无登录态）
+    order = await payment_service.get_order_by_id(db, order_id)
 
     await payment_service.process_payment_notification(db, order_id, request)
+
+    # 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=order.user_id,
+        action_type=ACTION_TYPES["PAYMENT_NOTIFY"],
+        action_detail={
+            "order_id": str(order_id),
+            "channel": request.channel,
+            "transaction_id": request.transaction_id,
+            "status": request.status,
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+
     return ResponseModel(
         data=OrderNotifyResponse(success=True, message="支付处理成功")
     )

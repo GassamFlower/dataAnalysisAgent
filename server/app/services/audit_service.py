@@ -242,4 +242,5 @@ ACTION_TYPES = {
     "SIMULATION_GENERATE": "simulation_generate",
     "DIMENSION_EDIT": "dimension_edit",
     "REVERSE_TOGGLE": "reverse_toggle",
+    "PAYMENT_NOTIFY": "payment_notify",
 }

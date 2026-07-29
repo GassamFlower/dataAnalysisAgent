@@ -138,7 +138,11 @@ async def simulated_project_missing_dataset(client: AsyncClient, auth_headers: d
 
 
 async def activate_subscription(client: AsyncClient, auth_headers: dict) -> None:
-    """通过 mock 支付把 dev 用户升级到 single 套餐。"""
+    """通过 mock 支付把 dev 用户升级到 single 套餐。
+
+    注意：支付回调接口已改造为无登录态（签名+IP校验），
+    DEBUG 模式下放行，因此 notify 请求无需 auth_headers。
+    """
     order_resp = await client.post(
         "/api/v1/payment/orders",
         headers=auth_headers,
@@ -149,7 +153,6 @@ async def activate_subscription(client: AsyncClient, auth_headers: dict) -> None
 
     notify_resp = await client.post(
         f"/api/v1/payment/orders/{order_id}/notify",
-        headers=auth_headers,
         json={
             "channel": "wechat",
             "transaction_id": f"test-{uuid.uuid4().hex[:8]}",

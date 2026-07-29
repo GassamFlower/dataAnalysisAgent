@@ -333,3 +333,62 @@ async def test_upload_requires_auth(
         files={"file": ("questions.txt", io.BytesIO(b"test"), "text/plain")},
     )
     assert resp.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_upload_rejects_mismatched_mime(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """扩展名与 MIME 类型不匹配应被拒绝（疑似伪造文件）。"""
+    project_id = created_project["id"]
+    # .pdf 扩展名但声明 image/jpeg MIME
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        headers=auth_headers,
+        files={"file": ("fake.pdf", io.BytesIO(b"%PDF-1.4 test"), "image/jpeg")},
+    )
+    assert resp.status_code == 400
+    assert "MIME" in resp.json().get("message", "") or "伪造" in resp.json().get("message", "")
+
+
+@pytest.mark.anyio
+async def test_upload_rejects_fake_magic_bytes(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """文件头魔数与扩展名不匹配应被拒绝（伪装文件攻击）。"""
+    project_id = created_project["id"]
+    # .pdf 扩展名但内容是纯文本（无 %PDF 魔数）
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        headers=auth_headers,
+        files={"file": ("fake.pdf", io.BytesIO(b"this is not a real pdf"), "application/pdf")},
+    )
+    assert resp.status_code == 400
+    assert "魔数" in resp.json().get("message", "") or "伪装" in resp.json().get("message", "")
+
+
+@pytest.mark.anyio
+async def test_upload_rejects_fake_docx(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """.docx 扩展名但无 ZIP 魔数（PK\\x03\\x04）应被拒绝。"""
+    project_id = created_project["id"]
+    resp = await client.post(
+        f"/api/v1/questionnaire/upload?project_id={project_id}",
+        headers=auth_headers,
+        files={
+            "file": (
+                "fake.docx",
+                io.BytesIO(b"this is not a real docx file"),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    assert resp.status_code == 400
+    assert "魔数" in resp.json().get("message", "") or "伪装" in resp.json().get("message", "")

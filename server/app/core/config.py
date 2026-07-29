@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     # 速率限制
     RATE_LIMIT_PER_MINUTE: int = 60
 
+    # 支付回调安全（微信支付/支付宝服务端 → 本服务）
+    # 签名 token：与支付渠道约定，用于校验 X-Payment-Signature 请求头
+    PAYMENT_CALLBACK_TOKEN: str = ""
+    # IP 白名单（逗号分隔）；生产环境应配置为微信支付/支付宝回调服务器 IP
+    # 留空表示不启用 IP 白名单（仅靠签名校验）
+    PAYMENT_ALLOWED_IPS: str = ""
+
     # 套餐限制
     FREE_PLAN_PROJECT_LIMIT: int = 3
     FREE_PLAN_SIMULATION_LIMIT_PER_WEEK: int = 3
