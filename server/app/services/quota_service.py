@@ -19,6 +19,7 @@ FREE_LIMITS = {
     "export": 6,
     "analysis": 6,
     "data_import": 6,
+    "ai_interpret": 1,
 }
 
 

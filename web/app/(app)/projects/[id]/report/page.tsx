@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import { Disclaimer } from "@/components/compliance/disclaimer";
 import { DataSourceConfirmDialog } from "@/components/compliance/data-source-confirm-dialog";
 import { MetricTooltip } from "@/components/tutorial/MetricTooltip";
 import { OnboardingTour } from "@/components/tutorial/OnboardingTour";
+import { AIInterpretButton } from "@/components/tutorial/AIInterpretButton";
 import { toast } from "@/components/ui/toaster";
 import { useReport, useAnalyzeReport, useExportReport } from "@/lib/hooks/use-report";
 import { useSimulation } from "@/lib/hooks/use-simulation";
@@ -342,6 +343,18 @@ export default function ReportPage({
           <MetricTooltip metricType="diagnosis" />
         </h2>
         <DiagnosisAlert diagnosis={diagnosis} />
+      </section>
+
+      {/* AI 解读助手（阶段三） */}
+      <section className="mb-8">
+        <h2 className="mb-4 flex items-center gap-2 text-h2 font-semibold text-ink-900">
+          <Sparkles className="h-5 w-5 text-primary" />
+          AI 解读助手
+        </h2>
+        <p className="mb-4 text-body text-ink-500">
+          让 AI 用通俗语言解读你的统计结果，并给出可直接写入论文的段落建议。免费用户每周 1 次。
+        </p>
+        <AIInterpretButton projectId={params.id} section="overall" />
       </section>
 
       {/* 导出区 */}

@@ -470,3 +470,116 @@ class TutorialService:
             page=page,
             page_size=page_size,
         )
+
+    # ========== AI 解读助手（阶段三）==========
+
+    # 板块 → 中文名映射
+    SECTION_LABELS = {
+        "reliability": "信效度分析",
+        "correlation": "相关分析",
+        "diff_test": "差异检验",
+        "overall": "整体报告",
+    }
+
+    @staticmethod
+    async def ai_interpret(
+        db: AsyncSession,
+        project_id: uuid.UUID,
+        question: Optional[str],
+        section: Optional[str],
+    ) -> Dict[str, Any]:
+        """基于项目最新报告，调用 LLM 生成通俗解读与论文写作建议。
+
+        流程：
+        1. 读取项目最新报告（含信效度结果 + 诊断结论）
+        2. 将统计数据序列化为紧凑文本，拼接 system / user prompt
+        3. 调用 Flash 级 LLM 生成 Markdown 解读
+        4. 返回内容 + 板块 + 剩余额度（额度由路由层扣减后传入）
+
+        若无已存报告，抛出 NotFoundException。
+        """
+        from sqlalchemy.orm import selectinload
+        from app.models.report import Report
+        from app.models.reliability_result import ReliabilityResult
+        from app.models.diagnosis import Diagnosis
+        from app.core.exceptions import NotFoundException
+
+        # 1. 读取最新报告
+        result = await db.execute(
+            select(Report)
+            .options(
+                selectinload(Report.reliability_results),
+                selectinload(Report.diagnosis).selectinload(Diagnosis.issues),
+            )
+            .where(Report.project_id == project_id)
+            .order_by(Report.created_at.desc())
+            .limit(1)
+        )
+        report = result.scalar_one_or_none()
+        if not report:
+            raise NotFoundException("该项目尚未生成报告，请先运行报告分析")
+
+        # 2. 序列化统计数据
+        stats_lines: list[str] = []
+        stats_lines.append(f"样本量相关：overall_alpha={report.overall_alpha:.3f}")
+        stats_lines.append(
+            f"信效度：通过 {report.passed_count}/{report.total_count} 个维度"
+        )
+        for r in report.reliability_results:
+            stats_lines.append(
+                f"  - 维度[{r.dimension}] α={r.alpha:.3f} KMO={r.kmo:.3f} "
+                f"Bartlett p={r.bartlett_p_value:.4f} 达标={'是' if r.passed else '否'}"
+            )
+
+        if report.diagnosis:
+            stats_lines.append(
+                f"R4 诊断：{'通过' if report.diagnosis.passed else '未通过'}"
+            )
+            for issue in report.diagnosis.issues[:10]:
+                stats_lines.append(
+                    f"  - [{issue.dimension}] {issue.metric}: "
+                    f"值={issue.value:.3f} 阈值={issue.threshold:.3f}"
+                )
+                if issue.reason:
+                    stats_lines.append(f"    原因: {issue.reason}")
+                if issue.suggestion:
+                    stats_lines.append(f"    建议: {issue.suggestion}")
+
+        stats_text = "\n".join(stats_lines)
+
+        # 3. 构造 prompt
+        target_section = section or "overall"
+        section_label = TutorialService.SECTION_LABELS.get(
+            target_section, "整体报告"
+        )
+
+        system_prompt = (
+            "你是统计数据分析与论文写作助手。你的任务是根据用户项目的统计结果，"
+            "用通俗易懂的语言解读数据含义，并给出可直接写入论文的段落建议。\n"
+            "输出要求：\n"
+            "1. 使用 Markdown 格式\n"
+            "2. 先给「数据解读」段落（解释指标含义、当前结果说明什么）\n"
+            "3. 再给「论文写作建议」段落（给出可参考的规范句式，用引用块标记）\n"
+            "4. 语言面向本科生，避免过度学术化\n"
+            "5. 不要编造数据中不存在的指标"
+        )
+
+        user_prompt = (
+            f"请解读以下项目的【{section_label}】部分。\n\n"
+            f"## 项目统计数据\n```\n{stats_text}\n```\n\n"
+        )
+        if question:
+            user_prompt += f"## 用户提问\n{question}\n\n"
+        user_prompt += "请按上述要求输出解读与写作建议。"
+
+        # 4. 调用 LLM（Flash 级，成本低、响应快）
+        from app.services.llm.client import chat_v3
+
+        content = chat_v3(user_prompt, system=system_prompt)
+
+        return {
+            "project_id": str(project_id),
+            "content": content,
+            "section": target_section,
+            "question": question,
+        }

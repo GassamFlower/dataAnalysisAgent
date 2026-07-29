@@ -11,6 +11,9 @@ import {
   type TutorialArticle,
   type TutorialArticleCreateRequest,
   type TutorialArticleUpdateRequest,
+  type AIInterpretRequest,
+  type AIInterpretResponse,
+  type AIInterpretQuota,
 } from "@/lib/api/tutorial";
 
 export type { OnboardingStep };
@@ -142,6 +145,32 @@ export function useDeleteTutorialArticle() {
     mutationFn: (id: string) => tutorialApi.deleteArticle(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ARTICLES_QUERY_KEY });
+    },
+  });
+}
+
+// ========== AI 解读助手 ==========
+
+const AI_INTERPRET_QUOTA_KEY = [...TUTORIAL_QUERY_KEY, "ai-interpret-quota"];
+
+/** 查询 AI 解读剩余额度 */
+export function useAIInterpretQuota() {
+  return useQuery<AIInterpretQuota>({
+    queryKey: AI_INTERPRET_QUOTA_KEY,
+    queryFn: () => tutorialApi.getAIInterpretQuota(),
+    staleTime: 30 * 1000,
+  });
+}
+
+/** 生成 AI 解读 */
+export function useAIInterpret(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<AIInterpretResponse, Error, AIInterpretRequest>({
+    mutationFn: (data) => tutorialApi.aiInterpret(projectId, data),
+    onSuccess: () => {
+      // 扣减后刷新额度
+      queryClient.invalidateQueries({ queryKey: AI_INTERPRET_QUOTA_KEY });
     },
   });
 }

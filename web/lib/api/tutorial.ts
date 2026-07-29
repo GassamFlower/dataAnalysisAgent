@@ -115,6 +115,28 @@ export interface TutorialArticleCreateRequest {
 
 export type TutorialArticleUpdateRequest = Partial<TutorialArticleCreateRequest>;
 
+/** AI 解读请求 */
+export interface AIInterpretRequest {
+  question?: string;
+  section?: "reliability" | "correlation" | "diff_test" | "overall";
+}
+
+/** AI 解读响应 */
+export interface AIInterpretResponse {
+  project_id: string;
+  content: string;
+  section: string;
+  question: string | null;
+  quota_remaining: number;
+}
+
+/** AI 解读额度状态 */
+export interface AIInterpretQuota {
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
 export const tutorialApi = {
   /** 获取用户引导进度 */
   getProgress: (): Promise<TutorialProgressResponse> =>
@@ -181,4 +203,18 @@ export const tutorialApi = {
   /** 删除教程（管理员） */
   deleteArticle: (id: string): Promise<{ success: boolean }> =>
     apiClient.delete<{ success: boolean }>(`/api/v1/tutorial/admin/articles/${id}`),
+
+  /** 查询 AI 解读剩余额度 */
+  getAIInterpretQuota: (): Promise<AIInterpretQuota> =>
+    apiClient.get<AIInterpretQuota>("/api/v1/tutorial/ai-interpret/quota"),
+
+  /** 生成 AI 解读 */
+  aiInterpret: (
+    projectId: string,
+    data: AIInterpretRequest
+  ): Promise<AIInterpretResponse> =>
+    apiClient.post<AIInterpretResponse>(
+      `/api/v1/tutorial/ai-interpret/${projectId}`,
+      data
+    ),
 };

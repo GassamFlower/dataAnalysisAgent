@@ -19,8 +19,11 @@ from app.schemas.tutorial import (
     TutorialArticleUpdateRequest,
     TutorialArticleResponse,
     TutorialArticleListResponse,
+    AIInterpretRequest,
+    AIInterpretResponse,
 )
 from app.services.tutorial_service import TutorialService
+from app.services.quota_service import check_and_consume_quota, get_quota_status
 
 router = APIRouter(prefix="/tutorial", tags=["tutorial"])
 
@@ -225,3 +228,72 @@ async def delete_article(
     """删除教程文章（管理员）。"""
     result = await TutorialService.delete_article(db, article_id)
     return ResponseModel(data={"success": result})
+
+
+# ========== AI 解读助手（阶段三）==========
+
+@router.get(
+    "/ai-interpret/quota",
+    response_model=ResponseModel[dict],
+    summary="查询 AI 解读剩余额度",
+    description="查询当前用户本周剩余的 AI 解读次数。",
+)
+async def get_ai_interpret_quota(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """查询 AI 解读剩余额度。"""
+    status = await get_quota_status(db, current_user["id"], current_user["plan"])
+    ai_quota = status["quotas"].get("ai_interpret", {})
+    return ResponseModel(data=ai_quota)
+
+
+@router.post(
+    "/ai-interpret/{project_id}",
+    response_model=ResponseModel[AIInterpretResponse],
+    summary="生成 AI 解读",
+    description="基于项目最新报告，调用 LLM 生成通俗解读与论文写作建议。免费用户 1 次/周。",
+)
+async def ai_interpret(
+    project_id: UUID,
+    request: AIInterpretRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """生成 AI 解读。
+
+    流程：
+    1. 校验并扣减免费额度（ai_interpret 类型，免费用户 1 次/周）
+    2. 调用 TutorialService.ai_interpret 读取报告 + 调用 LLM
+    3. 查询剩余额度并返回
+    """
+    # 1. 校验并扣减额度
+    await check_and_consume_quota(
+        db,
+        current_user["id"],
+        "ai_interpret",
+        current_user["plan"],
+        current_user.get("plan_expires_at"),
+    )
+
+    # 2. 生成解读
+    result = await TutorialService.ai_interpret(
+        db=db,
+        project_id=project_id,
+        question=request.question,
+        section=request.section,
+    )
+
+    # 3. 查询剩余额度
+    status = await get_quota_status(db, current_user["id"], current_user["plan"])
+    remaining = status["quotas"].get("ai_interpret", {}).get("remaining", 0)
+
+    return ResponseModel(
+        data=AIInterpretResponse(
+            project_id=UUID(result["project_id"]),
+            content=result["content"],
+            section=result["section"],
+            question=result["question"],
+            quota_remaining=remaining,
+        )
+    )

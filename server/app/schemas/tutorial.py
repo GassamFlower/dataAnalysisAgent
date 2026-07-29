@@ -129,3 +129,26 @@ class TutorialArticleQueryParams(BaseModel):
     include_unpublished: bool = Field(
         default=False, description="是否包含未发布（仅管理员有效）"
     )
+
+
+# ========== AI 解读助手（阶段三）==========
+
+class AIInterpretRequest(BaseModel):
+    """AI 解读请求。"""
+    question: Optional[str] = Field(
+        None, max_length=500,
+        description="用户自定义问题（可选，不传则生成整份报告解读）"
+    )
+    section: Optional[str] = Field(
+        None,
+        description="指定解读的报告板块：reliability/correlation/diff_test/overall（可选）"
+    )
+
+
+class AIInterpretResponse(BaseModel):
+    """AI 解读响应。"""
+    project_id: UUID = Field(..., description="项目 ID")
+    content: str = Field(..., description="AI 生成的解读内容（Markdown）")
+    section: str = Field(..., description="解读的板块")
+    question: Optional[str] = Field(None, description="用户提问（如有）")
+    quota_remaining: int = Field(..., description="本周剩余 AI 解读次数")
