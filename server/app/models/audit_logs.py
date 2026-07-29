@@ -6,7 +6,7 @@ from typing import Optional, Any, Dict
 from sqlalchemy import String, Index
 from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
 
 from app.models import Base, UTCDateTime
 
@@ -36,7 +36,7 @@ class AuditLog(Base):
         String(50), nullable=False, index=True
     )
     action_detail: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSONB, nullable=True
+        JSON, nullable=True
     )
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

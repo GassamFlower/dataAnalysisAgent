@@ -238,7 +238,13 @@ async def create_hypothesis(
 ):
     """创建假设：解析用户假设为主效应路径。"""
     # 0. 校验并扣减免费额度（付费用户自动放行）
-    await check_and_consume_quota(db, current_user["id"], "simulation", current_user["plan"])
+    await check_and_consume_quota(
+        db,
+        current_user["id"],
+        "simulation",
+        current_user["plan"],
+        current_user.get("plan_expires_at"),
+    )
 
     # 1. 验证项目存在且属于当前用户（含软删除过滤）
     project = await get_owned_project(db, project_id, current_user["id"])
@@ -319,7 +325,13 @@ async def generate(
 ):
     """按份数 + 期望趋势生成模拟数据。"""
     # 0. 校验并扣减免费额度
-    await check_and_consume_quota(db, current_user["id"], "simulation", current_user["plan"])
+    await check_and_consume_quota(
+        db,
+        current_user["id"],
+        "simulation",
+        current_user["plan"],
+        current_user.get("plan_expires_at"),
+    )
 
     # 1. 验证项目存在且属于当前用户（含软删除过滤）
     project = await get_owned_project(db, project_id, current_user["id"])
@@ -448,7 +460,13 @@ async def export_data(
 ):
     """导出模拟数据集（Excel/CSV），含 simulated 水印。"""
     # 0. 校验并扣减免费额度
-    await check_and_consume_quota(db, current_user["id"], "export", current_user["plan"])
+    await check_and_consume_quota(
+        db,
+        current_user["id"],
+        "export",
+        current_user["plan"],
+        current_user.get("plan_expires_at"),
+    )
 
     # 1. 验证项目存在且属于当前用户（含软删除过滤）
     project = await get_owned_project(db, project_id, current_user["id"])
