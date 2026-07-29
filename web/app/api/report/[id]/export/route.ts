@@ -14,7 +14,7 @@ export async function POST(
   const body = await request.json();
   const { format, data_source = "simulated" } = body;
 
-  if (!["word", "excel"].includes(format)) {
+  if (!["word", "excel", "pdf"].includes(format)) {
     return NextResponse.json(
       { error: "不支持的导出格式" },
       { status: 400 }

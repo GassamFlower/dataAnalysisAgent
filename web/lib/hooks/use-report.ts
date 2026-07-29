@@ -36,7 +36,7 @@ export function useExportReport() {
   return useMutation({
     mutationFn: (params: {
       projectId: string;
-      format: "word" | "excel";
+      format: "word" | "excel" | "pdf";
       dataSource: "real" | "simulated";
     }) =>
       apiClient.postBlob(

@@ -21,6 +21,7 @@
 - ERR_REFRESH_TOKEN_INVALID: refresh token 无效
 - ERR_REFRESH_TOKEN_EXPIRED: refresh token 无效或已过期
 - ERR_USER_LOGGED_OUT: 用户不存在或已登出
+- ERR_UNSUPPORTED_FORMAT: 不支持的导出格式（report.export 端点 word/excel/pdf 之外）
 
 新增常量时请同步更新对应调用方，并在本文件 docstring 中登记。
 """

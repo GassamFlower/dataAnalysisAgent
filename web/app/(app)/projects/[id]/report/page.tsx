@@ -86,7 +86,7 @@ export default function ReportPage({
   const exportQuota = quotaData?.quotas?.export;
   const [showDataSourceDialog, setShowDataSourceDialog] = useState(false);
   const [pendingExportFormat, setPendingExportFormat] = useState<
-    "word" | "excel" | null
+    "word" | "excel" | "pdf" | null
   >(null);
 
   /** 触发报告生成（后端跑统计套餐 + 诊断） */
@@ -102,7 +102,7 @@ export default function ReportPage({
   };
 
   /** 点击导出按钮：先弹出数据来源确认 */
-  const handleExportClick = (format: "word" | "excel") => {
+  const handleExportClick = (format: "word" | "excel" | "pdf") => {
     setPendingExportFormat(format);
     setShowDataSourceDialog(true);
   };
@@ -121,8 +121,9 @@ export default function ReportPage({
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download =
-            filename || `report.${format === "word" ? "docx" : "xlsx"}`;
+          const ext =
+            format === "word" ? "docx" : format === "excel" ? "xlsx" : "pdf";
+          a.download = filename || `report.${ext}`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);

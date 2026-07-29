@@ -1,6 +1,6 @@
 """报告导出服务。
 
-Word（python-docx）+ Excel（openpyxl）+ CSV。
+Word（python-docx）+ Excel（openpyxl）+ CSV + PDF（reportlab）。
 所有导出文件强制带 simulated 水印 + 免责声明。
 分档标签与论文段落模板来源：app/core/statistics_constants.py
 """
@@ -8,6 +8,7 @@ import csv
 import io
 from datetime import datetime
 from typing import Dict, List, Any
+from xml.sax.saxutils import escape
 
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
@@ -15,12 +16,31 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    LongTable,
+    TableStyle,
+    KeepTogether,
+)
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+
 from app.core.statistics_constants import (
     GRADE_TABLE_TEXT,
     grade_alpha,
     grade_bartlett,
     grade_kmo,
 )
+
+# PDF 中文字体（reportlab 内置 CID，无需打包 .ttf 文件）
+_PDF_FONT_NAME = "STSong-Light"
+pdfmetrics.registerFont(UnicodeCIDFont(_PDF_FONT_NAME))
 
 
 def _to_float(value: Any, default: float = 0.0) -> float:
@@ -536,6 +556,317 @@ def export_dataset_csv(
 
     # UTF-8 BOM，保证 Excel 直接打开中文正常
     return buffer.getvalue().encode("utf-8-sig")
+
+
+# ===========================================================================
+# PDF 导出（reportlab）
+# 设计文档：docs/j-功能-PDF报告导出.md
+# 章节结构与 export_word 对齐，便于用户对照
+# ===========================================================================
+
+
+def _pdf_styles() -> Dict[str, ParagraphStyle]:
+    """生成 PDF 段落样式集合（中文字体 STSong-Light）。"""
+    base = getSampleStyleSheet()
+    return {
+        "title": ParagraphStyle(
+            "TitleCN",
+            parent=base["Title"],
+            fontName=_PDF_FONT_NAME,
+            fontSize=22,
+            leading=28,
+            alignment=1,  # center
+            spaceAfter=10,
+        ),
+        "h1": ParagraphStyle(
+            "H1CN",
+            parent=base["Heading1"],
+            fontName=_PDF_FONT_NAME,
+            fontSize=16,
+            leading=22,
+            spaceBefore=12,
+            spaceAfter=8,
+        ),
+        "h2": ParagraphStyle(
+            "H2CN",
+            parent=base["Heading2"],
+            fontName=_PDF_FONT_NAME,
+            fontSize=13,
+            leading=18,
+            spaceBefore=8,
+            spaceAfter=6,
+        ),
+        "body": ParagraphStyle(
+            "BodyCN",
+            parent=base["BodyText"],
+            fontName=_PDF_FONT_NAME,
+            fontSize=10.5,
+            leading=16,
+            spaceAfter=4,
+        ),
+        "small": ParagraphStyle(
+            "SmallCN",
+            parent=base["BodyText"],
+            fontName=_PDF_FONT_NAME,
+            fontSize=9,
+            leading=12,
+            textColor=colors.grey,
+        ),
+    }
+
+
+def _draw_pdf_watermark(canv, doc) -> None:
+    """每页背景绘制旋转 45° 的 simulated 水印。
+
+    符合宪法第 7 条「导出强制带水印，禁去痕迹」。
+    """
+    canv.saveState()
+    canv.setFont(_PDF_FONT_NAME, 36)
+    canv.setFillColorRGB(0.85, 0.85, 0.85, alpha=0.4)
+    canv.translate(A4[0] / 2, A4[1] / 2)
+    canv.rotate(45)
+    canv.drawCentredString(0, 0, "SIMULATED DATA - 仅供演示")
+    canv.restoreState()
+
+
+def _pdf_table_style() -> TableStyle:
+    """PDF 表格通用样式（表头灰底 + 网格 + 居中）。"""
+    return TableStyle(
+        [
+            ("FONTNAME", (0, 0), (-1, -1), _PDF_FONT_NAME),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]
+    )
+
+
+def _diff_test_table_to_pdf(diff_tests: List[Dict[str, Any]], styles) -> List:
+    """差异检验 PDF flowables（表格 + 自然语言解读）。
+
+    结构与 _diff_test_table_to_doc 对齐；LongTable 自动跨页，表头每页重复。
+    """
+    if not diff_tests:
+        return [
+            Paragraph(
+                "未配置假设路径，无差异检验结果。请在「生成数据」步骤中填写研究假设。",
+                styles["body"],
+            )
+        ]
+
+    header = ["假设路径", "检验方法", "统计量", "p 值", "效应量", "显著性"]
+    data = [header]
+    for t in diff_tests:
+        predictor = escape(str(t.get("predictor", "")))
+        outcome = escape(str(t.get("outcome", "")))
+        path_label = f"{predictor} → {outcome}"
+        method_name = escape(str(t.get("method_name") or t.get("method") or "—"))
+
+        # 错误场景：仅显示原因
+        if t.get("error"):
+            data.append(
+                [path_label, method_name, "—", f"错误：{escape(str(t['error']))}", "—", "—"]
+            )
+            continue
+
+        significant = t.get("significant")
+        sig_text = "显著 *" if significant else "不显著"
+        data.append(
+            [
+                path_label,
+                method_name,
+                _format_statistic(t.get("statistic")),
+                _format_p_value(t.get("p_value")),
+                _format_effect_size(
+                    t.get("effect_size"),
+                    t.get("effect_size_name"),
+                    t.get("effect_size_grade"),
+                ),
+                sig_text,
+            ]
+        )
+
+    table = LongTable(data, repeatRows=1)
+    table.setStyle(_pdf_table_style())
+
+    flowables: List = [table, Spacer(1, 6 * mm)]
+
+    # 自然语言解读区
+    has_interp = False
+    interp_flow: List = [Paragraph("差异检验结果解读", styles["h2"])]
+    for t in diff_tests:
+        interpretation = t.get("interpretation")
+        if not interpretation:
+            continue
+        has_interp = True
+        predictor = escape(str(t.get("predictor", "")))
+        outcome = escape(str(t.get("outcome", "")))
+        interp_flow.append(
+            Paragraph(
+                f"<b>{predictor} → {outcome}：</b>{escape(str(interpretation))}",
+                styles["body"],
+            )
+        )
+
+    if has_interp:
+        flowables.extend(interp_flow)
+    else:
+        flowables.append(Paragraph("无可用的自然语言解读。", styles["body"]))
+
+    return flowables
+
+
+def export_pdf(report_data: Dict[str, Any]) -> bytes:
+    """导出 PDF 报告。
+
+    含 simulated 水印（每页）、免责声明、统计结果、R4 诊断结论。
+    与 export_word 章节结构保持一致，便于用户对照。
+
+    设计文档：docs/j-功能-PDF报告导出.md
+    """
+    styles = _pdf_styles()
+    story: List = []
+
+    # 封面
+    story.append(Paragraph("数据分析报告", styles["title"]))
+    story.append(Spacer(1, 6 * mm))
+    story.append(
+        Paragraph(
+            f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            styles["body"],
+        )
+    )
+    story.append(
+        Paragraph(f"项目 ID：{escape(str(report_data.get('project_id', 'N/A')))}", styles["body"])
+    )
+    story.append(Spacer(1, 10 * mm))
+
+    # 一、总体信效度
+    story.append(Paragraph("一、总体信效度", styles["h1"]))
+    overall_alpha = _to_float(report_data.get("overall_alpha"), 0.0)
+    passed_count = report_data.get("passed_count", 0)
+    total_count = report_data.get("total_count", 0)
+    story.append(Paragraph(f"整体 Cronbach's α：{overall_alpha:.3f}", styles["body"]))
+    story.append(Paragraph(f"通过维度数：{passed_count} / {total_count}", styles["body"]))
+    story.append(Spacer(1, 6 * mm))
+
+    # 二、各维度信效度详情
+    story.append(Paragraph("二、各维度信效度详情", styles["h1"]))
+    reliability_results = report_data.get("reliability_results", [])
+    if reliability_results:
+        header = ["维度", "Cronbach's α", "KMO", "Bartlett p", "是否通过"]
+        data = [header]
+        for r in reliability_results:
+            alpha_val = _to_float(r.get("alpha"))
+            kmo_val = _to_float(r.get("kmo"))
+            bartlett_val = _to_float(r.get("bartlett_p_value"))
+            alpha_grade, _ = grade_alpha(alpha_val)
+            kmo_grade, _ = grade_kmo(kmo_val)
+            bartlett_grade, _ = grade_bartlett(bartlett_val)
+            data.append(
+                [
+                    escape(str(r.get("dimension", ""))),
+                    f"{alpha_val:.3f} ({alpha_grade})",
+                    f"{kmo_val:.3f} ({kmo_grade})",
+                    f"{bartlett_val:.5f} ({bartlett_grade})",
+                    "✓" if r.get("passed") else "✗",
+                ]
+            )
+        table = LongTable(data, repeatRows=1)
+        table.setStyle(_pdf_table_style())
+        story.append(table)
+    else:
+        story.append(Paragraph("无信效度数据", styles["body"]))
+    story.append(Spacer(1, 6 * mm))
+
+    # 三、论文信效度段落（参考）
+    story.append(Paragraph("三、论文信效度段落（参考）", styles["h1"]))
+    story.append(Paragraph(escape(_reliability_paragraph(report_data)), styles["body"]))
+    story.append(Spacer(1, 6 * mm))
+
+    # 四、假设检验（差异分析）
+    story.append(Paragraph("四、假设检验（差异分析）", styles["h1"]))
+    story.append(
+        Paragraph(
+            "按假设路径自动选择检验方法（t检验/ANOVA/卡方/Pearson/线性回归），"
+            "结果实时计算，不落库。",
+            styles["body"],
+        )
+    )
+    story.extend(_diff_test_table_to_pdf(report_data.get("diff_tests", []) or [], styles))
+    story.append(Spacer(1, 6 * mm))
+
+    # 五、R4 诊断结论
+    story.append(Paragraph("五、R4 诊断结论", styles["h1"]))
+    diagnosis = report_data.get("diagnosis")
+    if diagnosis:
+        passed = diagnosis.get("passed", False)
+        status_text = "通过" if passed else "不通过"
+        story.append(Paragraph(f"诊断结果：{status_text}", styles["body"]))
+        issues = diagnosis.get("issues", [])
+        if issues:
+            story.append(Paragraph(f"发现问题数：{len(issues)}", styles["body"]))
+            story.append(Spacer(1, 4 * mm))
+            for i, issue in enumerate(issues, 1):
+                issue_flow = [
+                    Paragraph(
+                        f"问题 {i}：{escape(str(issue.get('dimension', '')))} - "
+                        f"{escape(str(issue.get('metric', '')))}",
+                        styles["h2"],
+                    ),
+                    Paragraph(f"指标值：{escape(str(issue.get('value', '')))}", styles["body"]),
+                    Paragraph(f"阈值：{escape(str(issue.get('threshold', '')))}", styles["body"]),
+                    Paragraph(f"原因：{escape(str(issue.get('reason', '')))}", styles["body"]),
+                    Paragraph(f"建议：{escape(str(issue.get('suggestion', '')))}", styles["body"]),
+                ]
+                story.append(KeepTogether(issue_flow))
+                story.append(Spacer(1, 3 * mm))
+        else:
+            story.append(Paragraph("未发现显著问题。", styles["body"]))
+    else:
+        story.append(Paragraph("无诊断数据", styles["body"]))
+    story.append(Spacer(1, 6 * mm))
+
+    # 附录：信效度速查表
+    story.append(Paragraph("附录：信效度速查表", styles["h1"]))
+    # GRADE_TABLE_TEXT 为多行纯文本，按行转换为 <br/> 换行
+    appendix_html = escape(GRADE_TABLE_TEXT).replace("\n", "<br/>")
+    story.append(Paragraph(appendix_html, styles["small"]))
+    story.append(Spacer(1, 6 * mm))
+
+    # 免责声明
+    story.append(Paragraph("免责声明", styles["h1"]))
+    story.append(
+        Paragraph(
+            "本报告基于模拟数据生成，仅供学术研究和教学演示使用，不代表真实统计分析结果。"
+            "实际数据分析请联系专业统计人员。",
+            styles["small"],
+        )
+    )
+
+    # 构建 PDF（每页都画水印）
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
+        title="数据分析报告",
+    )
+    doc.build(
+        story,
+        onFirstPage=_draw_pdf_watermark,
+        onLaterPages=_draw_pdf_watermark,
+    )
+    buffer.seek(0)
+    return buffer.getvalue()
 
 
 def _add_watermark(doc: Document) -> None:

@@ -13,7 +13,7 @@ import {
 
 /**
  * 报告导出（宪法第 7 条：导出强制带水印，禁去痕迹）。
- * 支持 Word / Excel 两种格式；免费用户显示升级引导。
+ * 支持 Word / Excel / PDF 三种格式；免费用户显示升级引导。
  */
 export function ExportButton({
   onExport,
@@ -22,7 +22,7 @@ export function ExportButton({
   remaining,
   limit,
 }: {
-  onExport?: (format: "word" | "excel") => void;
+  onExport?: (format: "word" | "excel" | "pdf") => void;
   disabled?: boolean;
   isFree?: boolean;
   remaining?: number;
@@ -70,6 +70,10 @@ export function ExportButton({
         <DropdownMenuItem onClick={() => onExport?.("excel")}>
           <FileSpreadsheet className="mr-2 h-4 w-4" />
           Excel 数据（.xlsx）
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onExport?.("pdf")}>
+          <FileText className="mr-2 h-4 w-4" />
+          PDF 文档（.pdf）
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

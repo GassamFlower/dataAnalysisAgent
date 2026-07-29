@@ -58,6 +58,9 @@ server/tmp/
 # 文档文件（仅本地维护，不上传 GitHub）
 docs/
 
+# IDE 临时文件
+.trae/
+
 # 其他临时文件
 *.html
 demo.zip

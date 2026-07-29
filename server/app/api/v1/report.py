@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException
-from app.core.error_messages import ERR_DATASET_NOT_FOUND, ERR_REPORT_NOT_FOUND
+from app.core.error_messages import ERR_DATASET_NOT_FOUND, ERR_REPORT_NOT_FOUND, ERR_UNSUPPORTED_FORMAT
 from app.models.report import Report
 from app.models.reliability_result import ReliabilityResult
 from app.models.diagnosis import Diagnosis
@@ -395,7 +395,7 @@ async def analyze(
 @router.post(
     "/export/{report_id}",
     summary="导出报告",
-    description="导出报告（word / excel），含 simulated 水印。"
+    description="导出报告（word / excel / pdf），含 simulated 水印。"
 )
 async def export(
     report_id: UUID,
@@ -404,7 +404,7 @@ async def export(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """导出报告（word / excel），含 simulated 水印。"""
+    """导出报告（word / excel / pdf），含 simulated 水印。"""
     # 0. 校验并扣减免费额度
     await check_and_consume_quota(
         db,
@@ -485,7 +485,7 @@ async def export(
     }
 
     # 5. 调用导出服务
-    from app.services.reporter import export_word, export_excel
+    from app.services.reporter import export_word, export_excel, export_pdf
 
     # 合规：模拟数据或用户声明模拟数据时，文件名强制包含 simulated 标识
     is_simulated = project.mode == "simulation" or request.data_source == "simulated"
@@ -499,8 +499,12 @@ async def export(
         file_bytes = export_excel(report_data)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         filename = f"report_{report_id}_{suffix}.xlsx"
+    elif request.format == "pdf":
+        file_bytes = export_pdf(report_data)
+        media_type = "application/pdf"
+        filename = f"report_{report_id}_{suffix}.pdf"
     else:
-        raise ValidationException("不支持的导出格式")
+        raise ValidationException(ERR_UNSUPPORTED_FORMAT)
 
     # 6. 返回文件
     return StreamingResponse(

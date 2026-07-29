@@ -104,5 +104,5 @@ class ReportResponse(BaseModel):
 class ExportRequest(BaseModel):
     """导出请求。"""
 
-    format: str = "word"  # word / excel
+    format: str = "word"  # word / excel / pdf
     data_source: str = "simulated"  # real / simulated
