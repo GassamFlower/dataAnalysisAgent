@@ -45,6 +45,11 @@ interface AuthState {
  * 认证状态管理。
  * 只持久化 access token 到 localStorage；refresh token 由 BFF 以 httpOnly cookie 持有。
  * access token 同时写入 cookie 供 middleware 做路由保护。
+ *
+ * 注意：`isAuthenticated` 不持久化（避免与后端 token 真实有效性脱节），
+ * 而是在 rehydrate 时根据 `accessToken` 推导。
+ * 否则刷新页面后会出现 `isAuthenticated=false` 但 cookie/localStorage 中仍有 token 的不一致状态，
+ * 触发 AppShell 路由守卫误跳转到 /login（"刷新又要登录"现象的根因）。
  */
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -60,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
 
       setAccessToken: (accessToken) => {
         setAuthCookie(accessToken);
-        set({ accessToken });
+        set({ accessToken, isAuthenticated: true });
       },
 
       logout: () => {
@@ -81,6 +86,12 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
       }),
+      // rehydrate 后根据 accessToken 推导 isAuthenticated，保证刷新页面后路由守卫不会误跳转
+      onRehydrateStorage: () => (state) => {
+        if (state && state.accessToken) {
+          state.isAuthenticated = true;
+        }
+      },
     }
   )
 );

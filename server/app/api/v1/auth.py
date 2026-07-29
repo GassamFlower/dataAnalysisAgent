@@ -141,6 +141,7 @@ class WechatCallbackRequest(BaseModel):
 @router.post("/wechat/callback")
 async def wechat_callback(
     req: WechatCallbackRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """微信授权回调：code → openid → upsert User → 签发 JWT。
