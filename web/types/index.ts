@@ -108,6 +108,31 @@ export interface DiffTestResult {
   error?: string;
 }
 
+/** 项目概览：最新数据集摘要 */
+export interface ProjectDatasetOverview {
+  source: "real" | "simulation" | null;
+  sampleSize: number | null;
+  importedAt: string | null;
+}
+
+/** 项目概览：最新报告摘要 */
+export interface ProjectReportOverview {
+  hasReport: boolean;
+  overallAlpha: number | null;
+  passedCount: number | null;
+  totalCount: number | null;
+  generatedAt: string | null;
+}
+
+/** 项目概览聚合数据 */
+export interface ProjectOverview {
+  questionCount: number;
+  dimensionCount: number;
+  reverseCount: number;
+  dataset: ProjectDatasetOverview;
+  report: ProjectReportOverview;
+}
+
 /** 项目 */
 export interface Project {
   id: string;
@@ -119,6 +144,11 @@ export interface Project {
   updatedAt: string;
   /** 关联的题目结构（体检后填充） */
   structure?: QuestionnaireStructure;
+  /** 项目概览聚合数据（后端 GET /projects/{id} 返回） */
+  overview?: ProjectOverview;
+  /** 项目列表携带的统计字段 */
+  questionCount?: number;
+  dimensionCount?: number;
 }
 
 /** 报告 */

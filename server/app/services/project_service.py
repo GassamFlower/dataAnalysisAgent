@@ -15,19 +15,32 @@ from app.models.project import Project
 
 
 # 项目状态单向流转表：当前状态 → 允许的下一个状态
+# 真实数据项目可跳过 simulated，直接从 inspected → analyzed
 _ALLOWED_TRANSITIONS: Dict[str, Tuple[str, ...]] = {
     "draft": ("inspected",),
-    "inspected": ("hypothesized",),
+    "inspected": ("hypothesized", "analyzed"),
     "hypothesized": ("simulated",),
     "simulated": ("analyzed",),
 }
 
 
-def can_transition(from_status: str, to_status: str) -> bool:
-    """判断状态流转是否合法。"""
+def can_transition(from_status: str, to_status: str, project_mode: str = "simulation") -> bool:
+    """判断状态流转是否合法。
+
+    Args:
+        from_status: 当前状态
+        to_status: 目标状态
+        project_mode: 项目模式（real / simulation），真实数据项目允许 inspected → analyzed
+    """
     if from_status == to_status:
         return False
-    return to_status in _ALLOWED_TRANSITIONS.get(from_status, ())
+    allowed = _ALLOWED_TRANSITIONS.get(from_status, ())
+    if to_status in allowed:
+        # inspected → analyzed 仅在真实数据项目中允许
+        if from_status == "inspected" and to_status == "analyzed":
+            return project_mode == "real"
+        return True
+    return False
 
 
 async def get_owned_project(
@@ -78,7 +91,7 @@ def update_project_status(
         project.updated_at = datetime.now(timezone.utc)
         return project
 
-    if not can_transition(current, target_status):
+    if not can_transition(current, target_status, project.mode):
         msg = (
             f"非法状态流转：{current} → {target_status}"
             if not reason

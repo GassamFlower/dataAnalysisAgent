@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Clock, RefreshCw } from "lucide-react";
+import { ArrowRight, Clock, RefreshCw, Database, FlaskConical } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,34 +21,54 @@ const STATUS_TO_VARIANT: Record<
   analyzed: "success",
 };
 
-/** 状态 → 阶段说明文案 */
-function getStageDescription(status: ProjectStatus): string {
+/** 模式 → 标签与图标 */
+const MODE_META: Record<
+  Project["mode"],
+  { label: string; badge: "default" | "secondary"; icon: React.ElementType }
+> = {
+  real: { label: "真实数据项目", badge: "default", icon: Database },
+  simulation: { label: "模拟预演项目", badge: "secondary", icon: FlaskConical },
+};
+
+/** 状态 + 模式 → 阶段说明文案 */
+function getStageDescription(
+  status: ProjectStatus,
+  mode: Project["mode"]
+): string {
   switch (status) {
     case "draft":
       return "项目已创建，请上传题目文本进行体检";
     case "inspected":
-      return "题目体检完成，可开始数据预演";
+      return mode === "real"
+        ? "题目体检完成，可导入真实回收数据"
+        : "题目体检完成，可开始数据预演";
     case "hypothesized":
       return "假设已提交，可生成模拟数据";
     case "simulated":
       return "模拟数据已生成，可产出统计报告";
     case "analyzed":
-      return "报告已生成，可导出 Word/Excel 或重新预演";
+      return mode === "real"
+        ? "真实数据报告已生成，可导出或重新分析"
+        : "预演报告已生成，可导出或重新预演";
     default:
       return "";
   }
 }
 
-/** 状态 → 下一步快捷操作（null 表示无跳转按钮） */
+/** 状态 + 模式 → 下一步快捷操作（null 表示无跳转按钮） */
 function getNextAction(
   status: ProjectStatus,
+  mode: Project["mode"],
   projectId: string
 ): { label: string; href: string } | null {
   switch (status) {
     case "draft":
       return null;
     case "inspected":
-      return { label: "去数据预演", href: `/projects/${projectId}/simulate` };
+      return {
+        label: mode === "real" ? "导入真实数据" : "去数据预演",
+        href: `/projects/${projectId}/simulate`,
+      };
     case "hypothesized":
       return { label: "去数据预演", href: `/projects/${projectId}/simulate` };
     case "simulated":
@@ -81,18 +101,24 @@ function formatDate(iso: string): string {
 export function ProjectStatusCard({ project }: { project: Project }) {
   const config = PROJECT_STATUS[project.status];
   const variant = STATUS_TO_VARIANT[project.status] ?? "secondary";
-  const nextAction = getNextAction(project.status, project.id);
+  const modeMeta = MODE_META[project.mode];
+  const ModeIcon = modeMeta.icon;
+  const nextAction = getNextAction(project.status, project.mode, project.id);
 
   return (
     <Card className="mb-6 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant={variant}>{config.label}</Badge>
+            <Badge variant={modeMeta.badge} className="gap-1">
+              <ModeIcon className="h-3 w-3" />
+              {modeMeta.label}
+            </Badge>
             <span className="text-caption text-ink-400">当前阶段</span>
           </div>
           <p className="mt-2 text-body text-ink-600">
-            {getStageDescription(project.status)}
+            {getStageDescription(project.status, project.mode)}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-ink-400">
             <span className="flex items-center gap-1">

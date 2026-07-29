@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -18,6 +19,7 @@ from app.schemas.project import (
     ProjectListResponse,
 )
 from app.schemas.common import PaginatedData
+from app.services.project_overview_service import get_project_list_stats, get_project_overview
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -59,16 +61,23 @@ async def list_projects(
     count_result = await db.execute(select(Project).where(*base_filter))
     total = len(count_result.scalars().all())
 
-    # 分页查询
+    # 分页查询（eager load questions 用于统计题目数/维度数）
     offset = (page - 1) * page_size
     result = await db.execute(
         select(Project)
         .where(*base_filter)
+        .options(selectinload(Project.questions))
         .order_by(Project.created_at.desc())
         .offset(offset)
         .limit(page_size)
     )
     projects = result.scalars().all()
+
+    # 注入列表展示所需统计字段
+    for project in projects:
+        stats = await get_project_list_stats(project)
+        project.question_count = stats["question_count"]
+        project.dimension_count = stats["dimension_count"]
 
     data = PaginatedData(
         items=projects,
@@ -111,6 +120,15 @@ async def create_project(
     db.add(project)
     await db.flush()
     await db.refresh(project)
+
+    # 注入空概览（新建项目无题目/数据集/报告）
+    project.overview = {
+        "question_count": 0,
+        "dimension_count": 0,
+        "reverse_count": 0,
+        "dataset": {"source": None, "sample_size": None, "imported_at": None},
+        "report": {"has_report": False, "overall_alpha": None, "passed_count": None, "total_count": None, "generated_at": None},
+    }
     return ResponseModel(data=project)
 
 
@@ -125,17 +143,25 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """获取项目详情。"""
+    """获取项目详情（含概览聚合数据）。"""
     result = await db.execute(
-        select(Project).where(
+        select(Project)
+        .where(
             Project.id == project_id,
             Project.user_id == current_user["id"],
             _not_deleted(),
+        )
+        .options(
+            selectinload(Project.questions),
+            selectinload(Project.datasets),
+            selectinload(Project.reports),
         )
     )
     project = result.scalar_one_or_none()
     if not project:
         raise NotFoundException("项目不存在")
+
+    project.overview = await get_project_overview(project)
     return ResponseModel(data=project)
 
 
@@ -153,10 +179,16 @@ async def update_project(
 ):
     """更新项目（当前仅支持重命名）。"""
     result = await db.execute(
-        select(Project).where(
+        select(Project)
+        .where(
             Project.id == project_id,
             Project.user_id == current_user["id"],
             _not_deleted(),
+        )
+        .options(
+            selectinload(Project.questions),
+            selectinload(Project.datasets),
+            selectinload(Project.reports),
         )
     )
     project = result.scalar_one_or_none()
@@ -168,6 +200,8 @@ async def update_project(
 
     await db.flush()
     await db.refresh(project)
+
+    project.overview = await get_project_overview(project)
     return ResponseModel(data=project)
 
 

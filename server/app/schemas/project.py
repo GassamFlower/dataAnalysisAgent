@@ -18,6 +18,34 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
 
 
+class ProjectDatasetOverview(BaseModel):
+    """项目概览：最新数据集摘要。"""
+
+    source: Optional[str] = None
+    sample_size: Optional[int] = None
+    imported_at: Optional[datetime] = None
+
+
+class ProjectReportOverview(BaseModel):
+    """项目概览：最新报告摘要。"""
+
+    has_report: bool = False
+    overall_alpha: Optional[float] = None
+    passed_count: Optional[int] = None
+    total_count: Optional[int] = None
+    generated_at: Optional[datetime] = None
+
+
+class ProjectOverview(BaseModel):
+    """项目概览聚合数据（题目 / 数据集 / 报告）。"""
+
+    question_count: int = 0
+    dimension_count: int = 0
+    reverse_count: int = 0
+    dataset: ProjectDatasetOverview = Field(default_factory=ProjectDatasetOverview)
+    report: ProjectReportOverview = Field(default_factory=ProjectReportOverview)
+
+
 class ProjectResponse(BaseModel):
     """项目响应。"""
 
@@ -28,6 +56,7 @@ class ProjectResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    overview: ProjectOverview = Field(default_factory=ProjectOverview)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -39,6 +68,8 @@ class ProjectListResponse(BaseModel):
     name: str
     mode: str
     status: str
+    question_count: int = 0
+    dimension_count: int = 0
     created_at: datetime
     updated_at: datetime
 

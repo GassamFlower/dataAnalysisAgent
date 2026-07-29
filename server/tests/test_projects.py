@@ -14,10 +14,15 @@ from datetime import datetime, timezone
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.exceptions import ValidationException
+from app.models.dataset import Dataset
 from app.models.project import Project
+from app.models.question import Question
+from app.models.report import Report
 from app.services.project_service import can_transition, update_project_status
 
 
@@ -238,3 +243,171 @@ async def test_project_status_illegal_transition():
     assert can_transition("draft", "simulated") is False
     with pytest.raises(ValidationException):
         update_project_status(project2, "simulated")
+
+
+@pytest.fixture
+async def project_with_questions(client: AsyncClient, auth_headers: dict, created_project: dict):
+    """创建含 3 道同维度题目的测试项目。"""
+    project_id = uuid.UUID(created_project["id"])
+
+    async for db in get_db():
+        for i in range(1, 4):
+            db.add(
+                Question(
+                    project_id=project_id,
+                    index=i,
+                    text=f"学习动机题 {i}",
+                    question_type="likert5",
+                    dimension="学习动机",
+                    is_reverse=(i == 3),
+                    confidence="high",
+                )
+            )
+        project = await db.get(Project, project_id)
+        project.status = "inspected"
+        await db.commit()
+        break
+
+    return created_project
+
+
+@pytest.mark.anyio
+async def test_get_project_overview_default(
+    client: AsyncClient,
+    auth_headers: dict,
+    created_project: dict,
+):
+    """新建项目的概览字段应为默认值。"""
+    resp = await client.get(
+        f"/api/v1/projects/{created_project['id']}",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    overview = data["overview"]
+    assert overview["question_count"] == 0
+    assert overview["dimension_count"] == 0
+    assert overview["reverse_count"] == 0
+    assert overview["dataset"]["source"] is None
+    assert overview["report"]["has_report"] is False
+
+
+@pytest.mark.anyio
+async def test_get_project_overview_with_questions(
+    client: AsyncClient,
+    auth_headers: dict,
+    project_with_questions: dict,
+):
+    """题目统计应正确聚合到 overview。"""
+    resp = await client.get(
+        f"/api/v1/projects/{project_with_questions['id']}",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    overview = resp.json()["data"]["overview"]
+    assert overview["question_count"] == 3
+    assert overview["dimension_count"] == 1
+    assert overview["reverse_count"] == 1
+
+
+@pytest.mark.anyio
+async def test_list_projects_includes_counts(
+    client: AsyncClient,
+    auth_headers: dict,
+    project_with_questions: dict,
+):
+    """项目列表应返回 question_count 与 dimension_count。"""
+    resp = await client.get(
+        "/api/v1/projects/?page=1&page_size=100",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    items = resp.json()["data"]["items"]
+    target = next(p for p in items if p["id"] == project_with_questions["id"])
+    assert target["question_count"] == 3
+    assert target["dimension_count"] == 1
+
+
+@pytest.mark.anyio
+async def test_get_project_overview_with_real_dataset(
+    client: AsyncClient,
+    auth_headers: dict,
+    project_with_questions: dict,
+):
+    """导入真实数据后，overview.dataset 应反映真实数据来源与样本量。"""
+    project_id = uuid.UUID(project_with_questions["id"])
+
+    async for db in get_db():
+        dataset = Dataset(
+            project_id=project_id,
+            simulation_config_id=None,
+            source="real",
+            sample_size=120,
+            columns=["q1", "q2", "q3"],
+            data=[{"q1": 1, "q2": 2, "q3": 3} for _ in range(120)],
+        )
+        db.add(dataset)
+        project = await db.get(Project, project_id)
+        project.mode = "real"
+        await db.commit()
+        break
+
+    resp = await client.get(
+        f"/api/v1/projects/{project_with_questions['id']}",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    overview = resp.json()["data"]["overview"]
+    assert overview["dataset"]["source"] == "real"
+    assert overview["dataset"]["sample_size"] == 120
+    assert overview["dataset"]["imported_at"] is not None
+
+
+@pytest.mark.anyio
+async def test_get_project_overview_with_report(
+    client: AsyncClient,
+    auth_headers: dict,
+    project_with_questions: dict,
+):
+    """生成报告后，overview.report 应反映报告摘要。"""
+    project_id = uuid.UUID(project_with_questions["id"])
+
+    async for db in get_db():
+        dataset = Dataset(
+            project_id=project_id,
+            simulation_config_id=None,
+            source="real",
+            sample_size=120,
+            columns=["q1", "q2", "q3"],
+            data=[{"q1": 1, "q2": 2, "q3": 3} for _ in range(120)],
+        )
+        db.add(dataset)
+        await db.flush()
+        await db.refresh(dataset)
+
+        report = Report(
+            project_id=project_id,
+            dataset_id=dataset.id,
+            overall_alpha=0.85,
+            passed_count=1,
+            total_count=1,
+        )
+        db.add(report)
+
+        project = await db.get(Project, project_id)
+        project.mode = "real"
+        project.status = "analyzed"
+        await db.commit()
+        break
+
+    resp = await client.get(
+        f"/api/v1/projects/{project_with_questions['id']}",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    overview = resp.json()["data"]["overview"]
+    assert overview["report"]["has_report"] is True
+    assert overview["report"]["overall_alpha"] == 0.85
+    assert overview["report"]["passed_count"] == 1
+    assert overview["report"]["total_count"] == 1
+    assert overview["report"]["generated_at"] is not None

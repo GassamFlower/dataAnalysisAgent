@@ -34,7 +34,10 @@ export async function GET(request: Request) {
   const items = (json.data?.items ?? []).map((item: Record<string, unknown>) => ({
     id: item.id as string,
     name: item.name as string,
+    mode: item.mode as Project["mode"],
     status: item.status as Project["status"],
+    questionCount: (item.question_count as number | undefined) ?? 0,
+    dimensionCount: (item.dimension_count as number | undefined) ?? 0,
     createdAt: item.created_at as string,
     updatedAt: item.updated_at as string,
   }));
@@ -75,7 +78,10 @@ export async function POST(request: Request) {
   const project: Partial<Project> = {
     id: item.id,
     name: item.name,
+    mode: item.mode,
     status: item.status,
+    questionCount: item.question_count ?? 0,
+    dimensionCount: item.dimension_count ?? 0,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
   };

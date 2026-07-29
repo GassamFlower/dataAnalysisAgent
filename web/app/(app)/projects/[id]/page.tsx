@@ -8,12 +8,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/page-header";
 import { ProjectStatusCard } from "@/components/common/project-status-card";
+import { ProjectOverview } from "@/components/project/project-overview";
 import { StepNav } from "@/components/layout/step-nav";
 import { QuestionTable } from "@/components/questionnaire/question-table";
 import { DimensionEditor } from "@/components/questionnaire/dimension-editor";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { OnboardingTour } from "@/components/tutorial/OnboardingTour";
 import { toast } from "@/components/ui/toaster";
 import { useProject } from "@/lib/hooks/use-project";
 import {
@@ -119,10 +121,22 @@ export default function WorkbenchPage({
 
       <PageHeader
         title={project ? project.name : "题目体检"}
-        description="识别题型、维度归属与反向题。免费层止步于此，付费解锁数据预演。"
+        description={
+          project?.mode === "real"
+            ? "管理真实回收数据、查看统计报告与导出结果。"
+            : "识别题型与维度，生成模拟数据并预演统计结果。"
+        }
       />
 
       {project ? <ProjectStatusCard project={project} /> : null}
+
+      {project ? <ProjectOverview project={project} /> : null}
+
+      <div className="mb-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-caption font-medium text-ink-400">题目体检</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
 
       <Card className="mb-6 p-6">
         <div className="flex items-center gap-3">
@@ -194,6 +208,9 @@ export default function WorkbenchPage({
           </div>
         </div>
       </Card>
+
+      {/* 新手引导 */}
+      <OnboardingTour projectId={params.id} />
     </div>
   );
 }

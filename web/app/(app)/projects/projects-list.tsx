@@ -90,8 +90,8 @@ function ProjectCard({
 
   const config = PROJECT_STATUS[project.status];
   const variant = STATUS_TO_VARIANT[project.status] ?? "secondary";
-  const questionCount = project.structure?.questions?.length ?? 0;
-  const dimensionCount = project.structure?.dimensions?.length ?? 0;
+  const questionCount = project.questionCount ?? 0;
+  const dimensionCount = project.dimensionCount ?? 0;
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();

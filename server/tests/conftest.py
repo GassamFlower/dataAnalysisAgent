@@ -6,7 +6,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_db, init_db, close_db
 from app.main import app
 from app.models.dataset import Dataset
 from app.models.project import Project
@@ -20,10 +20,16 @@ DEV_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 @pytest.fixture
 async def client():
-    """异步测试客户端。"""
+    """异步测试客户端。
+
+    ASGITransport 不会触发 FastAPI lifespan，因此需手动调用 init_db()
+    建表，并在结束时关闭连接，避免 "no such table" 错误。
+    """
+    await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+    await close_db()
 
 
 @pytest.fixture
