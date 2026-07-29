@@ -1,5 +1,6 @@
 """日志配置。"""
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 
@@ -23,11 +24,27 @@ def setup_logging():
 
     # 文件输出（生产环境）
     if not settings.DEBUG:
+        # 日志目录：优先使用 LOG_DIR 环境变量，默认当前目录
+        log_dir = os.environ.get("LOG_DIR", ".")
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "app.log")
+
         file_handler = RotatingFileHandler(
-            "app.log", maxBytes=10 * 1024 * 1024, backupCount=5
+            log_path,
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=5,
+            encoding="utf-8",
         )
         file_handler.setFormatter(logging.Formatter(log_format, date_format))
         root_logger.addHandler(file_handler)
+
+        # 设置日志文件权限为 0o640（owner 读写，group 只读，others 无权限）
+        # 防止日志文件被其他用户读取（可能包含敏感信息）
+        try:
+            os.chmod(log_path, 0o640)
+        except OSError:
+            # Windows 下 chmod 行为不同，忽略错误
+            pass
 
     # 降低第三方库日志级别
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

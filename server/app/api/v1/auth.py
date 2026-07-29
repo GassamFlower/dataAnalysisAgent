@@ -23,6 +23,7 @@ from app.core.exceptions import UnauthorizedException, ValidationException
 from app.core.responses import success_response
 from app.core.security import create_access_token, create_refresh_token, verify_token
 from app.models.user import User
+from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/auth", tags=["认证"])
 
@@ -194,6 +195,18 @@ async def wechat_callback(
             user.avatar = avatar
 
     # 4. 签发双 token
+    # 记录微信登录审计日志
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    await AuditService.log_action(
+        db=db,
+        user_id=user.id,
+        action_type=ACTION_TYPES["USER_LOGIN"],
+        action_detail={"login_method": "wechat", "openid": openid},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
     tokens = await _issue_tokens(user, db)
     return success_response(data=tokens)
 
@@ -563,6 +576,7 @@ async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/logout")
 async def logout(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -570,5 +584,16 @@ async def logout(
     user = await db.get(User, current_user["id"])
     if user:
         user.refresh_token = None
+
+        # 记录登出审计日志
+        ip_address = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        await AuditService.log_action(
+            db=db,
+            user_id=current_user["id"],
+            action_type=ACTION_TYPES["USER_LOGOUT"],
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         await db.commit()
     return success_response(message="已退出登录")

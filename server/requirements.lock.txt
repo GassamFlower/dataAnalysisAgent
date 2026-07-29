@@ -1,0 +1,55 @@
+# 依赖锁定文件（生产部署用，由 pip freeze 生成）。
+#
+# 用途：
+# - 开发环境：使用 requirements.txt（仅声明下限，便于获取 bug 修复）
+# - 生产部署：使用 requirements.lock.txt（精确版本，确保可复现）
+#
+# 生成方式：
+#   pip freeze > requirements.lock.txt
+#
+# 安全扫描：
+#   pip-audit -r requirements.lock.txt
+#
+# 当前锁定时间：2026-07-29
+# Python 版本：3.11+
+
+# Web 框架
+fastapi==0.139.2
+uvicorn==0.51.0
+python-multipart==0.0.32
+httpx==0.28.1
+
+# 数据模型 / 配置
+pydantic==2.13.4
+pydantic-settings==2.14.2
+pydantic_core==2.46.4
+python-dotenv==1.2.2
+
+# 数据库
+SQLAlchemy==2.0.49
+aiosqlite==0.22.1
+alembic==1.18.5
+
+# LLM（DeepSeek 兼容 OpenAI SDK）
+openai==2.47.0
+
+# 统计分析
+numpy==2.2.6
+pandas==2.3.3
+scipy==1.15.3
+statsmodels==0.14.6
+
+# 报告导出
+python-docx==1.2.0
+openpyxl==3.1.5
+pypdf==3.17.4
+
+# 安全
+PyJWT==2.13.0
+bcrypt==5.0.0
+slowapi==0.1.10
+
+# 开发依赖（测试 + 代码质量）
+pytest==9.1.1
+pytest-asyncio==1.4.0
+ruff==0.1.0

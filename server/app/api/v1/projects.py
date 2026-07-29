@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,6 +20,7 @@ from app.schemas.project import (
 )
 from app.schemas.common import PaginatedData
 from app.services.project_overview_service import get_project_list_stats, get_project_overview
+from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -97,6 +98,7 @@ async def list_projects(
 )
 async def create_project(
     request: ProjectCreate,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -120,6 +122,17 @@ async def create_project(
     db.add(project)
     await db.flush()
     await db.refresh(project)
+
+    # 记录项目创建审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["PROJECT_CREATE"],
+        project_id=project.id,
+        action_detail={"name": request.name},
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
 
     # 注入空概览（新建项目无题目/数据集/报告）
     project.overview = {
@@ -174,6 +187,7 @@ async def get_project(
 async def update_project(
     project_id: UUID,
     request: ProjectUpdate,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -195,11 +209,24 @@ async def update_project(
     if not project:
         raise NotFoundException("项目不存在")
 
+    old_name = project.name
     if request.name is not None:
         project.name = request.name
 
     await db.flush()
     await db.refresh(project)
+
+    # 记录项目更新审计日志（仅当名称变更时）
+    if request.name is not None and request.name != old_name:
+        await AuditService.log_action(
+            db=db,
+            user_id=current_user["id"],
+            action_type=ACTION_TYPES["PROJECT_UPDATE"],
+            project_id=project_id,
+            action_detail={"name_changed": {"from": old_name, "to": request.name}},
+            ip_address=http_request.client.host if http_request.client else None,
+            user_agent=http_request.headers.get("user-agent"),
+        )
 
     project.overview = await get_project_overview(project)
     return ResponseModel(data=project)
@@ -213,6 +240,7 @@ async def update_project(
 )
 async def delete_project(
     project_id: UUID,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -231,5 +259,16 @@ async def delete_project(
     now = datetime.now(timezone.utc)
     project.deleted_at = now
     project.updated_at = now
+
+    # 记录项目删除审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["PROJECT_DELETE"],
+        project_id=project_id,
+        action_detail={"name": project.name, "deleted_at": now.isoformat()},
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
     await db.flush()
     return None

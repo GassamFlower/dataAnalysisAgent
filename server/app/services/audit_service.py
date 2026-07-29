@@ -243,4 +243,13 @@ ACTION_TYPES = {
     "DIMENSION_EDIT": "dimension_edit",
     "REVERSE_TOGGLE": "reverse_toggle",
     "PAYMENT_NOTIFY": "payment_notify",
+    # 认证相关
+    "USER_REGISTER": "user_register",
+    "USER_LOGIN": "user_login",
+    "USER_LOGOUT": "user_logout",
+    "PASSWORD_RESET": "password_reset",
+    # 项目管理
+    "PROJECT_CREATE": "project_create",
+    "PROJECT_UPDATE": "project_update",
+    "PROJECT_DELETE": "project_delete",
 }
