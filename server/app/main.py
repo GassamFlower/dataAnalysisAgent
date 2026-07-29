@@ -2,7 +2,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,10 +10,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.core.database import init_db, close_db
+from app.core.database import init_db, close_db, get_db
 from app.core.exceptions import AppException
 from app.core.middleware import RequestLoggingMiddleware, limiter
 from app.core.responses import error_response, success_response
@@ -161,7 +162,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """处理未捕获异常。"""
+    from app.core.monitoring import MonitoringService
+    
+    # 记录错误日志
     logger.error(f"未捕获异常: {exc}", exc_info=True)
+    
+    # 5xx 告警
+    await MonitoringService.alert_5xx_error(
+        method=request.method,
+        path=request.url.path,
+        status_code=500,
+        error_message=str(exc),
+        request_id=getattr(request.state, "request_id", None),
+    )
+    
     return JSONResponse(
         status_code=500,
         content=error_response(50000, "服务器内部错误"),
@@ -173,6 +187,17 @@ app.include_router(v1_router, prefix="/api")
 
 
 @app.get("/health")
-async def health():
-    """健康检查。"""
-    return success_response(data={"status": "ok", "service": "data-analysis-agent"})
+async def health(db: AsyncSession = Depends(get_db)):
+    """健康检查（含数据库连接检测）。"""
+    from app.core.monitoring import get_health_status
+    
+    health_status = await get_health_status(db)
+    
+    # 如果不健康，返回 503
+    if health_status["status"] != "healthy":
+        return JSONResponse(
+            status_code=503,
+            content=error_response(50300, "服务不健康", health_status),
+        )
+    
+    return success_response(data=health_status)

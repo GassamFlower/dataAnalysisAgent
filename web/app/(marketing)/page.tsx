@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   ArrowRight,
   FileSearch,
@@ -16,6 +17,58 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  title: "数据分析智能体 | 本科毕设研究预演工具",
+  description:
+    "上传问卷题目，先做一次信效度体检；再用一句话描述假设，预演数据是否达标——在正式发问卷之前，就知道方向对不对。免费题目体检，付费生成数据与报告。",
+  keywords: [
+    "数据分析",
+    "问卷预演",
+    "信效度检验",
+    "本科毕设",
+    "SPSS",
+    "统计预演",
+    "Cronbach's α",
+    "KMO",
+    "数据生成",
+  ],
+  authors: [{ name: "数据分析智能体团队" }],
+  openGraph: {
+    title: "数据分析智能体 | 本科毕设研究预演工具",
+    description:
+      "上传问卷题目，先做一次信效度体检；再用一句话描述假设，预演数据是否达标——在正式发问卷之前，就知道方向对不对。",
+    type: "website",
+    locale: "zh_CN",
+    siteName: "数据分析智能体",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "数据分析智能体 - 本科毕设研究预演工具",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "数据分析智能体 | 本科毕设研究预演工具",
+    description:
+      "上传问卷题目，先做一次信效度体检；再用一句话描述假设，预演数据是否达标——在正式发问卷之前，就知道方向对不对。",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
+};
 
 const stepIcons = [FileSearch, FlaskConical, FileBarChart, Download];
 
