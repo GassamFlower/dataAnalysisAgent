@@ -18,8 +18,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/toaster";
-import { Loader2, Upload, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, AlertCircle, RotateCcw, Clock, AlertTriangle } from "lucide-react";
 import { useResetTutorialProgress } from "@/lib/hooks/use-tutorial";
+
+/**
+ * 计算套餐到期状态。
+ * - 返回 null 表示无到期时间（免费版或永久套餐）
+ * - 返回 { daysLeft, isExpiringSoon, isExpired } 表示到期提醒信息
+ */
+function getPlanExpiryStatus(expiresAt: string | null | undefined) {
+  if (!expiresAt) return null;
+  const now = new Date();
+  const expires = new Date(expiresAt);
+  const diffMs = expires.getTime() - now.getTime();
+  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return {
+    daysLeft,
+    isExpiringSoon: daysLeft <= 7 && daysLeft > 0,
+    isExpired: daysLeft <= 0,
+  };
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -248,7 +266,82 @@ export default function SettingsPage() {
                 </span>
               )}
             </div>
+
+            {/* 套餐到期提醒与续费入口 */}
+            {(() => {
+              const status = getPlanExpiryStatus(user.plan_expires_at);
+              if (!status) return null;
+
+              if (status.isExpired) {
+                return (
+                  <div className="mt-3 flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-destructive">套餐已过期</p>
+                      <p className="text-xs text-muted-foreground">
+                        您的套餐已过期，付费功能已暂停。续费后可继续使用数据生成、报告分析等能力。
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => router.push("/pricing")}
+                    >
+                      立即续费
+                    </Button>
+                  </div>
+                );
+              }
+
+              if (status.isExpiringSoon) {
+                return (
+                  <div className="mt-3 flex items-start gap-3 rounded-md border border-warning/30 bg-warning/5 p-3">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-warning">
+                        即将到期 · 剩余 {status.daysLeft} 天
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        套餐即将到期，续费可避免付费功能中断。
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push("/pricing")}
+                    >
+                      续费
+                    </Button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span>剩余 {status.daysLeft} 天</span>
+                </div>
+              );
+            })()}
           </div>
+
+          {/* 免费用户升级引导 */}
+          {user.plan === "free" && (
+            <div className="mt-3 flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">升级解锁完整能力</p>
+                <p className="text-xs text-muted-foreground">
+                  免费版可体检问卷可行性。升级后解锁数据生成、报告分析、Word/Excel 导出等能力。
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => router.push("/pricing")}
+              >
+                查看定价
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

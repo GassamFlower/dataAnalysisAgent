@@ -7,7 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/page-header";
 import { DISCLAIMER } from "@/lib/constants";
 
-export const metadata = { title: "关于" };
+export const metadata = {
+  title: "关于 · 合规与学术安全",
+  description:
+    "数据分析智能体的设计理念：合规优先、面向本科生、技术透明。所有生成数据强制带 SIMULATED 水印，统计阈值对齐学术标准。",
+  alternates: { canonical: "/about" },
+};
 
 const values = [
   {
