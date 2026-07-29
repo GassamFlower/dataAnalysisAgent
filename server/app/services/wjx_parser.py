@@ -189,6 +189,14 @@ def _detect_wjx_columns(df: pd.DataFrame) -> Dict[str, str]:
     return column_mapping
 
 
+def _safe_str_or_none(value: Any) -> Optional[str]:
+    """将值安全转为字符串，NaN/None/空字符串返回 None。"""
+    if value is None or pd.isna(value):
+        return None
+    result = str(value).strip()
+    return result or None
+
+
 def _parse_question_row(row: pd.Series, index: int) -> Dict[str, Any]:
     """解析单行题目数据。"""
     question_type = _map_question_type(str(row.get("question_type", "")))
@@ -199,7 +207,9 @@ def _parse_question_row(row: pd.Series, index: int) -> Dict[str, Any]:
         "text": str(row.get("question_text", "")),
         "type": question_type,
         "options": _parse_options(row.get("options", "")),
-        "dimension": str(row.get("dimension", "")) or None,
+        # dimension 可能为 NaN（空单元格），str(NaN)="nan" 会污染维度列表，
+        # 需先排除 NaN 再转字符串
+        "dimension": _safe_str_or_none(row.get("dimension")),
         "is_reverse": False,  # 问卷星导出不包含反向题信息
     }
 

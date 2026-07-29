@@ -46,6 +46,7 @@ from app.models.user_agreements import UserAgreement
 from app.models.audit_logs import AuditLog
 from app.models.user_tutorial_progress import UserTutorialProgress
 from app.models.tutorial_article import TutorialArticle
+from app.models.analytics_event import AnalyticsEvent
 
 __all__ = [
     "Base",
@@ -68,4 +69,5 @@ __all__ = [
     "AuditLog",
     "UserTutorialProgress",
     "TutorialArticle",
+    "AnalyticsEvent",
 ]

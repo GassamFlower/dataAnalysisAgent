@@ -7,8 +7,9 @@
 技术选型：pyreadstat（纯 Python，无需安装 SPSS）
 设计依据：docs/x-功能-SPSS导入.md
 """
-import io
 import logging
+import os
+import tempfile
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -41,13 +42,22 @@ def parse_spss_sav(file_content: bytes) -> Dict[str, Any]:
             "缺少 SPSS 解析依赖，请联系管理员安装 pyreadstat"
         ) from exc
 
+    # pyreadstat.read_sav 仅接受文件路径（不支持 BytesIO），
+    # 故将二进制内容写入临时文件再解析。
+    fd, tmp_path = tempfile.mkstemp(suffix=".sav")
     try:
-        # pyreadstat.read_sav 支持文件路径或类文件对象（BytesIO）
-        with io.BytesIO(file_content) as f:
-            df, meta = pyreadstat.read_sav(f)
-    except Exception as e:
-        logger.error("SPSS 文件解析失败 | error=%s", e, exc_info=True)
-        raise ValueError(f"SPSS 文件解析失败：{str(e)}") from e
+        with os.fdopen(fd, "wb") as f:
+            f.write(file_content)
+        try:
+            df, meta = pyreadstat.read_sav(tmp_path)
+        except Exception as e:
+            logger.error("SPSS 文件解析失败 | error=%s", e, exc_info=True)
+            raise ValueError(f"SPSS 文件解析失败：{str(e)}") from e
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
     if df.empty:
         raise ValueError("SPSS 文件内容为空")
@@ -104,14 +114,17 @@ def convert_to_internal_format(
 
         col_info = {
             "name": col,
-            "label": variable_labels.get(col, col),
+            # 标签可能为 None 或空字符串（pyreadstat 对无标签列返回 None），
+            # 此时回退为列名
+            "label": variable_labels.get(col) or str(col),
             "type": "numeric" if pd.api.types.is_numeric_dtype(df[col]) else "string",
             "value_labels": normalized_value_labels,
         }
         columns_info.append(col_info)
 
     # 转换数据为字典列表（NaN 转为 None）
-    data = df.where(pd.notnull(df), None).to_dict(orient="records")
+    # 先转为 object 类型，使 None 能正确替换 NaN（float64 列无法存储 None）
+    data = df.astype(object).where(pd.notnull(df), None).to_dict(orient="records")
 
     # 构建元数据
     meta = {

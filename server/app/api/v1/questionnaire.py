@@ -1,7 +1,7 @@
 """题目体检路由（R1~R3：题型识别 / 维度归属 / 反向题标记）。"""
 import io
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional, Set
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile, Request
@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException
-from app.models.Question import Question
+from app.models.question import Question
 from app.schemas.questionnaire import (
     QuestionInspectRequest,
     QuestionnaireStructure,
@@ -34,7 +34,7 @@ _MAX_UPLOAD_SIZE = 2 * 1024 * 1024  # 2MB
 _ALLOWED_EXTENSIONS = {".txt", ".docx", ".xlsx", ".pdf"}
 
 # 扩展名 → 允许的 MIME 类型白名单（大小写不敏感）
-_ALLOWED_MIME_TYPES: dict[str, set[str]] = {
+_ALLOWED_MIME_TYPES: Dict[str, Set[str]] = {
     ".txt": {"text/plain", "application/octet-stream"},
     ".docx": {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -48,7 +48,7 @@ _ALLOWED_MIME_TYPES: dict[str, set[str]] = {
 }
 
 # 扩展名 → 文件头魔数（前 N 字节）；.txt 无固定魔数，跳过魔数校验
-_FILE_MAGIC_BYTES: dict[str, list[bytes]] = {
+_FILE_MAGIC_BYTES: Dict[str, List[bytes]] = {
     # .docx / .xlsx 本质是 ZIP 容器，魔数为 PK\x03\x04
     ".docx": [b"PK\x03\x04"],
     ".xlsx": [b"PK\x03\x04"],

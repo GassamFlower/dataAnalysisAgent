@@ -1,6 +1,6 @@
 """埋点相关 Schema。"""
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,7 +25,7 @@ class MetricsQueryRequest(BaseModel):
     """指标查询请求。"""
     start_date: Optional[datetime] = Field(None, description="开始时间")
     end_date: Optional[datetime] = Field(None, description="结束时间")
-    event_types: Optional[list[str]] = Field(None, description="事件类型列表")
+    event_types: Optional[List[str]] = Field(None, description="事件类型列表")
 
 
 class DailyMetrics(BaseModel):
@@ -50,6 +50,6 @@ class ConversionMetrics(BaseModel):
 
 class MetricsResponse(BaseModel):
     """指标查询响应。"""
-    daily: list[DailyMetrics] = []
+    daily: List[DailyMetrics] = []
     conversion: ConversionMetrics = ConversionMetrics()
     period_days: int = 7
