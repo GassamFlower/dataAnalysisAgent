@@ -23,6 +23,8 @@ import { Watermark } from "@/components/common/watermark";
 import { SimulationReportBanner } from "@/components/compliance/simulation-report-banner";
 import { Disclaimer } from "@/components/compliance/disclaimer";
 import { DataSourceConfirmDialog } from "@/components/compliance/data-source-confirm-dialog";
+import { MetricTooltip } from "@/components/tutorial/MetricTooltip";
+import { OnboardingTour } from "@/components/tutorial/OnboardingTour";
 import { toast } from "@/components/ui/toaster";
 import { useReport, useAnalyzeReport, useExportReport } from "@/lib/hooks/use-report";
 import { useSimulation } from "@/lib/hooks/use-simulation";
@@ -259,6 +261,7 @@ export default function ReportPage({
             value={overallAlpha}
             threshold="≥ 0.700"
             passed={overallAlpha >= 0.7}
+            tooltipType="alpha"
           />
           <StatCard
             label="达标维度"
@@ -271,6 +274,7 @@ export default function ReportPage({
             value={report?.sampleSize ? String(report.sampleSize) : "—"}
             threshold="≥ 100"
             passed={report?.sampleSize ? report.sampleSize >= 100 : false}
+            tooltipType="sample_size"
           />
         </div>
       </section>
@@ -289,8 +293,9 @@ export default function ReportPage({
       {/* 相关矩阵热力图（来自模拟阶段保存的矩阵） */}
       {simulationData?.matrix && simulationData.matrix.cells?.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-1 text-h2 font-semibold text-ink-900">
+          <h2 className="mb-1 flex items-center gap-2 text-h2 font-semibold text-ink-900">
             相关矩阵
+            <MetricTooltip metricType="correlation" />
           </h2>
           <p className="mb-4 text-body text-ink-500">
             模拟阶段生成 / 用户编辑的相关系数矩阵。颜色越深表示相关性越强，砖红为正相关，橄榄为负相关。
@@ -317,8 +322,9 @@ export default function ReportPage({
 
       {/* 差异检验（假设路径验证，对应架构文档 9.6 决策树） */}
       <section className="mb-8">
-        <h2 className="mb-4 text-h2 font-semibold text-ink-900">
+        <h2 className="mb-4 flex items-center gap-2 text-h2 font-semibold text-ink-900">
           假设检验（差异分析）
+          <MetricTooltip metricType="diff_test" />
         </h2>
         <p className="mb-3 text-body text-ink-500">
           按假设路径自动选择检验方法（t检验/ANOVA/卡方/Pearson/回归），结果实时计算，不落库。
@@ -331,8 +337,9 @@ export default function ReportPage({
 
       {/* R4 诊断 */}
       <section className="mb-8">
-        <h2 className="mb-4 text-h2 font-semibold text-ink-900">
+        <h2 className="mb-4 flex items-center gap-2 text-h2 font-semibold text-ink-900">
           R4 智能诊断
+          <MetricTooltip metricType="diagnosis" />
         </h2>
         <DiagnosisAlert diagnosis={diagnosis} />
       </section>
@@ -376,6 +383,9 @@ export default function ReportPage({
         }}
         projectMode={project?.mode}
       />
+
+      {/* 新手引导 */}
+      <OnboardingTour projectId={params.id} />
     </div>
   );
 }

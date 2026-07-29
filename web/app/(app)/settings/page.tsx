@@ -18,7 +18,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/toaster";
-import { Loader2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { useResetTutorialProgress } from "@/lib/hooks/use-tutorial";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -46,6 +47,9 @@ export default function SettingsPage() {
 
   // 上传头像
   const uploadAvatar = useUploadAvatar();
+
+  // 重置引导进度
+  const resetTutorialProgress = useResetTutorialProgress();
 
   const handleUpdateNickname = async () => {
     if (!nickname.trim()) {
@@ -140,6 +144,15 @@ export default function SettingsPage() {
   const handleLogout = () => {
     logout();
     router.push("/");
+  };
+
+  const handleResetTutorial = async () => {
+    try {
+      await resetTutorialProgress.mutateAsync();
+      toast.success("引导进度已重置，下次进入项目时会重新播放");
+    } catch (err: any) {
+      toast.error(err.message || "重置失败，请重试");
+    }
   };
 
   if (isLoading) {
@@ -360,6 +373,27 @@ export default function SettingsPage() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* 新手引导 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>新手引导</CardTitle>
+          <CardDescription>重新播放渔宴数据分析的新手引导</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            onClick={handleResetTutorial}
+            disabled={resetTutorialProgress.isPending}
+          >
+            {resetTutorialProgress.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            <RotateCcw className="mr-2 h-4 w-4" />
+            重新播放引导
+          </Button>
         </CardContent>
       </Card>
 

@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MetricTooltip } from "@/components/tutorial/MetricTooltip";
 import type { ReliabilityResult } from "@/types";
 
 /**
@@ -21,9 +22,24 @@ export function ReliabilityTable({ results }: { results: ReliabilityResult[] }) 
         <TableHeader>
           <TableRow className="bg-cream-surface hover:bg-cream-surface">
             <TableHead>维度</TableHead>
-            <TableHead className="text-right">Cronbach&apos;s α</TableHead>
-            <TableHead className="text-right">KMO</TableHead>
-            <TableHead className="text-right">Bartlett p</TableHead>
+            <TableHead className="text-right">
+              <span className="inline-flex items-center gap-1">
+                Cronbach&apos;s α
+                <MetricTooltip metricType="alpha" />
+              </span>
+            </TableHead>
+            <TableHead className="text-right">
+              <span className="inline-flex items-center gap-1">
+                KMO
+                <MetricTooltip metricType="kmo" />
+              </span>
+            </TableHead>
+            <TableHead className="text-right">
+              <span className="inline-flex items-center gap-1">
+                Bartlett p
+                <MetricTooltip metricType="bartlett" />
+              </span>
+            </TableHead>
             <TableHead className="w-24 text-center">达标</TableHead>
           </TableRow>
         </TableHeader>

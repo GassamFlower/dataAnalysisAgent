@@ -1,3 +1,4 @@
+import { MetricTooltip } from "@/components/tutorial/MetricTooltip";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -10,16 +11,22 @@ export function StatCard({
   unit,
   threshold,
   passed = true,
+  tooltipType,
 }: {
   label: string;
   value: number | string;
   unit?: string;
   threshold?: string;
   passed?: boolean;
+  /** 指标解读类型（与 tutorial_service.py 中 METRIC_TOOLTIPS 的 key 对应） */
+  tooltipType?: string;
 }) {
   return (
     <Card className="p-5">
-      <div className="text-caption text-ink-500">{label}</div>
+      <div className="flex items-center gap-1.5 text-caption text-ink-500">
+        {label}
+        {tooltipType ? <MetricTooltip metricType={tooltipType} /> : null}
+      </div>
       <div className="mt-2 flex items-baseline gap-1">
         <span
           className={cn(

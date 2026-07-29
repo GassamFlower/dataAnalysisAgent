@@ -85,6 +85,23 @@ async def get_current_user(
     }
 
 
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[dict]:
+    """可选认证：无 token 返回 None，有 token 返回用户信息。
+
+    用于公开端点（如教程文章），未登录用户可访问已发布内容，
+    管理员登录后可查看未发布内容。
+    """
+    if not credentials:
+        return None
+    try:
+        return await get_current_user(credentials, db)
+    except UnauthorizedException:
+        return None
+
+
 async def require_paid_plan(user: dict = Depends(get_current_user)) -> dict:
     """要求付费套餐（single / subscription）。
 
