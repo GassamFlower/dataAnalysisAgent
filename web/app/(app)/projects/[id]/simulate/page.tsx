@@ -19,6 +19,9 @@ import { EmptyState } from "@/components/common/empty-state";
 import { PaidActionGuard } from "@/components/common/paid-action-guard";
 import { SimulationCommitmentDialog } from "@/components/compliance/simulation-commitment-dialog";
 import { DataSourceConfirmDialog } from "@/components/compliance/data-source-confirm-dialog";
+import { ModeToggle } from "@/components/dataset/mode-toggle";
+import { RealDataImporter } from "@/components/dataset/real-data-importer";
+import { RealDataPreview } from "@/components/dataset/real-data-preview";
 import { toast } from "@/components/ui/toaster";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useSimulationStore } from "@/lib/stores/simulation-store";
@@ -30,6 +33,8 @@ import {
   useExportDataset,
 } from "@/lib/hooks/use-simulation";
 import { useProject } from "@/lib/hooks/use-project";
+import { useDataset } from "@/lib/hooks/use-dataset";
+import type { DatasetInfo } from "@/lib/hooks/use-dataset";
 import {
   useSimulationDisclaimerCheck,
   useConfirmSimulationDisclaimer,
@@ -55,10 +60,13 @@ export default function SimulatePage({
   const [localMatrix, setLocalMatrix] = useState<Matrix | null>(null);
   const [showCommitmentDialog, setShowCommitmentDialog] = useState(false);
   const [showDataSourceDialog, setShowDataSourceDialog] = useState(false);
+  const [activeMode, setActiveMode] = useState<"real" | "simulation">("simulation");
+  const [importedDataset, setImportedDataset] = useState<DatasetInfo | null>(null);
 
   // 查询项目、已生成的矩阵 + 已保存假设
   const { data: project } = useProject(params.id);
   const { data: simulationData, isLoading, error, refetch } = useSimulation(params.id);
+  const { data: latestDataset } = useDataset(params.id);
   const parseHypothesisMutation = useParseHypothesis();
   const generateMutation = useGenerateSimulation();
   const saveMatrixMutation = useSaveMatrix();
@@ -75,6 +83,20 @@ export default function SimulatePage({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, []);
+
+  // 根据项目 mode 初始化/同步当前 Tab
+  useEffect(() => {
+    if (project?.mode) {
+      setActiveMode(project.mode);
+    }
+  }, [project?.mode]);
+
+  // 已导入真实数据时展示预览
+  useEffect(() => {
+    if (latestDataset?.source === "real") {
+      setImportedDataset(latestDataset);
+    }
+  }, [latestDataset]);
 
   /** debounce 保存矩阵到后端 */
   const debouncedSaveMatrix = (matrixToSave: Matrix) => {
@@ -284,8 +306,12 @@ export default function SimulatePage({
       <StepNav projectId={params.id} current="simulate" />
 
       <PageHeader
-        title="数据预演"
-        description="用一句话描述假设，系统补全相关矩阵并透明展示，可自由编辑。"
+        title="数据准备"
+        description={
+          activeMode === "real"
+            ? "上传真实回收的问卷数据，经校验后用于统计分析与报告生成。"
+            : "用一句话描述假设，系统补全相关矩阵并透明展示，可自由编辑。"
+        }
         actions={
           <Button asChild>
             <Link href={`/projects/${params.id}/report`}>
@@ -296,120 +322,138 @@ export default function SimulatePage({
         }
       />
 
-      <Watermark className="mb-4" />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <ModeToggle mode={activeMode} onModeChange={setActiveMode} />
+        {activeMode === "simulation" && <Watermark />}
+      </div>
 
-      <div className="space-y-6">
-        {/* 步骤 1：假设输入（A 体验） */}
-        <Card className="p-6">
-          <div className="mb-1 flex items-center gap-2 text-caption font-medium text-ink-400">
-            <span>步骤 1</span>
-          </div>
-          <h3 className="text-h3 font-semibold text-ink-900">描述研究假设</h3>
-          <div className="mt-4">
-            <HypothesisInput
-              value={hypothesisText}
-              onChange={setHypothesisText}
-              parsing={parseHypothesisMutation.isPending}
-              onParse={handleParse}
-            />
-            {parseError && (
-              <p className="mt-2 text-caption text-error">{parseError}</p>
-            )}
-            <HypothesisPathList
-              paths={paths}
-              onStrengthChange={(idx, strength) =>
-                setPaths(paths.map((p, i) => (i === idx ? { ...p, strength } : p)))
-              }
-              onDirectionChange={(idx, direction) =>
-                setPaths(paths.map((p, i) => (i === idx ? { ...p, direction } : p)))
-              }
-              onDelete={(idx) => setPaths(paths.filter((_, i) => i !== idx))}
-              onAdd={(path) => setPaths([...paths, path])}
-              dimensions={
-                matrix?.dimensions ??
-                Array.from(new Set(paths.flatMap((p) => [p.predictor, p.outcome])))
-              }
-            />
-          </div>
-        </Card>
-
-        {/* 步骤 2：相关矩阵（C 底层 + 透明展示） */}
-        <Card className="p-6">
-          <div className="mb-1 text-caption font-medium text-ink-400">
-            步骤 2
-          </div>
-          <h3 className="text-h3 font-semibold text-ink-900">
-            相关矩阵（可编辑）
-          </h3>
-          <p className="mt-1 text-body text-ink-500">
-            假设路径标为【用户假设】，其余为【系统补全】，可逐项调整。
-          </p>
-          <div className="mt-4">
-            {hasMatrix ? (
-              <CorrelationMatrix
-                matrix={matrix}
-                onCellClick={
-                  generateMutation.isPending ? undefined : handleCellClick
+      {activeMode === "real" ? (
+        importedDataset ? (
+          <RealDataPreview projectId={params.id} dataset={importedDataset} />
+        ) : (
+          <RealDataImporter
+            projectId={params.id}
+            userPlan={userPlan}
+            onImportSuccess={(data) => {
+              setImportedDataset(data);
+              setActiveMode("real");
+            }}
+          />
+        )
+      ) : (
+        <div className="space-y-6">
+          {/* 步骤 1：假设输入（A 体验） */}
+          <Card className="p-6">
+            <div className="mb-1 flex items-center gap-2 text-caption font-medium text-ink-400">
+              <span>步骤 1</span>
+            </div>
+            <h3 className="text-h3 font-semibold text-ink-900">描述研究假设</h3>
+            <div className="mt-4">
+              <HypothesisInput
+                value={hypothesisText}
+                onChange={setHypothesisText}
+                parsing={parseHypothesisMutation.isPending}
+                onParse={handleParse}
+              />
+              {parseError && (
+                <p className="mt-2 text-caption text-error">{parseError}</p>
+              )}
+              <HypothesisPathList
+                paths={paths}
+                onStrengthChange={(idx, strength) =>
+                  setPaths(paths.map((p, i) => (i === idx ? { ...p, strength } : p)))
                 }
-                onCellChange={
-                  generateMutation.isPending ? undefined : handleCellChange
+                onDirectionChange={(idx, direction) =>
+                  setPaths(paths.map((p, i) => (i === idx ? { ...p, direction } : p)))
+                }
+                onDelete={(idx) => setPaths(paths.filter((_, i) => i !== idx))}
+                onAdd={(path) => setPaths([...paths, path])}
+                dimensions={
+                  matrix?.dimensions ??
+                  Array.from(new Set(paths.flatMap((p) => [p.predictor, p.outcome])))
                 }
               />
-            ) : (
-              <EmptyState
-                title="暂无相关矩阵"
-                description="请先输入假设并生成数据"
-              />
-            )}
-          </div>
-        </Card>
+            </div>
+          </Card>
 
-        {/* 步骤 3：样本量 + 生成 */}
-        <Card className="p-6">
-          <div className="mb-1 text-caption font-medium text-ink-400">
-            步骤 3
-          </div>
-          <h3 className="text-h3 font-semibold text-ink-900">样本量与生成</h3>
-          <div className="mt-4 max-w-md">
-            <SampleSizeInput value={sampleSize} onChange={setSampleSize} />
-          </div>
-          <div className="mt-6 flex items-center justify-end gap-3">
-            {hasMatrix && (
-              <PaidActionGuard plan={userPlan} actionType="export">
+          {/* 步骤 2：相关矩阵（C 底层 + 透明展示） */}
+          <Card className="p-6">
+            <div className="mb-1 text-caption font-medium text-ink-400">
+              步骤 2
+            </div>
+            <h3 className="text-h3 font-semibold text-ink-900">
+              相关矩阵（可编辑）
+            </h3>
+            <p className="mt-1 text-body text-ink-500">
+              假设路径标为【用户假设】，其余为【系统补全】，可逐项调整。
+            </p>
+            <div className="mt-4">
+              {hasMatrix ? (
+                <CorrelationMatrix
+                  matrix={matrix}
+                  onCellClick={
+                    generateMutation.isPending ? undefined : handleCellClick
+                  }
+                  onCellChange={
+                    generateMutation.isPending ? undefined : handleCellChange
+                  }
+                />
+              ) : (
+                <EmptyState
+                  title="暂无相关矩阵"
+                  description="请先输入假设并生成数据"
+                />
+              )}
+            </div>
+          </Card>
+
+          {/* 步骤 3：样本量 + 生成 */}
+          <Card className="p-6">
+            <div className="mb-1 text-caption font-medium text-ink-400">
+              步骤 3
+            </div>
+            <h3 className="text-h3 font-semibold text-ink-900">样本量与生成</h3>
+            <div className="mt-4 max-w-md">
+              <SampleSizeInput value={sampleSize} onChange={setSampleSize} />
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              {hasMatrix && (
+                <PaidActionGuard plan={userPlan} actionType="export">
+                  <Button
+                    variant="outline"
+                    onClick={handleExportDatasetClick}
+                    disabled={exportDatasetMutation.isPending}
+                  >
+                    {exportDatasetMutation.isPending ? (
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-1.5 h-4 w-4" />
+                    )}
+                    {exportDatasetMutation.isPending ? "导出中..." : "导出数据集"}
+                  </Button>
+                </PaidActionGuard>
+              )}
+              <PaidActionGuard plan={userPlan} actionType="simulation">
                 <Button
-                  variant="outline"
-                  onClick={handleExportDatasetClick}
-                  disabled={exportDatasetMutation.isPending}
+                  size="lg"
+                  onClick={handleGenerate}
+                  disabled={generateMutation.isPending || paths.length === 0}
                 >
-                  {exportDatasetMutation.isPending ? (
-                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-1.5 h-4 w-4" />
-                  )}
-                  {exportDatasetMutation.isPending ? "导出中..." : "导出数据集"}
+                  <Play className="mr-1.5 h-4 w-4" />
+                  {generateMutation.isPending
+                    ? "生成中..."
+                    : `生成模拟数据（${sampleSize} 份）`}
                 </Button>
               </PaidActionGuard>
+            </div>
+            {generateMutation.isError && (
+              <p className="mt-2 text-caption text-error">
+                生成失败：{generateMutation.error.message}
+              </p>
             )}
-            <PaidActionGuard plan={userPlan} actionType="simulation">
-              <Button
-                size="lg"
-                onClick={handleGenerate}
-                disabled={generateMutation.isPending || paths.length === 0}
-              >
-                <Play className="mr-1.5 h-4 w-4" />
-                {generateMutation.isPending
-                  ? "生成中..."
-                  : `生成模拟数据（${sampleSize} 份）`}
-              </Button>
-            </PaidActionGuard>
-          </div>
-          {generateMutation.isError && (
-            <p className="mt-2 text-caption text-error">
-              生成失败：{generateMutation.error.message}
-            </p>
-          )}
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
 
       {/* 模拟数据承诺框 */}
       <SimulationCommitmentDialog

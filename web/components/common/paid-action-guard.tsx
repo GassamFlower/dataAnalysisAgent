@@ -17,8 +17,8 @@ import { useQuota } from "@/lib/hooks/use-payment";
 interface PaidActionGuardProps {
   /** 当前用户套餐：free / single / subscription */
   plan: string;
-  /** 付费操作类型：simulation / export / analysis */
-  actionType?: "simulation" | "export" | "analysis";
+  /** 付费操作类型：simulation / export / analysis / data_import */
+  actionType?: "simulation" | "export" | "analysis" | "data_import";
   /** 付费操作触发按钮或任意可点击元素 */
   children: React.ReactElement;
   /** 弹窗标题，默认"解锁此功能" */
@@ -31,6 +31,7 @@ const ACTION_LABELS: Record<string, string> = {
   simulation: "模拟生成",
   export: "数据导出",
   analysis: "分析报告",
+  data_import: "数据导入",
 };
 
 /**

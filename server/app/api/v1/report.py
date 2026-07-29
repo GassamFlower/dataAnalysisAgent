@@ -86,15 +86,28 @@ def _build_report_response(
 
 
 async def _get_sample_size(db: AsyncSession, project_id: UUID) -> Optional[int]:
-    """从 SimulationConfig 查询样本量（不落库到 Report，实时注入）。"""
+    """查询样本量（不落库到 Report，实时注入）。
+
+    真实数据项目从最新 Dataset 读取；模拟数据项目从 SimulationConfig 读取。
+    """
+    from app.models.dataset import Dataset
+    result = await db.execute(
+        select(Dataset)
+        .where(Dataset.project_id == project_id)
+        .order_by(Dataset.created_at.desc())
+        .limit(1)
+    )
+    dataset = result.scalar_one_or_none()
+    if dataset and dataset.source == "real":
+        return dataset.sample_size
+
     result = await db.execute(
         select(SimulationConfig.sample_size)
         .where(SimulationConfig.project_id == project_id)
         .order_by(SimulationConfig.created_at.desc())
         .limit(1)
     )
-    row = result.scalar_one_or_none()
-    return row
+    return result.scalar_one_or_none()
 
 
 @router.get(
@@ -154,27 +167,27 @@ async def analyze(
 ):
     """跑标准统计套餐 + R4 诊断结论。"""
     # 0. 校验并扣减免费额度
-    await check_and_consume_quota(db, current_user["id"], "analysis", current_user["plan"])
+    await check_and_consume_quota(
+        db,
+        current_user["id"],
+        "analysis",
+        current_user["plan"],
+        current_user.get("plan_expires_at"),
+    )
 
     # 1. 验证项目存在且属于当前用户（含软删除过滤）
     project = await get_owned_project(db, project_id, current_user["id"])
 
-    # 2. 验证项目状态为 simulated
-    if project.status != "simulated":
-        raise ValidationException("项目状态不正确，请先完成数据生成")
+    # 2. 验证项目状态（真实数据：inspected / analyzed；模拟数据：simulated）
+    is_real = project.mode == "real"
+    if is_real:
+        if project.status not in ("inspected", "analyzed"):
+            raise ValidationException("项目状态不正确，请先完成题目体检并导入真实数据")
+    else:
+        if project.status != "simulated":
+            raise ValidationException("项目状态不正确，请先完成数据生成")
 
-    # 3. 获取最新模拟配置
-    result = await db.execute(
-        select(SimulationConfig)
-        .where(SimulationConfig.project_id == project_id)
-        .order_by(SimulationConfig.created_at.desc())
-        .limit(1)
-    )
-    sim_config = result.scalar_one_or_none()
-    if not sim_config:
-        raise NotFoundException("未找到模拟配置")
-
-    # 4. 获取维度列表
+    # 3. 获取维度列表
     result = await db.execute(
         select(Question.dimension)
         .where(Question.project_id == project_id)
@@ -182,7 +195,7 @@ async def analyze(
     )
     dimensions = [row[0] for row in result.all() if row[0]]
 
-    # 5. 获取题目-维度映射
+    # 4. 获取题目-维度映射
     result = await db.execute(
         select(Question).where(Question.project_id == project_id)
     )
@@ -193,65 +206,104 @@ async def analyze(
             dimension_items[q.dimension] = []
         dimension_items[q.dimension].append(f"q{q.index}")
 
-    # 6. 读取生成的数据集（来自 /generate 端点）
+    # 5. 读取数据集并准备题目级 / 维度级 DataFrame
     from app.models.dataset import Dataset
-    result = await db.execute(
-        select(Dataset)
-        .where(Dataset.project_id == project_id)
-        .order_by(Dataset.created_at.desc())
-        .limit(1)
-    )
-    dataset = result.scalar_one_or_none()
-    if not dataset:
-        raise NotFoundException("未找到模拟数据集，请先生成数据")
-
     import pandas as pd
     import numpy as np
-    dim_df = pd.DataFrame(dataset.data, columns=dataset.columns)
 
-    # 7. 展开维度级数据为题目级数据（同维度多题 = 维度值 + 小扰动，保留维度间相关结构）
-    rng = np.random.default_rng(42)
-    data = {}
-    for dim, items in dimension_items.items():
-        if dim in dim_df.columns:
-            base = dim_df[dim].values
-            for item in items:
-                # 题目值 = 维度均值 + 小扰动，clip 到李克特量表范围 [1, 5]
-                noise = rng.normal(0, 0.5, size=len(base))
-                data[item] = np.clip(np.round(base + noise), 1, 5).astype(int)
-        else:
-            # 兜底：维度缺失时用维度均值基线生成
-            base = dim_df.iloc[:, 0].values if not dim_df.empty else np.ones(sim_config.sample_size) * 3
-            for item in items:
-                data[item] = rng.integers(1, 6, size=len(base))
-    df = pd.DataFrame(data)
+    sim_config = None
+    if is_real:
+        result = await db.execute(
+            select(Dataset)
+            .where(Dataset.project_id == project_id, Dataset.source == "real")
+            .order_by(Dataset.created_at.desc())
+            .limit(1)
+        )
+        dataset = result.scalar_one_or_none()
+        if not dataset:
+            raise NotFoundException("未找到真实数据集，请先导入数据")
 
-    # 8. 调用统计分析服务
+        # 真实数据已是题目级（列名为 q{index}），导入时已完成反向计分
+        df = pd.DataFrame(dataset.data, columns=dataset.columns)
+
+        # 差异检验使用维度均值
+        dim_data = {}
+        for dim, items in dimension_items.items():
+            valid_items = [item for item in items if item in df.columns]
+            if valid_items:
+                dim_data[dim] = df[valid_items].mean(axis=1)
+        dim_df = pd.DataFrame(dim_data)
+
+        sample_size = dataset.sample_size
+        reverse_scored = True
+    else:
+        # 模拟数据：获取最新模拟配置
+        result = await db.execute(
+            select(SimulationConfig)
+            .where(SimulationConfig.project_id == project_id)
+            .order_by(SimulationConfig.created_at.desc())
+            .limit(1)
+        )
+        sim_config = result.scalar_one_or_none()
+        if not sim_config:
+            raise NotFoundException("未找到模拟配置")
+
+        result = await db.execute(
+            select(Dataset)
+            .where(Dataset.project_id == project_id)
+            .order_by(Dataset.created_at.desc())
+            .limit(1)
+        )
+        dataset = result.scalar_one_or_none()
+        if not dataset:
+            raise NotFoundException("未找到模拟数据集，请先生成数据")
+
+        dim_df = pd.DataFrame(dataset.data, columns=dataset.columns)
+
+        # 展开维度级数据为题目级数据（同维度多题 = 维度值 + 小扰动）
+        rng = np.random.default_rng(42)
+        data = {}
+        for dim, items in dimension_items.items():
+            if dim in dim_df.columns:
+                base = dim_df[dim].values
+                for item in items:
+                    noise = rng.normal(0, 0.5, size=len(base))
+                    data[item] = np.clip(np.round(base + noise), 1, 5).astype(int)
+            else:
+                base = dim_df.iloc[:, 0].values if not dim_df.empty else np.ones(sim_config.sample_size) * 3
+                for item in items:
+                    data[item] = rng.integers(1, 6, size=len(base))
+        df = pd.DataFrame(data)
+
+        sample_size = sim_config.sample_size
+        reverse_scored = False
+
+    # 6. 调用统计分析服务
     from app.services.stats import analyze_reliability
     reliability_results = analyze_reliability(df, dimensions, dimension_items)
 
-    # 8b. 计算差异检验（不落库，按假设路径实时计算，对应架构文档 9.6）
-    #     提前计算以便诊断时检测回归翻车点（R11~R14）
+    # 7. 计算差异检验（不落库，按假设路径实时计算，对应架构文档 9.6）
     diff_tests = await _compute_diff_tests(db, project_id, dim_df)
 
-    # 9. 调用诊断服务（传入 project_meta 供信效度翻车点匹配，传入 diff_tests 供回归翻车点匹配）
+    # 8. 调用诊断服务
     from app.services.diagnoser import diagnose
     project_meta = {
-        "sample_size": sim_config.sample_size,
+        "sample_size": sample_size,
         "dimension_count": len(dimensions),
         "has_reverse_items": any(getattr(q, "is_reverse", False) for q in questions),
-        "reverse_scored": False,  # 当前模拟数据路径未做反向计分
+        "reverse_scored": reverse_scored,
     }
     diagnosis_result = diagnose(
         reliability_results, project_meta, diff_tests=diff_tests
     )
 
-    # 10. 保存报告
+    # 9. 保存报告
     overall_alpha = sum(r["alpha"] for r in reliability_results) / len(reliability_results) if reliability_results else 0
     passed_count = sum(1 for r in reliability_results if r["passed"])
 
     report = Report(
         project_id=project_id,
+        dataset_id=dataset.id,
         overall_alpha=overall_alpha,
         passed_count=passed_count,
         total_count=len(reliability_results)
@@ -259,7 +311,7 @@ async def analyze(
     db.add(report)
     await db.flush()
 
-    # 11. 保存信效度结果
+    # 10. 保存信效度结果
     for r in reliability_results:
         reliability_result = ReliabilityResult(
             report_id=report.id,
@@ -271,7 +323,7 @@ async def analyze(
         )
         db.add(reliability_result)
 
-    # 12. 保存诊断结果
+    # 11. 保存诊断结果
     diagnosis = Diagnosis(
         report_id=report.id,
         passed=diagnosis_result["passed"]
@@ -280,8 +332,6 @@ async def analyze(
     await db.flush()
 
     for issue in diagnosis_result.get("issues", []):
-        # 规则级翻车点（如反向题未反转）不绑定具体数值，value/threshold 为 None；
-        # DB 字段 NOT NULL，此处统一兜底为 0（metric/reason 文本已说明性质）
         raw_value = issue.get("value")
         raw_threshold = issue.get("threshold")
         try:
@@ -303,10 +353,10 @@ async def analyze(
         )
         db.add(diagnosis_issue)
 
-    # 13. 更新项目状态
+    # 12. 更新项目状态
     update_project_status(project, "analyzed", reason="报告分析完成")
 
-    # 13.5 记录审计日志
+    # 13. 记录审计日志
     await AuditService.log_action(
         db=db,
         user_id=current_user["id"],
@@ -317,6 +367,8 @@ async def analyze(
             "passed_count": passed_count,
             "total_count": len(reliability_results),
             "diagnosis_passed": diagnosis_result["passed"],
+            "mode": project.mode,
+            "dataset_id": str(dataset.id),
         },
         ip_address=http_request.client.host if http_request.client else None,
         user_agent=http_request.headers.get("user-agent"),
@@ -324,7 +376,7 @@ async def analyze(
 
     await db.flush()
 
-    # 14. 返回报告 + 差异检验（diff_tests 已在步骤 8b 计算，显式加载关系）
+    # 14. 返回报告 + 差异检验
     from sqlalchemy.orm import selectinload
     result = await db.execute(
         select(Report)
@@ -335,9 +387,6 @@ async def analyze(
         .where(Report.id == report.id)
     )
     report = result.scalar_one()
-
-    # 查询样本量（与 get_report 保持一致）
-    sample_size = await _get_sample_size(db, project_id)
 
     return ResponseModel(data=_build_report_response(report, diff_tests, sample_size))
 
@@ -356,7 +405,13 @@ async def export(
 ):
     """导出报告（word / excel），含 simulated 水印。"""
     # 0. 校验并扣减免费额度
-    await check_and_consume_quota(db, current_user["id"], "export", current_user["plan"])
+    await check_and_consume_quota(
+        db,
+        current_user["id"],
+        "export",
+        current_user["plan"],
+        current_user.get("plan_expires_at"),
+    )
 
     # 1. 加载报告及关联数据
     from sqlalchemy.orm import selectinload

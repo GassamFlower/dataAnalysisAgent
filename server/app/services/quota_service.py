@@ -18,6 +18,7 @@ FREE_LIMITS = {
     "simulation": 6,
     "export": 6,
     "analysis": 6,
+    "data_import": 6,
 }
 
 
@@ -45,18 +46,30 @@ async def check_and_consume_quota(
     user_id: uuid.UUID,
     action_type: str,
     plan: str,
+    plan_expires_at: Optional[datetime] = None,
 ) -> None:
     """校验并扣减免费额度（原子操作）。
 
-    付费用户直接放行。免费用户校验周用量，超限抛出 ForbiddenException，
-    未超限则立即扣减。
+    付费用户直接放行（但会校验套餐是否过期）。免费用户校验周用量，超限抛出
+    ForbiddenException，未超限则立即扣减。
 
     Args:
         db: 数据库会话
         user_id: 用户 ID
-        action_type: 操作类型（simulation/export/analysis）
+        action_type: 操作类型（simulation/export/analysis/data_import）
         plan: 用户套餐（free/single/subscription）
+        plan_expires_at: 套餐过期时间（可选）
     """
+    # 所有套餐均需校验是否过期
+    if plan_expires_at and plan_expires_at < datetime.now(timezone.utc):
+        raise ForbiddenException(
+            "套餐已过期，请续费",
+            details={
+                "plan": plan,
+                "plan_expires_at": plan_expires_at.isoformat(),
+            },
+        )
+
     if plan != "free":
         return
 

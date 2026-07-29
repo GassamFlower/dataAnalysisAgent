@@ -44,6 +44,8 @@ from app.models.llm_config import LlmConfig
 from app.models.user_quota import UserQuota
 from app.models.user_agreements import UserAgreement
 from app.models.audit_logs import AuditLog
+from app.models.user_tutorial_progress import UserTutorialProgress
+from app.models.tutorial_article import TutorialArticle
 
 __all__ = [
     "Base",
@@ -64,4 +66,6 @@ __all__ = [
     "UserQuota",
     "UserAgreement",
     "AuditLog",
+    "UserTutorialProgress",
+    "TutorialArticle",
 ]
