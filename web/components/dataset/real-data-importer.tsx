@@ -21,7 +21,7 @@ interface RealDataImporterProps {
   onImportSuccess?: (data: DatasetImportResult) => void;
 }
 
-const ALLOWED_EXTENSIONS = [".csv", ".xlsx"];
+const ALLOWED_EXTENSIONS = [".csv", ".xlsx", ".sav"];
 
 /**
  * 真实回收数据导入组件。
@@ -64,7 +64,7 @@ export function RealDataImporter({
   const validateFile = (selectedFile: File): boolean => {
     const ext = selectedFile.name.slice(selectedFile.name.lastIndexOf(".")).toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      toast.error("仅支持 .csv 或 .xlsx 文件");
+      toast.error("仅支持 .csv / .xlsx / .sav 文件");
       return false;
     }
     if (selectedFile.size > 10 * 1024 * 1024) {
@@ -217,14 +217,14 @@ export function RealDataImporter({
                 点击选择
                 <input
                   type="file"
-                  accept=".csv,.xlsx"
+                  accept=".csv,.xlsx,.sav"
                   className="sr-only"
                   onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                 />
               </label>
             </p>
             <p className="mt-1 text-caption text-ink-400">
-              支持 .csv / .xlsx，文件大小不超过 10MB
+              支持 .csv / .xlsx / .sav（SPSS），文件大小不超过 10MB
             </p>
           </div>
 

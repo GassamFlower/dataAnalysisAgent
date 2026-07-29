@@ -73,4 +73,46 @@ export const questionnaireApi = {
     }
     return json as { text: string };
   },
+
+  /** 导入问卷星导出文件（Excel/Word），自动解析题目、选项、维度 */
+  wjxImport: async (
+    projectId: string,
+    file: File
+  ): Promise<{
+    questions: unknown[];
+    dimensions: string[];
+    warnings: string[];
+    question_count: number;
+    dimension_count: number;
+  }> => {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+
+    const headers: Record<string, string> = {};
+    const accessToken = useAuthStore.getState().accessToken;
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+
+    const res = await fetch(
+      `${API_BASE}/api/questionnaire/wjx-import/${projectId}`,
+      {
+        method: "POST",
+        headers,
+        body: formData,
+      }
+    );
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(json.message ?? `问卷星导入失败（${res.status}）`);
+    }
+    return json.data as {
+      questions: unknown[];
+      dimensions: string[];
+      warnings: string[];
+      question_count: number;
+      dimension_count: number;
+    };
+  },
 };

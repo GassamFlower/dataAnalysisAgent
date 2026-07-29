@@ -16,6 +16,7 @@ import { DiffTestTable } from "@/components/report/diff-test-table";
 import { EffectSizeChart } from "@/components/report/effect-size-chart";
 import { DiagnosisAlert } from "@/components/report/diagnosis-alert";
 import { ExportButton } from "@/components/report/export-button";
+import { PolishButton } from "@/components/report/polish-button";
 import { PaidActionGuard } from "@/components/common/paid-action-guard";
 import { ErrorState } from "@/components/common/error-state";
 import { LoadingState } from "@/components/common/loading-state";
@@ -283,9 +284,18 @@ export default function ReportPage({
 
       {/* 信效度表 */}
       <section className="mb-8">
-        <h2 className="mb-4 text-h2 font-semibold text-ink-900">
-          各维度信效度
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-h2 font-semibold text-ink-900">
+            各维度信效度
+          </h2>
+          {report?.id && (
+            <PolishButton
+              reportId={String(report.id)}
+              section="reliability"
+              report={report}
+            />
+          )}
+        </div>
         <div className="mb-4">
           <ReliabilityChart results={reliability} />
         </div>
@@ -295,10 +305,19 @@ export default function ReportPage({
       {/* 相关矩阵热力图（来自模拟阶段保存的矩阵） */}
       {simulationData?.matrix && simulationData.matrix.cells?.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-1 flex items-center gap-2 text-h2 font-semibold text-ink-900">
-            相关矩阵
-            <MetricTooltip metricType="correlation" />
-          </h2>
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-h2 font-semibold text-ink-900">
+              相关矩阵
+              <MetricTooltip metricType="correlation" />
+            </h2>
+            {report?.id && (
+              <PolishButton
+                reportId={String(report.id)}
+                section="correlation"
+                report={report}
+              />
+            )}
+          </div>
           <p className="mb-4 text-body text-ink-500">
             模拟阶段生成 / 用户编辑的相关系数矩阵。颜色越深表示相关性越强，砖红为正相关，橄榄为负相关。
           </p>
@@ -324,10 +343,19 @@ export default function ReportPage({
 
       {/* 差异检验（假设路径验证，对应架构文档 9.6 决策树） */}
       <section className="mb-8">
-        <h2 className="mb-4 flex items-center gap-2 text-h2 font-semibold text-ink-900">
-          假设检验（差异分析）
-          <MetricTooltip metricType="diff_test" />
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-h2 font-semibold text-ink-900">
+            假设检验（差异分析）
+            <MetricTooltip metricType="diff_test" />
+          </h2>
+          {report?.id && (
+            <PolishButton
+              reportId={String(report.id)}
+              section="diff_test"
+              report={report}
+            />
+          )}
+        </div>
         <p className="mb-3 text-body text-ink-500">
           按假设路径自动选择检验方法（t检验/ANOVA/卡方/Pearson/回归），结果实时计算，不落库。
         </p>
@@ -339,10 +367,19 @@ export default function ReportPage({
 
       {/* R4 诊断 */}
       <section className="mb-8">
-        <h2 className="mb-4 flex items-center gap-2 text-h2 font-semibold text-ink-900">
-          R4 智能诊断
-          <MetricTooltip metricType="diagnosis" />
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-h2 font-semibold text-ink-900">
+            R4 智能诊断
+            <MetricTooltip metricType="diagnosis" />
+          </h2>
+          {report?.id && (
+            <PolishButton
+              reportId={String(report.id)}
+              section="diagnosis"
+              report={report}
+            />
+          )}
+        </div>
         <DiagnosisAlert diagnosis={diagnosis} />
       </section>
 

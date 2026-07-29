@@ -1,15 +1,16 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, FileSpreadsheet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useUploadQuestionnaire } from "@/lib/hooks/use-questionnaire";
+import { WjxImporter } from "./wjx-importer";
 
 /**
  * 题目上传组件（受控）。
- * 支持文件上传（.docx/.txt）或粘贴文本两种方式。
+ * 支持三种方式：粘贴文本 / 上传文档（.docx/.txt/.xlsx/.pdf）/ 问卷星导入。
  * value/onChange 由父组件控制，便于模板填充。
  */
 export function QuestionUploader({
@@ -18,14 +19,17 @@ export function QuestionUploader({
   value,
   onChange,
   disabled,
+  onWjxImportSuccess,
 }: {
   projectId?: string;
   getProjectId?: () => Promise<string>;
   value: string;
   onChange: (text: string) => void;
   disabled?: boolean;
+  /** 问卷星导入成功的回调，由父组件触发跳转或刷新 */
+  onWjxImportSuccess?: () => void;
 }) {
-  const [mode, setMode] = useState<"file" | "paste">("paste");
+  const [mode, setMode] = useState<"file" | "paste" | "wjx">("paste");
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadQuestionnaire();
@@ -78,7 +82,7 @@ export function QuestionUploader({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant={mode === "paste" ? "default" : "outline"}
@@ -99,6 +103,16 @@ export function QuestionUploader({
           <Upload className="mr-1.5 h-4 w-4" />
           上传文档
         </Button>
+        <Button
+          type="button"
+          variant={mode === "wjx" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setMode("wjx")}
+          disabled={disabled || upload.isPending}
+        >
+          <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+          问卷星导入
+        </Button>
       </div>
 
       {mode === "paste" ? (
@@ -113,6 +127,17 @@ export function QuestionUploader({
             className="min-h-[240px] w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground placeholder:text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
+      ) : mode === "wjx" ? (
+        projectId ? (
+          <WjxImporter
+            projectId={projectId}
+            onSuccess={onWjxImportSuccess}
+          />
+        ) : (
+          <div className="rounded-md border border-dashed border-border bg-cream-surface/50 px-6 py-10 text-center text-body text-ink-500">
+            请先创建项目后再使用问卷星导入功能
+          </div>
+        )
       ) : (
         <div className="flex min-h-[240px] flex-col items-center justify-center rounded-md border border-dashed border-border bg-cream-surface/50 px-6 py-10 text-center">
           <input

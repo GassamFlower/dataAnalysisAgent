@@ -45,3 +45,24 @@ export function useExportReport() {
       ),
   });
 }
+
+/**
+ * 报告文字润色（R6）。
+ * 调用 LLM 将指定章节的统计结果转化为论文段落。
+ * 对应后端：POST /api/report/:reportId/polish
+ */
+export function usePolishReport() {
+  return useMutation({
+    mutationFn: (params: {
+      reportId: string;
+      section: "reliability" | "correlation" | "diff_test" | "diagnosis";
+    }) =>
+      apiClient.post<{
+        section: string;
+        text: string;
+        disclaimer: string;
+      }>(`/api/report/${params.reportId}/polish`, {
+        section: params.section,
+      }),
+  });
+}

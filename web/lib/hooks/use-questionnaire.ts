@@ -115,3 +115,22 @@ export function useUploadQuestionnaire() {
       questionnaireApi.upload(params.projectId, params.file),
   });
 }
+
+/** 导入问卷星导出文件（Excel/Word），自动解析题目、选项、维度 */
+export function useWjxImport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { projectId: string; file: File }) =>
+      questionnaireApi.wjxImport(params.projectId, params.file),
+    onSuccess: (_data, variables) => {
+      // 问卷星导入成功后，刷新题目结构和维度列表
+      queryClient.invalidateQueries({
+        queryKey: questionnaireKeys.structure(variables.projectId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: questionnaireKeys.dimensions(variables.projectId),
+      });
+    },
+  });
+}
