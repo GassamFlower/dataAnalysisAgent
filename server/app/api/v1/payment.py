@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import ForbiddenException, NotFoundException, UnauthorizedException
 from app.core.responses import ResponseModel
+from app.core.error_messages import ERR_USER_NOT_FOUND
 from app.models.user import User
 from app.schemas.payment import (
     OrderCreateRequest,
@@ -40,7 +41,7 @@ async def get_subscription(
     """获取当前用户套餐状态。"""
     user = await db.get(User, current_user["id"])
     if not user:
-        raise NotFoundException("用户不存在")
+        raise NotFoundException(ERR_USER_NOT_FOUND)
 
     status = payment_service.get_subscription_status(user)
     return ResponseModel(data=SubscriptionResponse(**status))
@@ -58,7 +59,7 @@ async def get_quota(
     """获取当前用户本周用量额度。"""
     user = await db.get(User, current_user["id"])
     if not user:
-        raise NotFoundException("用户不存在")
+        raise NotFoundException(ERR_USER_NOT_FOUND)
 
     status = payment_service.get_subscription_status(user)
     plan = status.get("plan_type", "free")

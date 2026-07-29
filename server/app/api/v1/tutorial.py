@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_current_user_optional, get_db, require_admin
 from app.core.exceptions import NotFoundException
+from app.core.error_messages import ERR_TUTORIAL_NOT_FOUND
 from app.core.responses import ResponseModel
 from app.schemas.tutorial import (
     MetricTooltipResponse,
@@ -177,7 +178,7 @@ async def get_article(
         db, slug, include_unpublished=is_admin
     )
     if not article:
-        raise NotFoundException("教程不存在")
+        raise NotFoundException(ERR_TUTORIAL_NOT_FOUND)
     return ResponseModel(data=article)
 
 

@@ -7,11 +7,15 @@
 
 注：不含 R4 诊断（诊断在 stats 之后由 diagnoser 触发）。
 """
-import json
 import re
 from typing import List, Dict, Any
 
 from app.services.llm.client import chat_v3
+from app.services.llm.utils import (
+    build_prompt_injection_guard,
+    parse_llm_json_response,
+    wrap_user_input,
+)
 from app.schemas.questionnaire import Question, QuestionnaireStructure
 
 
@@ -54,9 +58,14 @@ def _parse_questions_from_text(text: str) -> List[Dict[str, Any]]:
 
 
 def _build_prompt(questions: List[Dict[str, Any]]) -> str:
-    """构建 LLM 提示词。"""
+    """构建 LLM 提示词。
+
+    N1: 题目原文属不可信用户输入，使用 <user_input> 边界标记包裹，
+    并附加 prompt injection 防御指令。
+    """
     questions_text = '\n'.join([f"{q['index']}. {q['text']}" for q in questions])
-    
+    wrapped = wrap_user_input(questions_text, label="user_questions")
+
     prompt = f"""你是一个问卷分析专家。请分析以下问卷题目，完成以下任务：
 
 1. 识别每道题的题型（likert5/likert7/demographic/other）
@@ -64,8 +73,10 @@ def _build_prompt(questions: List[Dict[str, Any]]) -> str:
 3. 识别反向题（如果有）
 4. 判断维度归属的置信度（high/low）
 
+{build_prompt_injection_guard()}
+
 题目列表：
-{questions_text}
+{wrapped}
 
 请以 JSON 格式返回，结构如下：
 {{
@@ -94,15 +105,12 @@ def _build_prompt(questions: List[Dict[str, Any]]) -> str:
 
 
 def _parse_llm_response(response: str) -> QuestionnaireStructure:
-    """解析 LLM 返回的 JSON。"""
-    # 尝试提取 JSON
-    json_match = re.search(r'\{[\s\S]*\}', response)
-    if not json_match:
-        raise ValueError("无法从 LLM 响应中提取 JSON")
-    
-    json_str = json_match.group(0)
-    data = json.loads(json_str)
-    
+    """解析 LLM 返回的 JSON。
+
+    N6: 使用 llm.utils 中的统一解析函数，避免重复实现。
+    """
+    data = parse_llm_json_response(response)
+
     questions = []
     for q in data.get('questions', []):
         questions.append(Question(
@@ -113,7 +121,7 @@ def _parse_llm_response(response: str) -> QuestionnaireStructure:
             is_reverse=q.get('is_reverse', False),
             confidence=q.get('confidence', 'high')
         ))
-    
+
     return QuestionnaireStructure(
         questions=questions,
         dimensions=data.get('dimensions', []),

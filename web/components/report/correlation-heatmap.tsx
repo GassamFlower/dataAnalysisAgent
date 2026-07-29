@@ -27,21 +27,22 @@ export function CorrelationHeatmap({ matrix }: { matrix: CorrelationMatrix }) {
   const totalWidth = labelWidth + n * cellSize + 20;
   const totalHeight = labelHeight + n * cellSize + 30;
 
-  /** 根据相关值返回颜色（rgba 形式，便于透明度叠加） */
-  const colorFor = (v: number): string => {
+  /** 根据相关值返回颜色对象（fill 用 token，opacity 控制深度） */
+  const colorFor = (v: number): { fill: string; opacity: number } => {
     const abs = Math.abs(v);
-    if (abs < 0.05) return "transparent";
-    // 正相关：砖红 chart-1 (#B85450 近似)，负相关：橄榄 chart-4 (#7A8C5C 近似)
+    if (abs < 0.05) return { fill: "transparent", opacity: 0 };
+    // 正相关：砖红 chart-1，负相关：橄榄 chart-4（颜色取自 design tokens，禁止硬编码）
     const alpha = Math.min(0.15 + abs * 0.85, 0.95);
-    return v > 0
-      ? `rgba(184, 84, 80, ${alpha.toFixed(2)})`
-      : `rgba(122, 140, 92, ${alpha.toFixed(2)})`;
+    return {
+      fill: v > 0 ? "var(--chart-1)" : "var(--chart-4)",
+      opacity: Number(alpha.toFixed(2)),
+    };
   };
 
   /** 文字颜色：背景深时用白，浅时用主色 */
   const textColorFor = (v: number): string => {
     const abs = Math.abs(v);
-    return abs > 0.55 ? "var(--cream)" : "var(--ink-900)";
+    return abs > 0.55 ? "var(--bg-elevated)" : "var(--ink-900)";
   };
 
   return (
@@ -92,7 +93,9 @@ export function CorrelationHeatmap({ matrix }: { matrix: CorrelationMatrix }) {
               const cell = cells[i]?.[j];
               const isDiagonal = i === j;
               const value = cell?.value ?? 0;
-              const fill = isDiagonal ? "var(--cream-muted)" : colorFor(value);
+              const color = isDiagonal
+                ? { fill: "var(--bg-muted)", opacity: 1 }
+                : colorFor(value);
               const textColor = isDiagonal ? "var(--ink-400)" : textColorFor(value);
               return (
                 <g
@@ -109,7 +112,8 @@ export function CorrelationHeatmap({ matrix }: { matrix: CorrelationMatrix }) {
                     y={i * cellSize}
                     width={cellSize}
                     height={cellSize}
-                    fill={fill}
+                    fill={color.fill}
+                    fillOpacity={color.opacity}
                     stroke="var(--border)"
                     strokeWidth={0.5}
                   />
@@ -150,9 +154,9 @@ export function CorrelationHeatmap({ matrix }: { matrix: CorrelationMatrix }) {
           </text>
           <defs>
             <linearGradient id="heatmap-legend" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="rgba(122, 140, 92, 0.95)" />
+              <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.95} />
               <stop offset="50%" stopColor="transparent" />
-              <stop offset="100%" stopColor="rgba(184, 84, 80, 0.95)" />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.95} />
             </linearGradient>
           </defs>
           <rect x={12} y={-6} width={120} height={12} fill="url(#heatmap-legend)" stroke="var(--border)" strokeWidth={0.5} />

@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException, ForbiddenException
+from app.core.error_messages import ERR_PROJECT_NOT_FOUND
 from app.models.project import Project
 from app.schemas.project import (
     ProjectCreate,
@@ -172,7 +173,7 @@ async def get_project(
     )
     project = result.scalar_one_or_none()
     if not project:
-        raise NotFoundException("项目不存在")
+        raise NotFoundException(ERR_PROJECT_NOT_FOUND)
 
     project.overview = await get_project_overview(project)
     return ResponseModel(data=project)
@@ -207,7 +208,7 @@ async def update_project(
     )
     project = result.scalar_one_or_none()
     if not project:
-        raise NotFoundException("项目不存在")
+        raise NotFoundException(ERR_PROJECT_NOT_FOUND)
 
     old_name = project.name
     if request.name is not None:
@@ -254,7 +255,7 @@ async def delete_project(
     )
     project = result.scalar_one_or_none()
     if not project:
-        raise NotFoundException("项目不存在")
+        raise NotFoundException(ERR_PROJECT_NOT_FOUND)
 
     now = datetime.now(timezone.utc)
     project.deleted_at = now

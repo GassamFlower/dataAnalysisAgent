@@ -19,6 +19,11 @@ from app.core.dependencies import get_current_user
 from app.core.exceptions import ValidationException
 from app.core.responses import success_response
 from app.core.security import hash_password, verify_password
+from app.core.error_messages import (
+    ERR_USER_NOT_FOUND,
+    ERR_VERIFY_CODE_EXPIRED_RESEND,
+    ERR_VERIFY_CODE_INVALID,
+)
 from app.models.user import User
 
 router = APIRouter(prefix="/users", tags=["用户"])
@@ -121,7 +126,7 @@ async def get_me(
     """获取当前用户信息。"""
     user = await db.get(User, current_user["id"])
     if not user:
-        raise ValidationException("用户不存在")
+        raise ValidationException(ERR_USER_NOT_FOUND)
     return success_response(data=_user_dict(user))
 
 
@@ -134,7 +139,7 @@ async def update_profile(
     """修改昵称。"""
     user = await db.get(User, current_user["id"])
     if not user:
-        raise ValidationException("用户不存在")
+        raise ValidationException(ERR_USER_NOT_FOUND)
     user.nickname = req.nickname
     await db.commit()
     return success_response(data={"nickname": user.nickname})
@@ -149,7 +154,7 @@ async def update_password(
     """修改密码（需校验旧密码）。"""
     user = await db.get(User, current_user["id"])
     if not user:
-        raise ValidationException("用户不存在")
+        raise ValidationException(ERR_USER_NOT_FOUND)
     if not user.password_hash:
         raise ValidationException("当前账号未设置密码")
     if not verify_password(req.old_password, user.password_hash):
@@ -175,7 +180,7 @@ async def email_change_request(
 
     user = await db.get(User, current_user["id"])
     if not user:
-        raise ValidationException("用户不存在")
+        raise ValidationException(ERR_USER_NOT_FOUND)
 
     code = _generate_code()
     user.email_verify_code_hash = _hash_code(code)
@@ -206,15 +211,15 @@ async def email_change_confirm(
     """验证并更新邮箱。"""
     user = await db.get(User, current_user["id"])
     if not user:
-        raise ValidationException("用户不存在")
+        raise ValidationException(ERR_USER_NOT_FOUND)
 
     # 校验验证码
     if not user.email_verify_code_hash:
         raise ValidationException("请先发送验证码")
     if not user.email_verify_expires_at or user.email_verify_expires_at < datetime.now(timezone.utc):
-        raise ValidationException("验证码已过期，请重新发送")
+        raise ValidationException(ERR_VERIFY_CODE_EXPIRED_RESEND)
     if not bcrypt.checkpw(req.code.encode("utf-8"), user.email_verify_code_hash.encode("utf-8")):
-        raise ValidationException("验证码不正确")
+        raise ValidationException(ERR_VERIFY_CODE_INVALID)
 
     # 再次检查邮箱是否被占用
     result = await db.execute(
@@ -255,7 +260,7 @@ async def upload_avatar(
 
     user = await db.get(User, current_user["id"])
     if not user:
-        raise ValidationException("用户不存在")
+        raise ValidationException(ERR_USER_NOT_FOUND)
     user.avatar = avatar_url
     await db.commit()
 

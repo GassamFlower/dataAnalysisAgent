@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user_tutorial_progress import UserTutorialProgress
 from app.models.tutorial_article import TutorialArticle
+from app.core.error_messages import ERR_TUTORIAL_NOT_FOUND
 from app.schemas.tutorial import (
     TutorialProgressResponse,
     TutorialProgressUpdateResponse,
@@ -344,7 +345,7 @@ class TutorialService:
         article = result.scalar_one_or_none()
         if not article:
             from app.core.exceptions import NotFoundException
-            raise NotFoundException("教程不存在")
+            raise NotFoundException(ERR_TUTORIAL_NOT_FOUND)
 
         # 如果修改 slug，检查是否与其他文章冲突
         if request.slug is not None and request.slug != article.slug:
@@ -396,7 +397,7 @@ class TutorialService:
         article = result.scalar_one_or_none()
         if not article:
             from app.core.exceptions import NotFoundException
-            raise NotFoundException("教程不存在")
+            raise NotFoundException(ERR_TUTORIAL_NOT_FOUND)
 
         article.deleted_at = datetime.now(timezone.utc)
         await db.flush()

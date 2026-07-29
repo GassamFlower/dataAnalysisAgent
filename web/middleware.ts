@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const AUTH_COOKIE_NAME = "auth-token";
+import { AUTH_COOKIE_NAME } from "@/lib/auth-cookies";
 
 /**
  * 路由保护中间件。

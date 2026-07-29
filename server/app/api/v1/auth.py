@@ -1,5 +1,6 @@
 """认证相关 API。"""
 import hashlib
+import logging
 import re
 import uuid
 import random
@@ -22,8 +23,22 @@ from app.core.dependencies import get_current_user
 from app.core.exceptions import UnauthorizedException, ValidationException
 from app.core.responses import success_response
 from app.core.security import create_access_token, create_refresh_token, verify_token
+from app.core.error_messages import (
+    ERR_EMAIL_ALREADY_VERIFIED,
+    ERR_PASSWORD_LENGTH,
+    ERR_REFRESH_TOKEN_EXPIRED,
+    ERR_REFRESH_TOKEN_INVALID,
+    ERR_USER_LOGGED_OUT,
+    ERR_USER_NOT_FOUND,
+    ERR_VERIFY_CODE_EXPIRED_REGISTER,
+    ERR_VERIFY_CODE_INVALID,
+    ERR_WECHAT_NOT_CONFIGURED_SECRET,
+    ERR_WECHAT_NOT_CONFIGURED_URL,
+)
 from app.models.user import User
 from app.services.audit_service import AuditService, ACTION_TYPES
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["认证"])
 
@@ -100,7 +115,7 @@ async def wechat_login_url(
     微信回调到 WECHAT_REDIRECT_URI?code=xxx&state=xxx → 前端 BFF 回调路由转发到 /wechat/callback
     """
     if not settings.WECHAT_APP_ID or not settings.WECHAT_REDIRECT_URI:
-        raise ValidationException("微信登录未配置，请在 .env 中设置 WECHAT_APP_ID / WECHAT_REDIRECT_URI")
+        raise ValidationException(ERR_WECHAT_NOT_CONFIGURED_URL)
 
     # state 用于传递登录成功后的前端跳转路径（URL 编码防注入）
     state = quote_plus(redirect)
@@ -133,7 +148,7 @@ async def wechat_callback(
     前端 BFF 回调路由从 URL query 拿到 code，POST 到此端点交换 JWT。
     """
     if not settings.WECHAT_APP_ID or not settings.WECHAT_APP_SECRET:
-        raise ValidationException("微信登录未配置，请在 .env 中设置 WECHAT_APP_ID / WECHAT_APP_SECRET")
+        raise ValidationException(ERR_WECHAT_NOT_CONFIGURED_SECRET)
 
     # 1. code → access_token + openid
     async with httpx.AsyncClient(timeout=10) as client:
@@ -341,7 +356,7 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
 
     # 密码长度校验
     if len(req.password) < 6 or len(req.password) > 32:
-        raise ValidationException("密码长度需在 6~32 位之间")
+        raise ValidationException(ERR_PASSWORD_LENGTH)
 
     # 检查邮箱是否已注册
     result = await db.execute(select(User).where(User.email == req.email))
@@ -412,6 +427,13 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         await send_verification_code(req.email, code)
         msg = "注册成功，请查收邮箱并输入验证码完成验证"
     except Exception as e:
+        # N7: 邮件发送失败不阻断注册流程，但必须记录日志便于排查
+        logger.error(
+            "注册验证码邮件发送失败 | email=%s | error=%s",
+            req.email,
+            e,
+            exc_info=True,
+        )
         msg = f"注册成功但验证码邮件发送失败: {e}，请稍后重试发送验证码"
 
     return success_response(data={"message": msg})
@@ -426,16 +448,16 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
         raise ValidationException("该邮箱未注册")
 
     if user.email_verified:
-        raise ValidationException("邮箱已验证，无需重复验证")
+        raise ValidationException(ERR_EMAIL_ALREADY_VERIFIED)
 
     if not user.email_verify_code_hash or not user.email_verify_expires_at:
         raise ValidationException("请先获取验证码")
 
     if datetime.now(timezone.utc) > user.email_verify_expires_at:
-        raise ValidationException("验证码已过期，请重新获取")
+        raise ValidationException(ERR_VERIFY_CODE_EXPIRED_REGISTER)
 
     if not _verify_email_verification_code(req.code, user.email_verify_code_hash):
-        raise ValidationException("验证码错误")
+        raise ValidationException(ERR_VERIFY_CODE_INVALID)
 
     # 验证成功
     user.email_verified = True
@@ -468,7 +490,7 @@ async def resend_code(req: ResendCodeRequest, db: AsyncSession = Depends(get_db)
     if not user:
         raise ValidationException("该邮箱未注册")
     if user.email_verified:
-        raise ValidationException("邮箱已验证，无需重复验证")
+        raise ValidationException(ERR_EMAIL_ALREADY_VERIFIED)
 
     code = _generate_code()
     user.email_verify_code_hash = _hash_email_verification_code(code)
@@ -477,6 +499,13 @@ async def resend_code(req: ResendCodeRequest, db: AsyncSession = Depends(get_db)
     try:
         await send_verification_code(req.email, code)
     except Exception as e:
+        # N7: 邮件发送异常需记录完整堆栈，便于排查 SMTP / 配置问题
+        logger.error(
+            "重新发送验证码邮件失败 | email=%s | error=%s",
+            req.email,
+            e,
+            exc_info=True,
+        )
         raise ValidationException(f"验证码邮件发送失败: {e}")
 
     return success_response(message="验证码已重新发送")
@@ -518,9 +547,14 @@ async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends
         reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={token}"
         try:
             await send_password_reset_email(req.email, reset_link)
-        except Exception:
-            # 邮件发送失败不暴露给用户
-            pass
+        except Exception as e:
+            # N7: 邮件发送失败不暴露给用户（防枚举），但必须记录日志便于排查
+            logger.error(
+                "密码重置邮件发送失败 | email=%s | error=%s",
+                req.email,
+                e,
+                exc_info=True,
+            )
 
     return success_response(message="如果该邮箱已注册，您将收到一封密码重置邮件")
 
@@ -531,7 +565,7 @@ async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(g
     from app.core.security import hash_password
 
     if len(req.new_password) < 6 or len(req.new_password) > 32:
-        raise ValidationException("密码长度需在 6~32 位之间")
+        raise ValidationException(ERR_PASSWORD_LENGTH)
 
     user_id = _verify_reset_token(req.token)
     if not user_id:
@@ -539,7 +573,7 @@ async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(g
 
     user = await db.get(User, user_id)
     if not user:
-        raise ValidationException("用户不存在")
+        raise ValidationException(ERR_USER_NOT_FOUND)
 
     user.password_hash = hash_password(req.new_password)
 
@@ -556,19 +590,19 @@ async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
     """使用 refresh token 换发新的双 token。"""
     payload = verify_token(req.refresh_token, expected_type="refresh")
     if not payload:
-        raise UnauthorizedException("refresh token 无效或已过期")
+        raise UnauthorizedException(ERR_REFRESH_TOKEN_EXPIRED)
 
     try:
         user_id = uuid.UUID(payload["sub"])
     except (KeyError, ValueError):
-        raise UnauthorizedException("refresh token 无效")
+        raise UnauthorizedException(ERR_REFRESH_TOKEN_INVALID)
 
     user = await db.get(User, user_id)
     if not user or not user.refresh_token:
-        raise UnauthorizedException("用户不存在或已登出")
+        raise UnauthorizedException(ERR_USER_LOGGED_OUT)
 
     if user.refresh_token != _hash_refresh_token(req.refresh_token):
-        raise UnauthorizedException("refresh token 无效")
+        raise UnauthorizedException(ERR_REFRESH_TOKEN_INVALID)
 
     tokens = await _issue_tokens(user, db)
     return success_response(data=tokens)

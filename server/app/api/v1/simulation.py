@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException, BusinessException
+from app.core.error_messages import ERR_DATASET_NOT_FOUND
 from app.models.hypothesis import Hypothesis
 from app.models.hypothesis_path import HypothesisPath
 from app.models.question import Question
@@ -481,7 +482,7 @@ async def export_data(
     )
     dataset = result.scalar_one_or_none()
     if not dataset:
-        raise NotFoundException("未找到模拟数据集，请先生成数据")
+        raise NotFoundException(ERR_DATASET_NOT_FOUND)
 
     # 3.5 记录审计日志
     await AuditService.log_action(

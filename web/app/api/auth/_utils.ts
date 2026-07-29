@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 
-const AUTH_COOKIE_NAME = "auth-token";
-// access token 本身只有 15 分钟有效期，但 cookie 作为"已登录"标记随 refresh token 一起保留 7 天，
-// 供 middleware 做路由保护；实际接口鉴权仍以后端校验 access token 为准。
-const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 天
-
-const REFRESH_COOKIE_NAME = "refresh-token";
-const REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 天
+import {
+  AUTH_COOKIE_MAX_AGE,
+  AUTH_COOKIE_NAME,
+  REFRESH_COOKIE_MAX_AGE,
+  REFRESH_COOKIE_NAME,
+} from "@/lib/auth-cookies";
 
 /**
  * 判断当前请求是否通过 HTTPS 访问。

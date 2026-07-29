@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import UnauthorizedException, ForbiddenException
+from app.core.error_messages import ERR_USER_NOT_FOUND
 from app.core.security import verify_token
 from app.models.user import User
 
@@ -72,7 +73,7 @@ async def get_current_user(
 
     user = await db.get(User, user_id)
     if not user:
-        raise UnauthorizedException("用户不存在")
+        raise UnauthorizedException(ERR_USER_NOT_FOUND)
 
     return {
         "id": user.id,

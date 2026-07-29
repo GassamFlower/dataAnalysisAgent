@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException
+from app.core.error_messages import ERR_DATASET_NOT_FOUND, ERR_REPORT_NOT_FOUND
 from app.models.report import Report
 from app.models.reliability_result import ReliabilityResult
 from app.models.diagnosis import Diagnosis
@@ -256,7 +257,7 @@ async def analyze(
         )
         dataset = result.scalar_one_or_none()
         if not dataset:
-            raise NotFoundException("未找到模拟数据集，请先生成数据")
+            raise NotFoundException(ERR_DATASET_NOT_FOUND)
 
         dim_df = pd.DataFrame(dataset.data, columns=dataset.columns)
 
@@ -425,7 +426,7 @@ async def export(
     )
     report = result.scalar_one_or_none()
     if not report:
-        raise NotFoundException("报告不存在")
+        raise NotFoundException(ERR_REPORT_NOT_FOUND)
 
     # 2. 验证项目归属（含软删除过滤）
     project = await get_owned_project(db, report.project_id, current_user["id"])

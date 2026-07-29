@@ -5,22 +5,32 @@
 - 每条路径：自变量 → 因变量，方向（positive/negative），强度（weak/medium/strong）
 - 输出 JSON 供后续数据生成使用
 """
-import json
-import re
 from typing import List, Dict, Any
 
 from app.services.llm.client import chat_v3
+from app.services.llm.utils import (
+    build_prompt_injection_guard,
+    parse_llm_json_response,
+    wrap_user_input,
+)
 from app.schemas.simulation import HypothesisPath
 
 
 def _build_prompt(raw_text: str, dimensions: List[str]) -> str:
-    """构建 LLM 提示词。"""
+    """构建 LLM 提示词。
+
+    N1: 用户假设原文属不可信输入，使用 <user_input> 边界标记包裹，
+    并附加 prompt injection 防御指令。
+    """
     dimensions_text = ', '.join(dimensions) if dimensions else "未提供"
-    
+    wrapped_hypothesis = wrap_user_input(raw_text, label="user_hypothesis")
+
     prompt = f"""你是一个心理学研究专家。请将以下研究假设拆解为具体的主效应路径。
 
+{build_prompt_injection_guard()}
+
 用户假设：
-{raw_text}
+{wrapped_hypothesis}
 
 问卷维度：
 {dimensions_text}
@@ -54,15 +64,12 @@ def _build_prompt(raw_text: str, dimensions: List[str]) -> str:
 
 
 def _parse_llm_response(response: str) -> List[HypothesisPath]:
-    """解析 LLM 返回的 JSON。"""
-    # 尝试提取 JSON
-    json_match = re.search(r'\{[\s\S]*\}', response)
-    if not json_match:
-        raise ValueError("无法从 LLM 响应中提取 JSON")
-    
-    json_str = json_match.group(0)
-    data = json.loads(json_str)
-    
+    """解析 LLM 返回的 JSON。
+
+    N6: 使用 llm.utils 中的统一解析函数，避免重复实现。
+    """
+    data = parse_llm_json_response(response)
+
     paths = []
     for p in data.get('paths', []):
         paths.append(HypothesisPath(
@@ -71,7 +78,7 @@ def _parse_llm_response(response: str) -> List[HypothesisPath]:
             direction=p['direction'],
             strength=p['strength']
         ))
-    
+
     return paths
 
 

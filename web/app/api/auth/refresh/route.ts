@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createAuthResponse } from "../_utils";
 import { BACKEND_URL } from "@/lib/api/backend-url";
+import { REFRESH_COOKIE_NAME } from "@/lib/auth-cookies";
 
 /**
  * 刷新 access token BFF 路由。
@@ -11,7 +12,7 @@ import { BACKEND_URL } from "@/lib/api/backend-url";
 
 export async function POST(request: Request) {
   const cookieStore = cookies();
-  const refreshToken = cookieStore.get("refresh-token")?.value;
+  const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value;
 
   if (!refreshToken) {
     return NextResponse.json(

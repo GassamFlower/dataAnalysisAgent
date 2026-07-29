@@ -11,6 +11,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException
+from app.core.error_messages import ERR_PLAN_EXPIRED
 from app.models.user_quota import UserQuota
 
 # 免费额度配置（每周）
@@ -64,7 +65,7 @@ async def check_and_consume_quota(
     # 所有套餐均需校验是否过期
     if plan_expires_at and plan_expires_at < datetime.now(timezone.utc):
         raise ForbiddenException(
-            "套餐已过期，请续费",
+            ERR_PLAN_EXPIRED,
             details={
                 "plan": plan,
                 "plan_expires_at": plan_expires_at.isoformat(),

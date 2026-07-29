@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 
 import { isSecureRequest } from "../_utils";
 import { BACKEND_URL } from "@/lib/api/backend-url";
+import {
+  AUTH_COOKIE_MAX_AGE,
+  AUTH_COOKIE_NAME,
+  REFRESH_COOKIE_MAX_AGE,
+  REFRESH_COOKIE_NAME,
+} from "@/lib/auth-cookies";
 
 /**
  * 微信授权回调 BFF 路由。
@@ -9,9 +15,6 @@ import { BACKEND_URL } from "@/lib/api/backend-url";
  * 此路由将 code POST 到后端 /api/v1/auth/wechat/callback 交换双 token，
  * 然后通过 HTML 页面将 access token 写入 localStorage/cookie 并跳转到 state 指定的前端路径。
  */
-
-const REFRESH_COOKIE_NAME = "refresh-token";
-const REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 天
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -78,9 +81,9 @@ export async function GET(request: Request) {
 
   const secure = isSecureRequest(request);
 
-  response.cookies.set("auth-token", access_token, {
+  response.cookies.set(AUTH_COOKIE_NAME, access_token, {
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: AUTH_COOKIE_MAX_AGE,
     sameSite: "lax",
     secure,
   });

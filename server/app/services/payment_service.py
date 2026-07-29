@@ -10,6 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException, NotFoundException, ValidationException
+from app.core.error_messages import (
+    ERR_ORDER_NOT_FOUND,
+    ERR_PLAN_EXPIRED,
+    ERR_PLAN_REQUIRED,
+    ERR_PROJECT_NOT_FOUND,
+)
 from app.models.order import Order
 from app.models.project import Project
 from app.models.user import User
@@ -107,7 +113,7 @@ async def create_order(
         )
         project = result.scalar_one_or_none()
         if not project:
-            raise NotFoundException("项目不存在")
+            raise NotFoundException(ERR_PROJECT_NOT_FOUND)
 
     order = Order(
         user_id=user_id,
@@ -161,7 +167,7 @@ async def get_order_detail(
     )
     order = result.scalar_one_or_none()
     if not order:
-        raise NotFoundException("订单不存在")
+        raise NotFoundException(ERR_ORDER_NOT_FOUND)
     return order
 
 
@@ -182,7 +188,7 @@ async def get_order_by_id(
     )
     order = result.scalar_one_or_none()
     if not order:
-        raise NotFoundException("订单不存在")
+        raise NotFoundException(ERR_ORDER_NOT_FOUND)
     return order
 
 
@@ -198,7 +204,7 @@ async def process_payment_notification(
     )
     order = result.scalar_one_or_none()
     if not order:
-        raise NotFoundException("订单不存在")
+        raise NotFoundException(ERR_ORDER_NOT_FOUND)
 
     # 2. 幂等：已处理过的成功/失败流水不再处理
     if order.provider_transaction_id == request.transaction_id:
@@ -241,6 +247,6 @@ async def process_payment_notification(
 async def check_paid_plan(user: User) -> None:
     """校验用户是否拥有有效付费套餐，否则抛出 ForbiddenException。"""
     if user.plan == "free":
-        raise ForbiddenException("该功能需要付费套餐（单次解锁或订阅）")
+        raise ForbiddenException(ERR_PLAN_REQUIRED)
     if user.plan_expires_at and user.plan_expires_at < datetime.now(timezone.utc):
-        raise ForbiddenException("套餐已过期，请续费")
+        raise ForbiddenException(ERR_PLAN_EXPIRED)

@@ -9,12 +9,19 @@
 阈值与分档标准来源：app/core/statistics_constants.py（唯一来源，禁止重复写死）
 """
 import json
-import re
+import logging
 from typing import Any, Dict, List, Optional
 
 from app.core.statistics_constants import GRADE_TABLE_TEXT, is_passed
 from app.services.diagnosis_rules import match_pitfalls, match_regression_pitfalls
 from app.services.llm.client import chat_r1
+from app.services.llm.utils import (
+    build_prompt_injection_guard,
+    parse_llm_json_response,
+    wrap_user_input,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def _build_prompt(reliability_results: List[Dict], rule_hits: List[Dict]) -> str:
@@ -22,6 +29,9 @@ def _build_prompt(reliability_results: List[Dict], rule_hits: List[Dict]) -> str
 
     标准文本通过 GRADE_TABLE_TEXT 注入，避免重复写死；
     规则已命中的翻车点传给 LLM 作为上下文，请其补充自然语言原因而非重复罗列。
+
+    N1: 信效度结果与规则命中均源自用户项目数据（不可信），
+    使用 <user_input> 边界标记包裹，并附加 prompt injection 防御指令。
     """
     results_text = json.dumps(reliability_results, ensure_ascii=False, indent=2)
     rules_text = (
@@ -29,14 +39,18 @@ def _build_prompt(reliability_results: List[Dict], rule_hits: List[Dict]) -> str
         if rule_hits
         else "（无）"
     )
+    wrapped_results = wrap_user_input(results_text, label="reliability_results")
+    wrapped_rules = wrap_user_input(rules_text, label="rule_hits")
 
     prompt = f"""你是一个心理学测量专家。请根据以下信效度分析结果，针对未达标指标诊断问题并给出修改建议。
 
+{build_prompt_injection_guard()}
+
 信效度结果：
-{results_text}
+{wrapped_results}
 
 规则引擎已命中的翻车点（仅供参考，请勿原样重复，可补充原因语境）：
-{rules_text}
+{wrapped_rules}
 
 {GRADE_TABLE_TEXT}
 
@@ -66,13 +80,11 @@ def _build_prompt(reliability_results: List[Dict], rule_hits: List[Dict]) -> str
 
 
 def _parse_llm_response(response: str) -> Dict[str, Any]:
-    """解析 LLM 返回的 JSON。"""
-    json_match = re.search(r"\{[\s\S]*\}", response)
-    if not json_match:
-        raise ValueError("无法从 LLM 响应中提取 JSON")
+    """解析 LLM 返回的 JSON。
 
-    json_str = json_match.group(0)
-    data = json.loads(json_str)
+    N6: 使用 llm.utils 中的统一解析函数，避免重复实现。
+    """
+    data = parse_llm_json_response(response)
 
     # 规范化字段
     data.setdefault("passed", False)
@@ -164,9 +176,14 @@ def diagnose(
             response = chat_r1(prompt)
             llm_result = _parse_llm_response(response)
             llm_issues = llm_result.get("issues", [])
-        except Exception:
-            # LLM 异常不应阻断规则结果输出
-            pass
+        except Exception as e:
+            # N7: LLM 异常不应阻断规则结果输出，但必须记录日志便于排查
+            logger.warning(
+                "LLM 诊断补充失败，已降级为仅规则结果 | error=%s | reliability_count=%d",
+                e,
+                len(reliability_results),
+                exc_info=True,
+            )
 
     # 3. 合并去重（规则优先）
     merged_issues = _merge_issues(rule_hits, llm_issues)

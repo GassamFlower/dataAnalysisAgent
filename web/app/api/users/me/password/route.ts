@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { BACKEND_URL } from "@/lib/api/backend-url";
+import { AUTH_COOKIE_NAME } from "@/lib/auth-cookies";
 
 export async function PATCH(request: Request) {
   const cookieStore = cookies();
-  const token = cookieStore.get("auth-token")?.value;
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   const body = await request.json();
 
   const res = await fetch(`${BACKEND_URL}/api/v1/users/me/password`, {

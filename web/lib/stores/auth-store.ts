@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { AUTH_COOKIE_MAX_AGE, AUTH_COOKIE_NAME } from "@/lib/auth-cookies";
+
 interface User {
   id: string;
   nickname: string;
@@ -10,11 +12,6 @@ interface User {
   plan: "free" | "single" | "subscription";
   planExpiresAt?: string;
 }
-
-const AUTH_COOKIE_NAME = "auth-token";
-// cookie 作为"已登录"标记随 refresh token 保留 7 天，供 middleware 路由保护；
-// 实际 access token 15 分钟过期后由 client.ts 自动续期。
-const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 天
 
 function isSecureContext(): boolean {
   if (typeof window === "undefined") return false;

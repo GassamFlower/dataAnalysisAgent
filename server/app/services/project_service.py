@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
+from app.core.error_messages import ERR_PROJECT_NOT_FOUND
 from app.models.project import Project
 
 
@@ -62,7 +63,7 @@ async def get_owned_project(
     )
     project = result.scalar_one_or_none()
     if not project:
-        raise NotFoundException("项目不存在")
+        raise NotFoundException(ERR_PROJECT_NOT_FOUND)
     return project
 
 
