@@ -104,5 +104,19 @@ class ReportResponse(BaseModel):
 class ExportRequest(BaseModel):
     """导出请求。"""
 
-    format: str = "word"  # word / excel / pdf
+    format: str = "word"  # word / excel / pdf / ppt
     data_source: str = "simulated"  # real / simulated
+
+
+class PolishRequest(BaseModel):
+    """报告润色请求。"""
+
+    section: str = Field(..., description="章节类型: reliability / correlation / diff_test / diagnosis")
+
+
+class PolishResponse(BaseModel):
+    """报告润色响应。"""
+
+    section: str
+    text: str
+    disclaimer: str = "此为统计描述参考，非研究结论"

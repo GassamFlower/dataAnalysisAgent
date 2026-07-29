@@ -4,7 +4,7 @@ import os
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile, Request
+from fastapi import APIRouter, Depends, File, Query, UploadFile, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException
-from app.models.question import Question
+from app.models.Question import Question
 from app.schemas.questionnaire import (
     QuestionInspectRequest,
     QuestionnaireStructure,
@@ -473,3 +473,80 @@ async def update_dimensions(
 
     await db.flush()
     return ResponseModel(data=DimensionsResponse(dimensions=dimensions))
+
+
+@router.post(
+    "/wjx-import/{project_id}",
+    response_model=ResponseModel[Dict],
+    summary="导入问卷星导出文件",
+    description="解析问卷星导出的 Excel/Word 文件，提取题目、选项、维度信息。",
+)
+async def import_wjx_file(
+    project_id: UUID,
+    file: UploadFile = File(..., description="问卷星导出的 Excel/Word 文件"),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """导入问卷星导出文件。"""
+    # 1. 验证项目存在且属于当前用户
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 2. 校验文件
+    if not file.filename:
+        raise ValidationException("文件名不能为空")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in {".xlsx", ".xls", ".docx"}:
+        raise ValidationException(
+            f"不支持的文件格式：{ext}，仅支持 .xlsx / .xls / .docx"
+        )
+
+    content = await file.read()
+    if len(content) > _MAX_UPLOAD_SIZE:
+        raise ValidationException("文件大小超过 2MB 限制")
+
+    if not content:
+        raise ValidationException("文件内容为空")
+
+    # 3. 解析问卷星文件
+    try:
+        from app.services.wjx_parser import parse_wjx_export
+
+        file_type = "excel" if ext in {".xlsx", ".xls"} else "word"
+        parse_result = parse_wjx_export(content, file_type)
+
+        questions = parse_result["questions"]
+        dimensions = parse_result["dimensions"]
+        warnings = parse_result["warnings"]
+
+    except ValueError as e:
+        raise ValidationException(str(e))
+    except Exception as e:
+        raise ValidationException(f"问卷星文件解析失败：{str(e)}")
+
+    # 4. 保存题目到数据库
+    for q in questions:
+        question = Question(
+            project_id=project_id,
+            index=q["index"],
+            text=q["text"],
+            question_type=q["type"],
+            dimension=q.get("dimension"),
+            is_reverse=q.get("is_reverse", False),
+            confidence=0.9,  # 问卷星导入的题目置信度较高
+        )
+        db.add(question)
+
+    # 5. 更新项目状态为 inspected
+    update_project_status(project, "inspected", reason="问卷星导入完成")
+    await db.flush()
+
+    return ResponseModel(
+        data={
+            "questions": questions,
+            "dimensions": dimensions,
+            "warnings": warnings,
+            "question_count": len(questions),
+            "dimension_count": len(dimensions),
+        }
+    )

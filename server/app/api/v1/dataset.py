@@ -32,7 +32,7 @@ router = APIRouter(prefix="/dataset", tags=["dataset"])
 
 # 文件上传限制
 _MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
-_ALLOWED_EXTENSIONS = {".csv", ".xlsx"}
+_ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".sav"}
 
 # 最小样本量
 _MIN_SAMPLE_SIZE = 30
@@ -114,6 +114,11 @@ def _read_dataframe(content: bytes, ext: str) -> pd.DataFrame:
                 return pd.read_csv(buffer, encoding="gbk")
         elif ext == ".xlsx":
             return pd.read_excel(buffer, engine="openpyxl")
+        elif ext == ".sav":
+            # SPSS 格式：使用 spss_parser 解析后返回 DataFrame
+            from app.services.spss_parser import parse_spss_sav
+            parse_result = parse_spss_sav(content)
+            return parse_result["dataframe"]
         else:
             raise ValidationException(f"不支持的文件格式：{ext}")
     except ValidationException:
@@ -305,7 +310,7 @@ async def import_real_data(
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in _ALLOWED_EXTENSIONS:
         raise ValidationException(
-            f"不支持的文件格式：{ext}，仅支持 .csv / .xlsx"
+            f"不支持的文件格式：{ext}，仅支持 .csv / .xlsx / .sav"
         )
 
     content = await file.read()

@@ -33,6 +33,10 @@ pypdf>=4.0.0
 # reportlab 4.3+ 在 Python 3.8 上调用 hashlib openssl_md5(usedforsecurity=False) 会报错，
 # 锁定 <4.3 保证 Python 3.8 兼容性（详见 docs/j-功能-PDF报告导出.md 风险章）
 reportlab>=4.0.0,<4.3
+python-pptx>=0.6.21,<1.0.0
+
+# SPSS 文件解析
+pyreadstat>=1.2.0,<2.0.0
 
 # 安全
 PyJWT>=2.8.0

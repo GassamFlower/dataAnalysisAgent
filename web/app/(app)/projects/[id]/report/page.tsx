@@ -86,7 +86,7 @@ export default function ReportPage({
   const exportQuota = quotaData?.quotas?.export;
   const [showDataSourceDialog, setShowDataSourceDialog] = useState(false);
   const [pendingExportFormat, setPendingExportFormat] = useState<
-    "word" | "excel" | "pdf" | null
+    "word" | "excel" | "pdf" | "ppt" | null
   >(null);
 
   /** 触发报告生成（后端跑统计套餐 + 诊断） */
@@ -102,7 +102,7 @@ export default function ReportPage({
   };
 
   /** 点击导出按钮：先弹出数据来源确认 */
-  const handleExportClick = (format: "word" | "excel" | "pdf") => {
+  const handleExportClick = (format: "word" | "excel" | "pdf" | "ppt") => {
     setPendingExportFormat(format);
     setShowDataSourceDialog(true);
   };

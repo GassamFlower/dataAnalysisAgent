@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Download, FileText, FileSpreadsheet, Lock } from "lucide-react";
+import { Download, FileText, FileSpreadsheet, Presentation, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,7 @@ import {
 
 /**
  * 报告导出（宪法第 7 条：导出强制带水印，禁去痕迹）。
- * 支持 Word / Excel / PDF 三种格式；免费用户显示升级引导。
+ * 支持 Word / Excel / PDF / PPT 四种格式；免费用户显示升级引导。
  */
 export function ExportButton({
   onExport,
@@ -22,7 +22,7 @@ export function ExportButton({
   remaining,
   limit,
 }: {
-  onExport?: (format: "word" | "excel" | "pdf") => void;
+  onExport?: (format: "word" | "excel" | "pdf" | "ppt") => void;
   disabled?: boolean;
   isFree?: boolean;
   remaining?: number;
@@ -74,6 +74,10 @@ export function ExportButton({
         <DropdownMenuItem onClick={() => onExport?.("pdf")}>
           <FileText className="mr-2 h-4 w-4" />
           PDF 文档（.pdf）
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onExport?.("ppt")}>
+          <Presentation className="mr-2 h-4 w-4" />
+          PPT 演示文稿（.pptx）
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -8,12 +8,7 @@ import type { MetricsResponse } from "@/lib/types/analytics";
 export function useMetrics(days: number = 7) {
   return useQuery<MetricsResponse>({
     queryKey: ["metrics", days],
-    queryFn: async () => {
-      const response = await apiClient.get<{ data: MetricsResponse }>(
-        `/analytics/metrics?days=${days}`
-      );
-      return response.data;
-    },
+    queryFn: () => apiClient.get<MetricsResponse>(`/analytics/metrics?days=${days}`),
     staleTime: 60 * 1000, // 1 分钟缓存
   });
 }

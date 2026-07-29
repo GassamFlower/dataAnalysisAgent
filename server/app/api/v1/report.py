@@ -19,7 +19,7 @@ from app.models.diagnosis import Diagnosis
 from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.question import Question
 from app.models.simulation_config import SimulationConfig
-from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest
+from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest, PolishRequest, PolishResponse
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.quota_service import check_and_consume_quota
 from app.services.audit_service import AuditService, ACTION_TYPES
@@ -503,6 +503,11 @@ async def export(
         file_bytes = export_pdf(report_data)
         media_type = "application/pdf"
         filename = f"report_{report_id}_{suffix}.pdf"
+    elif request.format == "ppt":
+        from app.services.ppt_exporter import export_ppt
+        file_bytes = export_ppt(report_data)
+        media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        filename = f"report_{report_id}_{suffix}.pptx"
     else:
         raise ValidationException(ERR_UNSUPPORTED_FORMAT)
 
@@ -511,4 +516,115 @@ async def export(
         iter([file_bytes]),
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.post(
+    "/polish/{report_id}",
+    response_model=ResponseModel[PolishResponse],
+    summary="报告文字润色",
+    description="使用 LLM 将统计结果转化为论文段落。付费功能，免费用户 2 次/周。"
+)
+async def polish_report(
+    report_id: UUID,
+    request: PolishRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """报告文字润色：将统计结果转化为论文段落。"""
+    # 0. 校验并扣减免费额度（report_polish: 免费 2 次/周，付费无限）
+    await check_and_consume_quota(
+        db,
+        current_user["id"],
+        "report_polish",
+        current_user["plan"],
+        current_user.get("plan_expires_at"),
+    )
+
+    # 1. 加载报告及关联数据
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(Report)
+        .options(
+            selectinload(Report.reliability_results),
+            selectinload(Report.diagnosis).selectinload(Diagnosis.issues)
+        )
+        .where(Report.id == report_id)
+    )
+    report = result.scalar_one_or_none()
+    if not report:
+        raise NotFoundException(ERR_REPORT_NOT_FOUND)
+
+    # 2. 验证项目归属
+    await get_owned_project(db, report.project_id, current_user["id"])
+
+    # 3. 实时计算差异检验
+    diff_tests: List[Dict[str, Any]] = []
+    df = await _load_dataset_df(db, report.project_id)
+    if df is not None:
+        diff_tests = await _compute_diff_tests(db, report.project_id, df)
+
+    # 4. 构建报告数据
+    report_data = {
+        "project_id": str(report.project_id),
+        "overall_alpha": float(report.overall_alpha) if report.overall_alpha else 0.0,
+        "passed_count": report.passed_count or 0,
+        "total_count": report.total_count or 0,
+        "reliability_results": [
+            {
+                "dimension": r.dimension,
+                "alpha": float(r.alpha),
+                "kmo": float(r.kmo),
+                "bartlett_p_value": float(r.bartlett_p_value),
+                "passed": r.passed
+            }
+            for r in report.reliability_results
+        ],
+        "diagnosis": {
+            "passed": report.diagnosis.passed,
+            "issues": [
+                {
+                    "dimension": issue.dimension,
+                    "metric": issue.metric,
+                    "value": float(issue.value),
+                    "threshold": float(issue.threshold),
+                    "reason": issue.reason,
+                    "suggestion": issue.suggestion
+                }
+                for issue in report.diagnosis.issues
+            ]
+        } if report.diagnosis else None,
+        "diff_tests": diff_tests,
+    }
+
+    # 5. 调用润色服务
+    from app.services.report_polisher import polish_section
+    try:
+        polish_result = polish_section(report_data, request.section)
+    except ValueError as e:
+        raise ValidationException(str(e))
+    except Exception as e:
+        raise ValidationException(f"润色失败：{str(e)}")
+
+    # 6. 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES.get("REPORT_POLISH", "REPORT_POLISH"),
+        project_id=report.project_id,
+        action_detail={
+            "report_id": str(report_id),
+            "section": request.section,
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+
+    return ResponseModel(
+        data=PolishResponse(
+            section=polish_result["section"],
+            text=polish_result["text"],
+            disclaimer=polish_result["disclaimer"],
+        )
     )
