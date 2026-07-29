@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 更新单题（BFF 层）。
  * PATCH 转发到后端 /api/v1/questionnaire/questions/{project_id}/{question_index}。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 interface BackendQuestion {
   id: string;

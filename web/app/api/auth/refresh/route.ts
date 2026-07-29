@@ -2,13 +2,12 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { createAuthResponse } from "../_utils";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 刷新 access token BFF 路由。
  * 读取 httpOnly refresh-token cookie 转发到后端，换发新的双 token。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(request: Request) {
   const cookieStore = cookies();

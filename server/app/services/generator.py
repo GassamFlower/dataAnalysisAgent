@@ -9,28 +9,11 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Optional
 from app.schemas.simulation import HypothesisPath
-
-
-# 强度档位 → 目标相关系数（生成用补偿值）
-# 设计依据：docs/后端架构设计文档.md 第 9.5 节
-# 李克特量表整数化（连续→1-5）会造成相关性衰减，故生成时采用补偿值，
-# 使数据呈现的相关性在衰减后仍接近 Cohen 名义值（r 0.1/0.3/0.5）。
-STRENGTH_TO_R = {
-    "weak": 0.2,
-    "medium": 0.4,
-    "strong": 0.6,
-}
-
-# 强度档位 → 名义相关系数（对外展示，对齐 Cohen 国际标准）
-# 用于报告/前端展示「假设强度对应的相关性水平」，不参与数据生成。
-STRENGTH_NOMINAL = {
-    "weak": 0.1,
-    "medium": 0.3,
-    "strong": 0.5,
-}
-
-# 李克特离散化衰减补偿系数（生成值 / 名义值 的经验倍率，仅作记录与对齐说明用）
-LIKERT_DISCRETIZATION_COMPENSATION = 2.0
+from app.core.statistics_constants import (
+    STRENGTH_TO_R,
+    STRENGTH_NOMINAL,
+    LIKERT_DISCRETIZATION_COMPENSATION,
+)
 
 
 def _build_correlation_matrix(

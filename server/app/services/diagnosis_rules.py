@@ -12,7 +12,11 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
 
-from app.core.statistics_constants import THRESHOLDS
+from app.core.statistics_constants import (
+    THRESHOLDS,
+    R2_LOW_THRESHOLD,
+    SAMPLE_PER_IV,
+)
 
 
 def _is_reverse_unreversed(project_meta: Dict, reliability_results: List[Dict]) -> bool:
@@ -255,11 +259,6 @@ def match_pitfalls(
 # 检测对象：diff_test.py 的 linear_regression 结果
 # 注：VIF / Cook's distance / Durbin-Watson 等需扩展 diff_test 输出后补充
 # ─────────────────────────────────────────────────────────────
-
-# R² 社会科学可接受下限（模型解释力不足阈值）
-R2_LOW_THRESHOLD = 0.3
-# 样本量与自变量数比例下限（经验法则：n ≥ 10×k）
-SAMPLE_PER_IV = 10
 
 
 def _is_r2_too_low(test_result: Dict, sample_size: Optional[int]) -> bool:

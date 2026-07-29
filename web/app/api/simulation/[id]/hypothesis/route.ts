@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 假设解析 API（BFF 层）。
  * 转发到后端 POST /api/v1/simulation/{project_id}/hypothesis。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 interface HypothesisPath {
   predictor: string;

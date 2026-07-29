@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 数据集导出 BFF 路由。
  * 转发后端 POST /api/v1/simulation/{project_id}/export-data，透传二进制流。
  */
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(
   request: Request,

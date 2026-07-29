@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 模拟数据承诺确认（BFF 层）。
  * POST 转发到后端 /api/v1/compliance/simulation-disclaimer/confirm。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(request: Request) {
   const res = await fetch(

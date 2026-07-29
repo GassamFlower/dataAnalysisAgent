@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 报告 API（BFF 层）。
  * GET 转发到后端 FastAPI /api/v1/report/{project_id}，做 snake→camel 转换。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 function toNumber(v: unknown, fallback = 0): number {
   if (v === null || v === undefined || v === "") return fallback;

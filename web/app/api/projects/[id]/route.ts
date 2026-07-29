@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
 import type { Project, ProjectOverview } from "@/types";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 单个项目 API（BFF 层）。
  * GET 转发到后端 /api/v1/projects/{id}，做 snake→camel 转换。
  * DELETE 转发到后端 /api/v1/projects/{id}（返回 204）。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 interface BackendDatasetOverview {
   source: "real" | "simulation" | null;

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 下载真实数据导入模板 API（BFF 层）。
  * 转发到后端 FastAPI /api/v1/dataset/{id}/template，透传二进制流。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function GET(
   request: Request,

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 报告生成 API（BFF 层）。
  * 转发到后端 POST /api/v1/report/analyze/{project_id}。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 function toNumber(v: unknown, fallback = 0): number {
   if (v === null || v === undefined || v === "") return fallback;

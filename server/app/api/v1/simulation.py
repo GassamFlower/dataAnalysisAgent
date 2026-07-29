@@ -31,12 +31,9 @@ from app.services.hypothesis_parser import parse_hypothesis
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.quota_service import check_and_consume_quota
 from app.services.audit_service import AuditService, ACTION_TYPES
+from app.core.statistics_constants import STRENGTH_TO_R
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
-
-
-# 强度档位 → 目标相关系数（与 generator.STRENGTH_TO_R 一致）
-_STRENGTH_TO_R = {"weak": 0.2, "medium": 0.4, "strong": 0.6}
 
 
 @router.get(
@@ -130,7 +127,7 @@ async def get_simulation_matrix(
                         None
                     )
                     if p:
-                        r = _STRENGTH_TO_R.get(p.strength, 0.3)
+                        r = STRENGTH_TO_R.get(p.strength, 0.3)
                         if p.direction == "negative":
                             r = -r
                         row_cells.append(MatrixCellResponse(

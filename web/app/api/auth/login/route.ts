@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { createAuthResponse } from "../_utils";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 登录 BFF 路由。
  * 转发到后端 /api/v1/auth/dev-login，获取双 token 返回前端。
  * 仅在开发环境（NODE_ENV !== "production"）暴露。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 function isDevelopment(): boolean {
   return process.env.NODE_ENV !== "production";

@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 数据生成 API（BFF 层）。
  * 前端发送 { sampleSize }，BFF 转发到后端 POST /api/v1/simulation/{id}/generate。
  * 后端按 project_id 自动取最新 hypothesis 与 matrix，生成成功后返回 matrix。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(
   request: Request,

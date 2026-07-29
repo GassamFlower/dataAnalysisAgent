@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 问卷文件上传 API（BFF 层）。
  * POST 透传到后端 /api/v1/questionnaire/upload?project_id={id}。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(
   request: Request,

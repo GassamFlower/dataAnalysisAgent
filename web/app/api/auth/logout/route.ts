@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { clearAuthCookie, clearRefreshCookie } from "../_utils";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 退出登录 BFF 路由。
  * 通知后端清除 refresh token 哈希，并清除本地 auth-token / refresh-token cookie。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(request: Request) {
   // 将前端携带的 access token 透传给后端，用于定位当前用户并清空 refresh_token

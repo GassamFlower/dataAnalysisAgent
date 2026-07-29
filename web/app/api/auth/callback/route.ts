@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isSecureRequest } from "../_utils";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 微信授权回调 BFF 路由。
@@ -8,8 +9,6 @@ import { isSecureRequest } from "../_utils";
  * 此路由将 code POST 到后端 /api/v1/auth/wechat/callback 交换双 token，
  * 然后通过 HTML 页面将 access token 写入 localStorage/cookie 并跳转到 state 指定的前端路径。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 const REFRESH_COOKIE_NAME = "refresh-token";
 const REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 天

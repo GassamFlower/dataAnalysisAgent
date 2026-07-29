@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import type { Project } from "@/types";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 项目列表 API（BFF 层）。
  * 转发到后端 FastAPI /api/v1/projects，从请求头转发用户 JWT。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

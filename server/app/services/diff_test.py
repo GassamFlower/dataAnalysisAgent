@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
 
+from app.core.statistics_constants import grade_effect_size
+
 # 决策规则表（后端架构文档 9.6）
 # groups_min: 自变量为分类时，组数下限（用于区分 t vs ANOVA）
 DECISION_TABLE: List[Dict] = [
@@ -53,14 +55,6 @@ DECISION_TABLE: List[Dict] = [
         "method": "linear_regression",
         "method_name": "多元线性回归",
     },
-]
-
-# 效应量分档（Cohen 名义值，对齐 statistics_constants 口径）
-EFFECT_SIZE_GRADES = [
-    (0.5, "大"),
-    (0.3, "中"),
-    (0.1, "小"),
-    (0.0, "可忽略"),
 ]
 
 
@@ -125,11 +119,8 @@ def infer_type(series: pd.Series, cat_threshold: int = 10) -> str:
 
 
 def _grade_effect_size(value: float) -> str:
-    """效应量分档（Cohen 名义值）。"""
-    for threshold, label in EFFECT_SIZE_GRADES:
-        if abs(value) >= threshold:
-            return label
-    return "可忽略"
+    """效应量分档（Cohen 名义值），委托给 statistics_constants.grade_effect_size。"""
+    return grade_effect_size(abs(value))
 
 
 # ---------- 各检验方法实现 ----------

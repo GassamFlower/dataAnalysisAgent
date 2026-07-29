@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 维度列表 / 维度编辑 BFF 路由。
  * GET  转发到后端 /api/v1/questionnaire/dimensions/{project_id}
  * POST 转发到后端 /api/v1/questionnaire/dimensions/{project_id}
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function GET(
   request: Request,

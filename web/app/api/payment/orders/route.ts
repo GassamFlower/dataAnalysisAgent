@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { getBackendHeaders } from "@/lib/server/auth";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 订单列表 / 创建订单（BFF 层）。
  * GET 转发到后端 /api/v1/payment/orders。
  * POST 转发到后端 /api/v1/payment/orders。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

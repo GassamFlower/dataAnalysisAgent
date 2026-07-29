@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
+import { BACKEND_URL } from "@/lib/api/backend-url";
 
 /**
  * 微信登录 BFF：获取微信授权链接。
  * 前端登录页调用此路由，拿到 url 后跳转到微信授权页。
  */
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

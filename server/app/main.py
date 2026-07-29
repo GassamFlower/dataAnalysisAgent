@@ -90,6 +90,23 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """为所有响应注入安全响应头。
+
+    - X-Content-Type-Options: nosniff —— 阻止 MIME 嗅探
+    - X-Frame-Options: DENY —— 防止点击劫持（页面不可被 iframe 嵌入）
+    - Referrer-Policy: strict-origin-when-cross-origin —— 限制 Referer 泄露
+    - Content-Security-Policy: default-src 'self' —— 默认仅允许同源资源加载
+    """
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
+
+
 # 全局异常处理
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
