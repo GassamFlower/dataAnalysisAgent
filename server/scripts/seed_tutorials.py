@@ -106,6 +106,22 @@ TUTORIALS = [
         "filename": "10-statistical-reporting.md",
         "order_index": 100,
     },
+    {
+        "slug": "sample-size-power",
+        "category": "basics",
+        "title": "样本量与统计功效",
+        "summary": "统计功效的概念、样本量估算方法及常见误区。",
+        "filename": "11-sample-size-power.md",
+        "order_index": 55,
+    },
+    {
+        "slug": "apa-format",
+        "category": "writing",
+        "title": "APA 格式速查",
+        "summary": "统计符号、小数位数、显著性标注及常见统计结果的 APA 写法模板。",
+        "filename": "12-apa-format.md",
+        "order_index": 110,
+    },
 ]
 
 
