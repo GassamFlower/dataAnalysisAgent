@@ -157,7 +157,7 @@ async def test_email_verification_code_is_hashed(client: AsyncClient):
     # 注册会创建用户（SMTP 未配置时邮件发送失败，但用户已落库）
     resp = await client.post(
         "/api/v1/auth/register",
-        json={"email": email, "password": password, "nickname": "Hash Test"},
+        json={"email": email, "password": password, "nickname": "Hash Test", "agreed_terms": True},
     )
     assert resp.status_code == 200
 

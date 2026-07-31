@@ -10,5 +10,5 @@ async def test_health_check(client):
     data = response.json()
     assert data["code"] == 0
     assert data["message"] == "success"
-    assert data["data"]["status"] == "ok"
-    assert data["data"]["service"] == "data-analysis-agent"
+    assert data["data"]["status"] == "healthy"
+    assert "database" in data["data"]

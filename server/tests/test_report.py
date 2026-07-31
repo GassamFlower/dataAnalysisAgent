@@ -53,17 +53,18 @@ async def test_analyze_report_success(
 
 
 @pytest.mark.anyio
-async def test_analyze_report_requires_paid_plan(
+async def test_analyze_report_free_user_within_quota(
     client: AsyncClient,
     free_auth_headers: dict,
     simulated_project: dict,
+    mock_diagnoser,
 ):
-    """free 用户调用 analyze 返回 403。"""
+    """free 用户在免费额度内可以调用 analyze（6 次/周）。"""
     resp = await client.post(
         f"/api/v1/report/analyze/{simulated_project['id']}",
         headers=free_auth_headers,
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 @pytest.mark.anyio

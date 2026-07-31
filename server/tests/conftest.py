@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from app.core.config import settings
 from app.core.database import get_db, init_db, close_db
@@ -11,11 +11,44 @@ from app.main import app
 from app.models.dataset import Dataset
 from app.models.project import Project
 from app.models.question import Question
+from app.models.report import Report
 from app.models.simulation_config import SimulationConfig
+from app.models.order import Order
 from app.models.user import User
+from app.models.user_quota import UserQuota
 
 
 DEV_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+async def _cleanup_dev_user_data():
+    """清理 dev 用户的所有关联数据，避免测试间项目配额/订单状态串扰。"""
+    async for db in get_db():
+        # 按外键依赖顺序删除：Report → Dataset → SimulationConfig → Question → Order → Project
+        project_ids = (await db.execute(
+            select(Project.id).where(Project.user_id == DEV_USER_ID)
+        )).scalars().all()
+
+        if project_ids:
+            await db.execute(delete(Report).where(Report.project_id.in_(project_ids)))
+            await db.execute(delete(Dataset).where(Dataset.project_id.in_(project_ids)))
+            await db.execute(delete(SimulationConfig).where(SimulationConfig.project_id.in_(project_ids)))
+            await db.execute(delete(Question).where(Question.project_id.in_(project_ids)))
+
+        await db.execute(delete(Order).where(Order.user_id == DEV_USER_ID))
+        await db.execute(delete(UserQuota).where(UserQuota.user_id == DEV_USER_ID))
+        await db.execute(delete(Project).where(Project.user_id == DEV_USER_ID))
+
+        # 重置用户套餐为 subscription（dev-login 默认状态），避免 plan 串扰
+        user = await db.get(User, DEV_USER_ID)
+        if user:
+            user.plan = "subscription"
+            user.plan_expires_at = None
+            user.email_verify_code_hash = None
+            user.email_verify_expires_at = None
+
+        await db.commit()
+        break
 
 
 @pytest.fixture
@@ -24,8 +57,10 @@ async def client():
 
     ASGITransport 不会触发 FastAPI lifespan，因此需手动调用 init_db()
     建表，并在结束时关闭连接，避免 "no such table" 错误。
+    每次测试前清理 dev 用户数据，避免项目配额/套餐状态串扰。
     """
     await init_db()
+    await _cleanup_dev_user_data()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -115,8 +150,10 @@ async def simulated_project(client: AsyncClient, auth_headers: dict, created_pro
         db.add(dataset)
 
         # 4. 更新项目状态为 simulated（测试 fixture 直接设置，绕过状态机校验）
+        #    同时设置 mode 为 simulation，与 analyze 端点的 real/simulation 分支对齐
         project = await db.get(Project, project_id)
         project.status = "simulated"
+        project.mode = "simulation"
         await db.commit()
         break
 
@@ -131,6 +168,7 @@ async def simulated_project_missing_dataset(client: AsyncClient, auth_headers: d
     async for db in get_db():
         project = await db.get(Project, project_id)
         project.status = "simulated"
+        project.mode = "simulation"
         await db.commit()
         break
 

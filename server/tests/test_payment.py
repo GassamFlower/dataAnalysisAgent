@@ -257,8 +257,10 @@ async def test_order_detail_not_owner(client: AsyncClient, auth_headers: dict):
 
 
 @pytest.mark.anyio
-async def test_paid_endpoint_rejects_free_user(client: AsyncClient, auth_headers: dict):
-    """免费用户调用付费接口返回 403。"""
+async def test_free_user_quota_exhaustion(client: AsyncClient, auth_headers: dict):
+    """免费用户超过周额度后返回 403。"""
+    from app.services.quota_service import FREE_LIMITS, check_and_consume_quota
+
     # 确保用户为 free
     async for db in get_db():
         user = await db.get(User, DEV_USER_ID)
@@ -268,22 +270,31 @@ async def test_paid_endpoint_rejects_free_user(client: AsyncClient, auth_headers
             await db.commit()
         break
 
-    # 需要有一个项目才能调用 generate
+    # 直接通过 quota_service 消耗完 simulation 额度
+    limit = FREE_LIMITS["simulation"]
+    async for db in get_db():
+        for _ in range(limit):
+            await check_and_consume_quota(db, DEV_USER_ID, "simulation", "free")
+        await db.commit()
+        break
+
+    # 创建项目（free 用户额度内——项目创建不受 simulation 额度限制）
     project_resp = await client.post(
         "/api/v1/projects/",
         headers=auth_headers,
-        json={"name": "付费拦截测试"},
+        json={"name": "额度耗尽测试"},
     )
     assert project_resp.status_code == 201
     project_id = project_resp.json()["data"]["id"]
 
+    # 额度耗尽后调用 generate 应返回 403
     resp = await client.post(
         f"/api/v1/simulation/{project_id}/generate",
         headers=auth_headers,
         json={"sample_size": 100},
     )
     assert resp.status_code == 403
-    assert "付费" in resp.json().get("message", "")
+    assert "次数" in resp.json().get("message", "") or "额度" in resp.json().get("message", "")
 
 
 @pytest.mark.anyio
