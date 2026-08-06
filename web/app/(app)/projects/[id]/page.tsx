@@ -12,6 +12,7 @@ import { ProjectOverview } from "@/components/project/project-overview";
 import { StepNav } from "@/components/layout/step-nav";
 import { QuestionTable } from "@/components/questionnaire/question-table";
 import { DimensionEditor } from "@/components/questionnaire/dimension-editor";
+import { HealthReport } from "@/components/questionnaire/health-report";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
@@ -151,6 +152,11 @@ export default function WorkbenchPage({
           </div>
         </div>
       </Card>
+
+      {/* 问卷质量体检报告（纯规则引擎，零成本） */}
+      <div className="mb-6">
+        <HealthReport projectId={params.id} />
+      </div>
 
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-2">

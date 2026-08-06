@@ -25,6 +25,7 @@ from app.schemas.questionnaire import (
 from app.services.inspector import inspect as inspect_service
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.audit_service import AuditService, ACTION_TYPES
+from app.services.questionnaire_health import QuestionnaireHealthEngine
 
 router = APIRouter(prefix="/questionnaire", tags=["questionnaire"])
 
@@ -550,3 +551,32 @@ async def import_wjx_file(
             "dimension_count": len(dimensions),
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# 问卷质量体检（纯规则引擎，不依赖 LLM）
+# ---------------------------------------------------------------------------
+
+@router.get("/{project_id}/health", response_model=ResponseModel)
+async def get_questionnaire_health(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """对已识别的题目做质量诊断：题量/维度均衡/反向题/人口学/量表一致性/置信度/文本质量。
+
+    纯规则引擎，不调用 LLM，响应快、零成本。需先完成题目识别（inspect）或问卷星导入。
+    """
+    project = await get_owned_project(db, project_id, user.id)
+    if not project:
+        raise NotFoundException("项目不存在或无访问权限")
+
+    result = await db.execute(
+        select(Question)
+        .where(Question.project_id == project_id)
+        .order_by(Question.index)
+    )
+    questions = result.scalars().all()
+
+    report = QuestionnaireHealthEngine(questions).run()
+    return ResponseModel(data=report.to_dict())

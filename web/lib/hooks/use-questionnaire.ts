@@ -9,6 +9,7 @@ import type { Question, QuestionnaireStructure } from "@/types";
 const questionnaireKeys = {
   structure: (projectId: string) => ["questionnaire", projectId],
   dimensions: (projectId: string) => ["dimensions", projectId],
+  health: (projectId: string) => ["questionnaire", "health", projectId],
 };
 
 /**
@@ -124,13 +125,42 @@ export function useWjxImport() {
     mutationFn: (params: { projectId: string; file: File }) =>
       questionnaireApi.wjxImport(params.projectId, params.file),
     onSuccess: (_data, variables) => {
-      // 问卷星导入成功后，刷新题目结构和维度列表
+      // 问卷星导入成功后，刷新题目结构、维度列表与体检报告
       queryClient.invalidateQueries({
         queryKey: questionnaireKeys.structure(variables.projectId),
       });
       queryClient.invalidateQueries({
         queryKey: questionnaireKeys.dimensions(variables.projectId),
       });
+      queryClient.invalidateQueries({
+        queryKey: questionnaireKeys.health(variables.projectId),
+      });
     },
+  });
+}
+
+/**
+ * 问卷质量体检（纯规则引擎）。
+ * 对应后端：GET /api/questionnaire/{projectId}/health
+ */
+export function useQuestionnaireHealth(projectId: string) {
+  return useQuery({
+    queryKey: questionnaireKeys.health(projectId),
+    queryFn: () =>
+      apiClient.get<{
+        total_questions: number;
+        overall_score: number;
+        grade: string;
+        summary: string;
+        items: Array<{
+          key: string;
+          title: string;
+          status: "pass" | "warn" | "fail";
+          score: number;
+          message: string;
+          suggestion: string;
+        }>;
+      }>(`/api/questionnaire/${projectId}/health`),
+    enabled: !!projectId,
   });
 }
