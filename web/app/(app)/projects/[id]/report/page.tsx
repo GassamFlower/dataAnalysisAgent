@@ -123,7 +123,13 @@ export default function ReportPage({
           const a = document.createElement("a");
           a.href = url;
           const ext =
-            format === "word" ? "docx" : format === "excel" ? "xlsx" : "pdf";
+            format === "word"
+              ? "docx"
+              : format === "excel"
+              ? "xlsx"
+              : format === "ppt"
+              ? "pptx"
+              : "pdf";
           a.download = filename || `report.${ext}`;
           document.body.appendChild(a);
           a.click();

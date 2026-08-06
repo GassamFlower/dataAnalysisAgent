@@ -143,6 +143,7 @@ export default function NewProjectPage() {
               value={rawText}
               onChange={setRawText}
               disabled={isSubmitting}
+              projectId={draftProjectId ?? undefined}
               getProjectId={getOrCreateProjectId}
             />
           </div>

@@ -80,6 +80,9 @@ async def dev_login(db: AsyncSession = Depends(get_db)):
     if not settings.DEBUG:
         raise UnauthorizedException("测试账号登录仅在开发环境可用")
 
+    # 审计日志：记录 dev-login 调用，便于追踪 DEBUG 被误开的情况
+    logger.warning("dev-login 端点被调用，即将为测试用户 %s 签发 token", TEST_USER_ID)
+
     # 获取或创建测试用户
     user = await db.get(User, TEST_USER_ID)
     if not user:
