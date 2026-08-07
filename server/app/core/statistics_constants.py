@@ -61,7 +61,8 @@ BARTLETT_GRADES: List[Tuple[float, str, str]] = [
 THRESHOLDS: dict = {
     "alpha": 0.70,  # α >= 0.7 为合格
     "kmo": 0.50,  # KMO >= 0.5 为可接受（已由 0.6 校准为 0.5）
-    "bartlett_p": 0.05,  # p < 0.05 为显著
+    "bartlett_p": 0.05,  # p < 0.05 为显著（Bartlett 球形检验）
+    "p_value": 0.05,  # 假设检验显著性阈值（差异检验等通用 p 值）
     "loading": 0.40,  # 载荷 >= 0.4 为可接受
     "variance": 0.50,  # 累计方差 >= 50% 为可接受
 }

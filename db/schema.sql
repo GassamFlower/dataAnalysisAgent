@@ -178,8 +178,9 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS datasets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    simulation_config_id UUID NOT NULL UNIQUE REFERENCES simulation_configs(id) ON DELETE CASCADE,
+    simulation_config_id UUID REFERENCES simulation_configs(id) ON DELETE CASCADE,
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    source VARCHAR(20) NOT NULL DEFAULT 'simulation' CHECK (source IN ('simulation', 'real')),
     sample_size INT NOT NULL CHECK (sample_size > 0),
     columns JSONB NOT NULL,
     data JSONB NOT NULL,
@@ -191,6 +192,10 @@ CREATE TABLE IF NOT EXISTS datasets (
 CREATE INDEX idx_datasets_simulation_config_id ON datasets(simulation_config_id);
 CREATE INDEX idx_datasets_project_id ON datasets(project_id);
 CREATE INDEX idx_datasets_deleted_at ON datasets(deleted_at);
+CREATE INDEX idx_datasets_project_id_source ON datasets(project_id, source);
+-- partial unique index：仅 simulation 数据要求 simulation_config_id 唯一
+CREATE UNIQUE INDEX idx_datasets_simulation_config_id_unique
+    ON datasets(simulation_config_id) WHERE source = 'simulation';
 
 CREATE TRIGGER trg_datasets_updated_at
 BEFORE UPDATE ON datasets
@@ -313,3 +318,139 @@ CREATE INDEX idx_orders_deleted_at ON orders(deleted_at);
 CREATE TRIGGER trg_orders_updated_at
 BEFORE UPDATE ON orders
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ---------------------------------------------------------------------------
+-- 14. user_agreements（合规 F-SYS-005/006）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_agreements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    agreement_type VARCHAR(50) NOT NULL,
+    agreement_version VARCHAR(20) NOT NULL,
+    agreed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, agreement_type, agreement_version)
+);
+
+CREATE INDEX idx_user_agreements_user_id ON user_agreements(user_id);
+CREATE INDEX idx_user_agreements_type ON user_agreements(agreement_type);
+CREATE INDEX idx_user_agreements_agreed_at ON user_agreements(agreed_at);
+
+-- ---------------------------------------------------------------------------
+-- 15. audit_logs（合规 F-SYS-008）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    project_id UUID,
+    action_type VARCHAR(50) NOT NULL,
+    action_detail JSONB,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_project_id ON audit_logs(project_id);
+CREATE INDEX idx_audit_logs_action_type ON audit_logs(action_type);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX idx_audit_logs_user_created ON audit_logs(user_id, created_at);
+
+-- ---------------------------------------------------------------------------
+-- 16. user_tutorial_progress（教程 F-TUT-004）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_tutorial_progress (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE,
+    current_step INT NOT NULL DEFAULT 0,
+    total_steps INT NOT NULL DEFAULT 5,
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    step_details JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_tutorial_progress_user_id ON user_tutorial_progress(user_id);
+
+-- ---------------------------------------------------------------------------
+-- 17. tutorial_articles（统计知识小课堂 F-TUT-002）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tutorial_articles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    title VARCHAR(200) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    content_markdown TEXT NOT NULL,
+    summary VARCHAR(500),
+    cover_image VARCHAR(500),
+    order_index INT NOT NULL DEFAULT 0,
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_tutorial_articles_slug ON tutorial_articles(slug);
+CREATE INDEX idx_tutorial_articles_category ON tutorial_articles(category);
+CREATE INDEX idx_tutorial_articles_is_published ON tutorial_articles(is_published);
+CREATE INDEX idx_tutorial_articles_order_index ON tutorial_articles(order_index);
+
+CREATE TRIGGER trg_tutorial_articles_updated_at
+BEFORE UPDATE ON tutorial_articles
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ---------------------------------------------------------------------------
+-- 18. analytics_events（前端埋点）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS analytics_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type VARCHAR(100) NOT NULL,
+    user_id UUID,
+    project_id UUID,
+    metadata_json JSONB,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX ix_analytics_event_type ON analytics_events(event_type);
+CREATE INDEX ix_analytics_user_id ON analytics_events(user_id);
+CREATE INDEX ix_analytics_project_id ON analytics_events(project_id);
+CREATE INDEX ix_analytics_created_at ON analytics_events(created_at);
+CREATE INDEX ix_analytics_event_type_created ON analytics_events(event_type, created_at);
+CREATE INDEX ix_analytics_user_created ON analytics_events(user_id, created_at);
+
+-- ---------------------------------------------------------------------------
+-- 19. user_quotas（周用量限制 F-SYS-001）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_quotas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    action_type VARCHAR(50) NOT NULL,
+    period_key VARCHAR(20) NOT NULL,
+    used_count INT NOT NULL DEFAULT 0,
+    max_count INT NOT NULL DEFAULT 6,
+    reset_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, action_type, period_key)
+);
+
+CREATE INDEX idx_user_quotas_user_period ON user_quotas(user_id, period_key);
+
+-- ---------------------------------------------------------------------------
+-- 20. llm_configs（LLM 模型配置动态切换）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS llm_configs (
+    id SERIAL PRIMARY KEY,
+    config_key VARCHAR(100) NOT NULL UNIQUE,
+    config_value TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX ix_llm_configs_config_key ON llm_configs(config_key);

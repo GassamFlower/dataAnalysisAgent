@@ -2,12 +2,13 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_user_optional
+from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.analytics_event import AnalyticsEvent
 from app.schemas.analytics import (
     TrackEventRequest,
@@ -16,6 +17,7 @@ from app.schemas.analytics import (
     DailyMetrics,
     ConversionMetrics,
 )
+from app.services.project_service import get_owned_project
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -24,23 +26,49 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
     "/track",
     response_model=TrackEventResponse,
     summary="上报埋点事件",
-    description="接收前端埋点事件并存储",
+    description="接收前端埋点事件并存储。可选登录：已登录则 user_id 由服务端从 token 派生（忽略客户端传入值），"
+                "project_id 校验归属；未登录只允许匿名事件（user_id 记为空）。",
 )
 async def track_event(
     request: Request,
     event_data: TrackEventRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ):
-    """上报埋点事件。"""
+    """上报埋点事件。
+
+    安全规则（防伪造）：
+    1. user_id 一律由服务端决定：已登录 → token 中的用户 ID；未登录 → None。
+       客户端请求体传入的 user_id 被忽略，防止任意伪造他人埋点。
+    2. project_id 若由客户端传入：
+       - 已登录 → 必须属于当前用户（get_owned_project），否则拒绝。
+       - 未登录 → 不可信，置为 None（匿名事件不归属任何项目）。
+    """
     # 提取客户端 IP
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent", "")[:500]
 
+    # user_id 服务端派生，不信任客户端值
+    trusted_user_id = current_user["id"] if current_user else None
+
+    # project_id 归属校验：已登录才允许归属项目，且必须是本人项目
+    trusted_project_id = event_data.project_id
+    if trusted_project_id is not None:
+        if current_user is None:
+            # 未登录不可归属任意项目（匿名事件不携带项目归属）
+            trusted_project_id = None
+        else:
+            # 已登录：校验项目属于当前用户，防止给他人项目伪造事件
+            try:
+                await get_owned_project(db, trusted_project_id, current_user["id"])
+            except NotFoundException:
+                trusted_project_id = None
+
     # 创建事件记录
     event = AnalyticsEvent(
         event_type=event_data.event,
-        user_id=event_data.user_id,
-        project_id=event_data.project_id,
+        user_id=trusted_user_id,
+        project_id=trusted_project_id,
         metadata_json=event_data.metadata,
         ip_address=ip_address,
         user_agent=user_agent,
@@ -67,9 +95,9 @@ async def get_metrics(
     current_user: dict = Depends(get_current_user),
 ):
     """查询核心业务指标。"""
-    # 检查管理员权限
+    # 检查管理员权限（统一走 ForbiddenException，保证响应格式一致）
     if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise ForbiddenException("需要管理员权限")
 
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)

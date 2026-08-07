@@ -248,6 +248,11 @@ ACTION_TYPES = {
     "USER_LOGIN": "user_login",
     "USER_LOGOUT": "user_logout",
     "PASSWORD_RESET": "password_reset",
+    # 账户安全（用户自助操作）
+    "PASSWORD_CHANGE": "password_change",
+    "EMAIL_CHANGE": "email_change",
+    "PROFILE_UPDATE": "profile_update",
+    "AVATAR_UPDATE": "avatar_update",
     # 项目管理
     "PROJECT_CREATE": "project_create",
     "PROJECT_UPDATE": "project_update",

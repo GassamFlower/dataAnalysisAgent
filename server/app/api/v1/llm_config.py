@@ -1,13 +1,14 @@
 """LLM 配置管理 API（仅管理员可访问）。"""
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.exceptions import ForbiddenException, NotFoundException, ValidationException
 from app.core.responses import success_response
 from app.models.llm_config import LlmConfig
 from app.services.llm.config_service import (
@@ -48,7 +49,7 @@ class LlmConfigUpdateRequest(BaseModel):
 
 def _check_admin(current_user: dict):
     if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可操作 LLM 配置")
+        raise ForbiddenException("仅管理员可操作 LLM 配置")
 
 
 def _config_to_dict(c: LlmConfig) -> dict:
@@ -90,9 +91,8 @@ async def create_llm_config(
 
     # 白名单校验
     if req.config_key == "llm.preferred_provider" and req.config_value not in VALID_PROVIDERS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"preferred_provider 只能是: {', '.join(VALID_PROVIDERS)}",
+        raise ValidationException(
+            f"preferred_provider 只能是: {', '.join(VALID_PROVIDERS)}",
         )
 
     # 检查是否已存在
@@ -100,7 +100,7 @@ async def create_llm_config(
         select(LlmConfig).where(LlmConfig.config_key == req.config_key)
     )
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="该配置键已存在")
+        raise ValidationException("该配置键已存在")
 
     config = LlmConfig(
         config_key=req.config_key,
@@ -127,13 +127,12 @@ async def update_llm_config(
 
     config = await db.get(LlmConfig, config_id)
     if not config:
-        raise HTTPException(status_code=404, detail="配置项不存在")
+        raise NotFoundException("配置项不存在")
 
     # 白名单校验
     if config.config_key == "llm.preferred_provider" and req.config_value not in VALID_PROVIDERS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"preferred_provider 只能是: {', '.join(VALID_PROVIDERS)}",
+        raise ValidationException(
+            f"preferred_provider 只能是: {', '.join(VALID_PROVIDERS)}",
         )
 
     config.config_value = req.config_value
@@ -141,7 +140,8 @@ async def update_llm_config(
         config.is_enabled = req.is_enabled
     await db.commit()
 
-    refresh_cache()
+    # 修复：原代码调用未定义的 refresh_cache()，会触发 NameError
+    await reload_from_db()
     return success_response(data=_config_to_dict(config))
 
 
@@ -156,7 +156,7 @@ async def delete_llm_config(
 
     config = await db.get(LlmConfig, config_id)
     if not config:
-        raise HTTPException(status_code=404, detail="配置项不存在")
+        raise NotFoundException("配置项不存在")
 
     await db.delete(config)
     await db.commit()

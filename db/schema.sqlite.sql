@@ -271,4 +271,136 @@ CREATE INDEX idx_orders_project_id ON orders(project_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_deleted_at ON orders(deleted_at);
 
+-- ---------------------------------------------------------------------------
+-- 14. user_agreements（合规 F-SYS-005/006）
+-- ---------------------------------------------------------------------------
+CREATE TABLE user_agreements (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id TEXT NOT NULL,
+    agreement_type TEXT NOT NULL,
+    agreement_version TEXT NOT NULL,
+    agreed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, agreement_type, agreement_version)
+);
+
+CREATE INDEX idx_user_agreements_user_id ON user_agreements(user_id);
+CREATE INDEX idx_user_agreements_type ON user_agreements(agreement_type);
+CREATE INDEX idx_user_agreements_agreed_at ON user_agreements(agreed_at);
+
+-- ---------------------------------------------------------------------------
+-- 15. audit_logs（合规 F-SYS-008）
+-- ---------------------------------------------------------------------------
+CREATE TABLE audit_logs (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id TEXT NOT NULL,
+    project_id TEXT,
+    action_type TEXT NOT NULL,
+    action_detail JSON,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_project_id ON audit_logs(project_id);
+CREATE INDEX idx_audit_logs_action_type ON audit_logs(action_type);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX idx_audit_logs_user_created ON audit_logs(user_id, created_at);
+
+-- ---------------------------------------------------------------------------
+-- 16. user_tutorial_progress（教程 F-TUT-004）
+-- ---------------------------------------------------------------------------
+CREATE TABLE user_tutorial_progress (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id TEXT NOT NULL UNIQUE,
+    current_step INTEGER NOT NULL DEFAULT 0,
+    total_steps INTEGER NOT NULL DEFAULT 5,
+    completed INTEGER NOT NULL DEFAULT 0,
+    completed_at DATETIME,
+    step_details JSON,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_user_tutorial_progress_user_id ON user_tutorial_progress(user_id);
+
+-- ---------------------------------------------------------------------------
+-- 17. tutorial_articles（统计知识小课堂 F-TUT-002）
+-- ---------------------------------------------------------------------------
+CREATE TABLE tutorial_articles (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    slug TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    content_markdown TEXT NOT NULL,
+    summary TEXT,
+    cover_image TEXT,
+    order_index INTEGER NOT NULL DEFAULT 0,
+    is_published INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME
+);
+
+CREATE INDEX idx_tutorial_articles_slug ON tutorial_articles(slug);
+CREATE INDEX idx_tutorial_articles_category ON tutorial_articles(category);
+CREATE INDEX idx_tutorial_articles_is_published ON tutorial_articles(is_published);
+CREATE INDEX idx_tutorial_articles_order_index ON tutorial_articles(order_index);
+
+-- ---------------------------------------------------------------------------
+-- 18. analytics_events（前端埋点）
+-- ---------------------------------------------------------------------------
+CREATE TABLE analytics_events (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    event_type TEXT NOT NULL,
+    user_id TEXT,
+    project_id TEXT,
+    metadata_json JSON,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX ix_analytics_event_type ON analytics_events(event_type);
+CREATE INDEX ix_analytics_user_id ON analytics_events(user_id);
+CREATE INDEX ix_analytics_project_id ON analytics_events(project_id);
+CREATE INDEX ix_analytics_created_at ON analytics_events(created_at);
+CREATE INDEX ix_analytics_event_type_created ON analytics_events(event_type, created_at);
+CREATE INDEX ix_analytics_user_created ON analytics_events(user_id, created_at);
+
+-- ---------------------------------------------------------------------------
+-- 19. user_quotas（周用量限制 F-SYS-001）
+-- ---------------------------------------------------------------------------
+CREATE TABLE user_quotas (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    period_key TEXT NOT NULL,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    max_count INTEGER NOT NULL DEFAULT 6,
+    reset_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, action_type, period_key)
+);
+
+CREATE INDEX idx_user_quotas_user_period ON user_quotas(user_id, period_key);
+
+-- ---------------------------------------------------------------------------
+-- 20. llm_configs（LLM 模型配置动态切换）
+-- ---------------------------------------------------------------------------
+CREATE TABLE llm_configs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    config_key TEXT NOT NULL UNIQUE,
+    config_value TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    is_enabled INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX ix_llm_configs_config_key ON llm_configs(config_key);
+
 COMMIT;

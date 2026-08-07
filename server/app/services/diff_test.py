@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
 
-from app.core.statistics_constants import grade_effect_size
+from app.core.statistics_constants import THRESHOLDS, grade_effect_size
 
 # 决策规则表（后端架构文档 9.6）
 # groups_min: 自变量为分类时，组数下限（用于区分 t vs ANOVA）
@@ -330,7 +330,7 @@ def run_diff_tests(
             })
             continue
 
-        significant = test_result["p_value"] < 0.05
+        significant = test_result["p_value"] < THRESHOLDS["p_value"]
         direction = path.get("direction", "")
         strength = path.get("strength", "")
         interpretation = _build_interpretation(

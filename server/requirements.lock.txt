@@ -28,6 +28,7 @@ python-dotenv==1.2.2
 # 数据库
 SQLAlchemy==2.0.49
 aiosqlite==0.22.1
+asyncpg==0.30.0
 alembic==1.18.5
 
 # LLM（DeepSeek 兼容 OpenAI SDK）
@@ -38,11 +39,19 @@ numpy==2.2.6
 pandas==2.3.3
 scipy==1.15.3
 statsmodels==0.14.6
+factor-analyzer==0.5.1
+pingouin==0.5.5
 
 # 报告导出
 python-docx==1.2.0
 openpyxl==3.1.5
 pypdf==3.17.4
+# reportlab 4.3+ 需 Python 3.9+（生产 Dockerfile 为 3.11-slim，故用 5.x）
+reportlab==4.3.1
+python-pptx==0.6.23
+
+# SPSS 文件解析
+pyreadstat==1.2.13
 
 # 安全
 PyJWT==2.13.0

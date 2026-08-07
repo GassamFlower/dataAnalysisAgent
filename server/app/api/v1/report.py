@@ -111,6 +111,73 @@ async def _get_sample_size(db: AsyncSession, project_id: UUID) -> Optional[int]:
     return result.scalar_one_or_none()
 
 
+async def _load_report_with_relations(
+    db: AsyncSession, report_id: UUID
+) -> Optional[Report]:
+    """加载报告及其关联数据（信效度结果、R4 诊断、诊断明细）。"""
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(Report)
+        .options(
+            selectinload(Report.reliability_results),
+            selectinload(Report.diagnosis).selectinload(Diagnosis.issues)
+        )
+        .where(Report.id == report_id)
+    )
+    return result.scalar_one_or_none()
+
+
+def _build_report_data(
+    report: Report, diff_tests: List[Dict[str, Any]], *, as_str: bool = False
+) -> Dict[str, Any]:
+    """构建报告数据字典，供导出 / 润色共用。
+
+    export 用 as_str=True（导出的数值需字符串化便于排版）；
+    polish 用 as_str=False（LLM 读取需数值类型）。避免两份几乎相同的 dict 重复维护。
+    """
+    def _fmt(v: Any) -> Any:
+        """按 as_str 标志格式化数值。"""
+        if v is None:
+            return "0" if as_str else 0.0
+        return str(v) if as_str else float(v)
+
+    return {
+        "project_id": str(report.project_id),
+        "overall_alpha": _fmt(report.overall_alpha),
+        "passed_count": report.passed_count or 0,
+        "total_count": report.total_count or 0,
+        "reliability_results": [
+            {
+                "dimension": r.dimension,
+                "alpha": _fmt(r.alpha),
+                "kmo": _fmt(r.kmo),
+                "bartlett_p_value": _fmt(r.bartlett_p_value),
+                "passed": r.passed
+            }
+            for r in report.reliability_results
+        ],
+        "diagnosis": (
+            {
+                "passed": report.diagnosis.passed,
+                "issues": [
+                    {
+                        "dimension": issue.dimension,
+                        "metric": issue.metric,
+                        "value": _fmt(issue.value),
+                        "threshold": _fmt(issue.threshold),
+                        "reason": issue.reason,
+                        "suggestion": issue.suggestion
+                    }
+                    for issue in report.diagnosis.issues
+                ]
+            }
+            if report.diagnosis
+            else None
+        ),
+        "diff_tests": diff_tests,
+    }
+
+
 @router.get(
     "/{project_id}",
     response_model=ResponseModel[ReportResponse],
@@ -378,16 +445,9 @@ async def analyze(
     await db.flush()
 
     # 14. 返回报告 + 差异检验
-    from sqlalchemy.orm import selectinload
-    result = await db.execute(
-        select(Report)
-        .options(
-            selectinload(Report.reliability_results),
-            selectinload(Report.diagnosis).selectinload(Diagnosis.issues)
-        )
-        .where(Report.id == report.id)
-    )
-    report = result.scalar_one()
+    report = await _load_report_with_relations(db, report.id)
+    if report is None:
+        raise NotFoundException(ERR_REPORT_NOT_FOUND)
 
     return ResponseModel(data=_build_report_response(report, diff_tests, sample_size))
 
@@ -415,16 +475,7 @@ async def export(
     )
 
     # 1. 加载报告及关联数据
-    from sqlalchemy.orm import selectinload
-    result = await db.execute(
-        select(Report)
-        .options(
-            selectinload(Report.reliability_results),
-            selectinload(Report.diagnosis).selectinload(Diagnosis.issues)
-        )
-        .where(Report.id == report_id)
-    )
-    report = result.scalar_one_or_none()
+    report = await _load_report_with_relations(db, report_id)
     if not report:
         raise NotFoundException(ERR_REPORT_NOT_FOUND)
 
@@ -451,38 +502,8 @@ async def export(
     if df is not None:
         diff_tests = await _compute_diff_tests(db, report.project_id, df)
 
-    # 4. 转换为字典
-    report_data = {
-        "project_id": str(report.project_id),
-        "overall_alpha": str(report.overall_alpha) if report.overall_alpha else "0",
-        "passed_count": report.passed_count or 0,
-        "total_count": report.total_count or 0,
-        "reliability_results": [
-            {
-                "dimension": r.dimension,
-                "alpha": str(r.alpha),
-                "kmo": str(r.kmo),
-                "bartlett_p_value": str(r.bartlett_p_value),
-                "passed": r.passed
-            }
-            for r in report.reliability_results
-        ],
-        "diagnosis": {
-            "passed": report.diagnosis.passed,
-            "issues": [
-                {
-                    "dimension": issue.dimension,
-                    "metric": issue.metric,
-                    "value": str(issue.value),
-                    "threshold": str(issue.threshold),
-                    "reason": issue.reason,
-                    "suggestion": issue.suggestion
-                }
-                for issue in report.diagnosis.issues
-            ] if report.diagnosis else []
-        } if report.diagnosis else None,
-        "diff_tests": diff_tests,
-    }
+    # 4. 转换为字典（导出场景数值字符串化）
+    report_data = _build_report_data(report, diff_tests, as_str=True)
 
     # 5. 调用导出服务
     from app.services.reporter import export_word, export_excel, export_pdf
@@ -543,16 +564,7 @@ async def polish_report(
     )
 
     # 1. 加载报告及关联数据
-    from sqlalchemy.orm import selectinload
-    result = await db.execute(
-        select(Report)
-        .options(
-            selectinload(Report.reliability_results),
-            selectinload(Report.diagnosis).selectinload(Diagnosis.issues)
-        )
-        .where(Report.id == report_id)
-    )
-    report = result.scalar_one_or_none()
+    report = await _load_report_with_relations(db, report_id)
     if not report:
         raise NotFoundException(ERR_REPORT_NOT_FOUND)
 
@@ -565,38 +577,8 @@ async def polish_report(
     if df is not None:
         diff_tests = await _compute_diff_tests(db, report.project_id, df)
 
-    # 4. 构建报告数据
-    report_data = {
-        "project_id": str(report.project_id),
-        "overall_alpha": float(report.overall_alpha) if report.overall_alpha else 0.0,
-        "passed_count": report.passed_count or 0,
-        "total_count": report.total_count or 0,
-        "reliability_results": [
-            {
-                "dimension": r.dimension,
-                "alpha": float(r.alpha),
-                "kmo": float(r.kmo),
-                "bartlett_p_value": float(r.bartlett_p_value),
-                "passed": r.passed
-            }
-            for r in report.reliability_results
-        ],
-        "diagnosis": {
-            "passed": report.diagnosis.passed,
-            "issues": [
-                {
-                    "dimension": issue.dimension,
-                    "metric": issue.metric,
-                    "value": float(issue.value),
-                    "threshold": float(issue.threshold),
-                    "reason": issue.reason,
-                    "suggestion": issue.suggestion
-                }
-                for issue in report.diagnosis.issues
-            ]
-        } if report.diagnosis else None,
-        "diff_tests": diff_tests,
-    }
+    # 4. 构建报告数据（LLM 读取需数值类型）
+    report_data = _build_report_data(report, diff_tests, as_str=False)
 
     # 5. 调用润色服务
     from app.services.report_polisher import polish_section

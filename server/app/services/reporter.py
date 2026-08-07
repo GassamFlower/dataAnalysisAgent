@@ -33,6 +33,7 @@ from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
 from app.core.statistics_constants import (
     GRADE_TABLE_TEXT,
+    THRESHOLDS,
     grade_alpha,
     grade_bartlett,
     grade_kmo,
@@ -49,6 +50,32 @@ def _to_float(value: Any, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+# Excel/CSV 公式注入防护：用户可控文本若以这些字符开头，
+# 打开文件时会被 Excel 当作公式执行（OWASP CSV Injection）。
+_DANGEROUS_CELL_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe_cell(value: Any) -> Any:
+    """净化导出单元格，防止公式注入。
+
+    对字符串做两件事：
+    1. 去除首尾空白后，若以 = + - @ tab CR 开头，前置单引号 '（Excel 视为文本）。
+    2. 非字符串（数字/布尔/None）原样返回，不影响数值列。
+
+    Args:
+        value: 单元格原始值
+
+    Returns:
+        净化后的值
+    """
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith(_DANGEROUS_CELL_PREFIXES):
+            return f"'{value}"
+    return value
+
 
 
 def _format_p_value(p: Any) -> str:
@@ -167,7 +194,7 @@ def _reliability_paragraph(report_data: Dict[str, Any]) -> str:
         min_alpha = min(alphas)
         max_alpha = max(alphas)
         avg_kmo = sum(kmos) / len(kmos) if kmos else 0
-        bartlett_pass = all(b < 0.05 for b in bartletts)
+        bartlett_pass = all(b < THRESHOLDS["bartlett_p"] for b in bartletts)
         _, alpha_wording = grade_alpha(overall_alpha)
     else:
         min_alpha = max_alpha = avg_kmo = 0
@@ -184,7 +211,7 @@ def _reliability_paragraph(report_data: Dict[str, Any]) -> str:
         f"各维度 α 介于 {min_alpha:.3f}～{max_alpha:.3f}。"
         f"效度检验中，KMO = {avg_kmo:.3f}，"
         f"Bartlett 球形检验 p{'<0.05' if bartlett_pass else '≥0.05'}，"
-        f"{'适合做因子分析' if bartlett_pass and avg_kmo >= 0.5 else '因子分析适用性需进一步评估'}；"
+        f"{'适合做因子分析' if bartlett_pass and avg_kmo >= THRESHOLDS['kmo'] else '因子分析适用性需进一步评估'}；"
         f"主成分分析提取 {factor_count} 个公因子，累计方差解释率 {variance_pct}。"
     )
     return paragraph
@@ -346,7 +373,7 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
 
         for r in reliability_results:
             ws_reliability.append([
-                r.get("dimension", ""),
+                _safe_cell(r.get("dimension", "")),
                 _to_float(r.get("alpha"), 0.0),
                 _to_float(r.get("kmo"), 0.0),
                 _to_float(r.get("bartlett_p_value"), 0.0),
@@ -379,12 +406,12 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
 
             for issue in issues:
                 ws_issues.append([
-                    issue.get("dimension", ""),
-                    issue.get("metric", ""),
+                    _safe_cell(issue.get("dimension", "")),
+                    _safe_cell(issue.get("metric", "")),
                     _to_float(issue.get("value"), 0.0),
                     _to_float(issue.get("threshold"), 0.0),
-                    issue.get("reason", ""),
-                    issue.get("suggestion", "")
+                    _safe_cell(issue.get("reason", "")),
+                    _safe_cell(issue.get("suggestion", ""))
                 ])
 
             # 调整列宽
@@ -424,8 +451,8 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
             # 错误场景：仅写错误原因
             if t.get("error"):
                 ws_diff.append([
-                    path_label, method_name, "", "", "", "", "", "",
-                    f"错误：{t['error']}",
+                    _safe_cell(path_label), _safe_cell(method_name), "", "", "", "", "", "",
+                    f"错误：{_safe_cell(t['error'])}",
                 ])
                 continue
 
@@ -447,15 +474,15 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
             sig_text = "显著 *" if significant is True else ("不显著" if significant is False else "")
 
             ws_diff.append([
-                path_label,
-                method_name,
+                _safe_cell(path_label),
+                _safe_cell(method_name),
                 stat_val if stat_val is not None else "",
                 p_val if p_val is not None else "",
                 es_val if es_val is not None else "",
-                t.get("effect_size_name", "") or "",
-                t.get("effect_size_grade", "") or "",
-                sig_text,
-                t.get("interpretation", "") or "",
+                _safe_cell(t.get("effect_size_name", "") or ""),
+                _safe_cell(t.get("effect_size_grade", "") or ""),
+                _safe_cell(sig_text),
+                _safe_cell(t.get("interpretation", "") or ""),
             ])
 
         # 调整列宽
@@ -491,7 +518,7 @@ def export_dataset_excel(
     # Sheet1: 模拟数据
     ws_data = wb.active
     ws_data.title = "模拟数据"
-    ws_data.append(columns)
+    ws_data.append([_safe_cell(c) for c in columns])
 
     # 表头样式
     for cell in ws_data[1]:
@@ -500,12 +527,12 @@ def export_dataset_excel(
             start_color="D3D3D3", end_color="D3D3D3", fill_type="solid"
         )
 
-    # 数据行：支持 dict 行与 list 行两种存储格式
+    # 数据行：支持 dict 行与 list 行两种存储格式（全部经 _safe_cell 防公式注入）
     for row in data:
         if isinstance(row, dict):
-            ws_data.append([row.get(col) for col in columns])
+            ws_data.append([_safe_cell(row.get(col)) for col in columns])
         else:
-            ws_data.append(list(row))
+            ws_data.append([_safe_cell(v) for v in row])
 
     # Sheet2: 元数据（含水印）
     ws_meta = wb.create_sheet("元数据")
@@ -546,13 +573,13 @@ def export_dataset_csv(
     writer.writerow([f"# 维度数：{len(columns)}"])
     writer.writerow(["# 免责声明：本数据为模拟数据，仅供学术研究和教学演示使用，不代表真实数据。"])
 
-    # 表头 + 数据：支持 dict 行与 list 行两种存储格式
-    writer.writerow(columns)
+    # 表头 + 数据：支持 dict 行与 list 行两种存储格式（全部经 _safe_cell 防公式注入）
+    writer.writerow([_safe_cell(c) for c in columns])
     for row in data:
         if isinstance(row, dict):
-            writer.writerow([row.get(col, "") for col in columns])
+            writer.writerow([_safe_cell(row.get(col, "")) for col in columns])
         else:
-            writer.writerow(list(row))
+            writer.writerow([_safe_cell(v) for v in row])
 
     # UTF-8 BOM，保证 Excel 直接打开中文正常
     return buffer.getvalue().encode("utf-8-sig")

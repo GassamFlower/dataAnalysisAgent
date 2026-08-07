@@ -12,7 +12,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from app.core.statistics_constants import GRADE_TABLE_TEXT, is_passed
+from app.core.statistics_constants import GRADE_TABLE_TEXT, THRESHOLDS, is_passed
 from app.services.diagnosis_rules import match_pitfalls, match_regression_pitfalls
 from app.services.llm.client import chat_r1
 from app.services.llm.utils import (
@@ -55,7 +55,7 @@ def _build_prompt(reliability_results: List[Dict], rule_hits: List[Dict]) -> str
 {GRADE_TABLE_TEXT}
 
 任务要求：
-1. 只列出未达合格线的指标（α<0.7 / KMO<0.5 / Bartlett p≥0.05）
+1. 只列出未达合格线的指标（α<{THRESHOLDS['alpha']} / KMO<{THRESHOLDS['kmo']} / Bartlett p≥{THRESHOLDS['bartlett_p']}）
 2. reason 要具体说明可能的原因（如题目数量少、维度内部一致性差、样本量不足等）
 3. suggestion 要给出可操作的修改建议
 4. 如果所有指标都达标，passed 为 true，issues 为空数组

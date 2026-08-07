@@ -30,9 +30,8 @@ pingouin>=0.5.3
 python-docx>=1.1.0
 openpyxl>=3.1.0
 pypdf>=4.0.0
-# reportlab 4.3+ 在 Python 3.8 上调用 hashlib openssl_md5(usedforsecurity=False) 会报错，
-# 锁定 <4.3 保证 Python 3.8 兼容性（详见 docs/j-功能-PDF报告导出.md 风险章）
-reportlab>=4.0.0,<4.3
+# reportlab 4.3 起要求 Python 3.9+；生产 Dockerfile 为 3.11-slim，故放宽上限（原 <4.3 为 Python 3.8 遗留约束）
+reportlab>=4.0.0
 python-pptx>=0.6.21,<1.0.0
 
 # SPSS 文件解析

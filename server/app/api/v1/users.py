@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +25,7 @@ from app.core.error_messages import (
     ERR_VERIFY_CODE_INVALID,
 )
 from app.models.user import User
+from app.services.audit_service import ACTION_TYPES, AuditService
 
 router = APIRouter(prefix="/users", tags=["用户"])
 
@@ -133,6 +134,7 @@ async def get_me(
 @router.patch("/me/profile")
 async def update_profile(
     req: ProfileUpdateRequest,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -142,12 +144,24 @@ async def update_profile(
         raise ValidationException(ERR_USER_NOT_FOUND)
     user.nickname = req.nickname
     await db.commit()
+
+    # 审计：资料变更
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["PROFILE_UPDATE"],
+        action_detail={"nickname": req.nickname},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return success_response(data={"nickname": user.nickname})
 
 
 @router.patch("/me/password")
 async def update_password(
     req: PasswordUpdateRequest,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -161,6 +175,16 @@ async def update_password(
         raise ValidationException("旧密码不正确")
     user.password_hash = hash_password(req.new_password)
     await db.commit()
+
+    # 审计：密码修改（安全敏感操作）
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["PASSWORD_CHANGE"],
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return success_response(message="密码修改成功")
 
 
@@ -205,6 +229,7 @@ async def email_change_request(
 @router.post("/me/email/change-confirm")
 async def email_change_confirm(
     req: EmailChangeConfirmRequest,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -234,11 +259,22 @@ async def email_change_confirm(
     user.email_verify_expires_at = None
     await db.commit()
 
+    # 审计：邮箱变更（安全敏感操作）
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["EMAIL_CHANGE"],
+        action_detail={"new_email": req.new_email},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return success_response(message="邮箱更新成功")
 
 
 @router.post("/me/avatar")
 async def upload_avatar(
+    request: Request,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -254,6 +290,9 @@ async def upload_avatar(
     if len(content) > MAX_SIZE:
         raise ValidationException("文件大小不能超过 2MB")
 
+    # 校验文件头魔数：防止伪装成图片的恶意文件（content_type 头可被客户端伪造）
+    _validate_image_magic(content)
+
     # 转为 base64 data URI
     b64 = base64.b64encode(content).decode("utf-8")
     avatar_url = f"data:{file.content_type};base64,{b64}"
@@ -264,4 +303,35 @@ async def upload_avatar(
     user.avatar = avatar_url
     await db.commit()
 
+    # 审计：头像变更
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["AVATAR_UPDATE"],
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return success_response(data={"avatar": avatar_url})
+
+
+def _validate_image_magic(content: bytes) -> None:
+    """校验图片文件头魔数，仅接受 jpg / png / webp。
+
+    Args:
+        content: 文件二进制内容
+
+    Raises:
+        ValidationException: 文件头与声明格式不符
+    """
+    if len(content) < 12:
+        raise ValidationException("文件内容过短，不是有效图片")
+
+    if content[:3] == b"\xff\xd8\xff":  # JPEG
+        return
+    if content[:8] == b"\x89PNG\r\n\x1a\n":  # PNG
+        return
+    if content[:4] == b"RIFF" and content[8:12] == b"WEBP":  # WebP
+        return
+
+    raise ValidationException("文件内容与声明格式不符，仅支持 jpg/png/webp")
