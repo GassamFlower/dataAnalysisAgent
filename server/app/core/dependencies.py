@@ -52,7 +52,8 @@ async def get_current_user(
         "email": user.email,
         "nickname": user.nickname,
         "email_verified": user.email_verified,
-        "is_admin": True,
+        # 管理员权限不再硬编码 True：由 DEV_USER_IS_ADMIN 控制，默认 False，避免误开后门
+        "is_admin": settings.DEV_USER_IS_ADMIN,
         "plan": user.plan,
         "plan_expires_at": user.plan_expires_at,
     }

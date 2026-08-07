@@ -25,6 +25,7 @@ from app.schemas.tutorial import (
 )
 from app.services.tutorial_service import TutorialService
 from app.services.quota_service import check_and_consume_quota, get_quota_status
+from app.services.project_service import get_owned_project
 
 router = APIRouter(prefix="/tutorial", tags=["tutorial"])
 
@@ -268,7 +269,10 @@ async def ai_interpret(
     2. 调用 TutorialService.ai_interpret 读取报告 + 调用 LLM
     3. 查询剩余额度并返回
     """
-    # 1. 校验并扣减额度
+    # 1. 归属校验：项目必须属于当前用户（防 IDOR，禁止跨用户读取他人报告）
+    await get_owned_project(db, project_id, current_user["id"])
+
+    # 1.5 校验并扣减额度（归属校验通过后才扣，避免无效请求浪费额度）
     await check_and_consume_quota(
         db,
         current_user["id"],

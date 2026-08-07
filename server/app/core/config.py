@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     # 开发模式（仅 DEBUG=True 时允许 dev-token）
     DEV_TOKEN: str = ""  # 默认空，开发环境在 .env 中显式设置
     ALLOW_DEV_TOKEN: bool = False  # 生产环境必须保持 False
+    # dev-token 用户是否拥有管理员权限（仅开发模式生效；默认 False，避免误开后门）
+    DEV_USER_IS_ADMIN: bool = False
 
     # 微信公众号网页授权
     WECHAT_APP_ID: str = ""

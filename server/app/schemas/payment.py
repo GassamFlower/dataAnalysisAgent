@@ -66,6 +66,8 @@ class OrderNotifyRequest(BaseModel):
     channel: PaymentChannel = Field(..., description="支付渠道")
     transaction_id: str = Field(..., min_length=1, description="第三方支付流水号")
     status: Literal["success", "failed"] = Field(..., description="支付结果")
+    # 可选：实际扣款金额（元）。若提供，服务端必须与订单金额比对，防止"改金额买高配"。
+    amount: Optional[Decimal] = Field(None, description="实际扣款金额（元），可选但建议必传")
 
 
 class OrderNotifyResponse(BaseModel):

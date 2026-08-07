@@ -2,6 +2,7 @@
 import hashlib
 import logging
 import re
+import time
 import uuid
 import random
 import string
@@ -44,6 +45,39 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 
 # 测试账号固定用户（与 dependencies.py 保持一致）
 TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+# ── 验证码防爆破：内存级尝试计数 ──────────────────────────
+# 6 位数字验证码可被暴力枚举，这里按邮箱限制失败次数：
+# 连续失败 MAX_VERIFY_ATTEMPTS 次后锁定 LOCKOUT_SECONDS，期间拒绝该邮箱的验证请求。
+# 单进程部署下内存计数足够；多副本部署时应改为 Redis 等共享存储。
+_VERIFY_ATTEMPTS: dict[str, tuple[int, float]] = {}  # email -> (失败次数, 锁定截止时间戳)
+MAX_VERIFY_ATTEMPTS = 5
+LOCKOUT_SECONDS = 900  # 15 分钟
+
+
+def _is_verify_locked(email: str) -> bool:
+    """邮箱验证码是否处于锁定状态。"""
+    record = _VERIFY_ATTEMPTS.get(email)
+    if not record:
+        return False
+    fail_count, locked_until = record
+    if fail_count >= MAX_VERIFY_ATTEMPTS:
+        return locked_until > time.time()
+    return False
+
+
+def _record_verify_failure(email: str) -> None:
+    """记录一次验证失败，达到阈值即锁定。"""
+    fail_count, locked_until = _VERIFY_ATTEMPTS.get(email, (0, 0.0))
+    fail_count += 1
+    if fail_count >= MAX_VERIFY_ATTEMPTS:
+        locked_until = time.time() + LOCKOUT_SECONDS
+    _VERIFY_ATTEMPTS[email] = (fail_count, locked_until)
+
+
+def _reset_verify_counter(email: str) -> None:
+    """验证成功或重新发送验证码时清零计数。"""
+    _VERIFY_ATTEMPTS.pop(email, None)
 
 
 def _hash_refresh_token(token: str) -> str:
@@ -446,6 +480,12 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
 @router.post("/verify-email")
 async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
     """验证邮箱：校验验证码 → 标记 email_verified=True → 签发 JWT。"""
+    # 防爆破：该邮箱若已锁定则直接拒绝
+    if _is_verify_locked(req.email):
+        raise ValidationException(
+            f"验证失败次数过多，请 {LOCKOUT_SECONDS // 60} 分钟后再试"
+        )
+
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
     if not user:
@@ -458,12 +498,15 @@ async def verify_email(req: VerifyEmailRequest, db: AsyncSession = Depends(get_d
         raise ValidationException("请先获取验证码")
 
     if datetime.now(timezone.utc) > user.email_verify_expires_at:
+        _record_verify_failure(req.email)
         raise ValidationException(ERR_VERIFY_CODE_EXPIRED_REGISTER)
 
     if not _verify_email_verification_code(req.code, user.email_verify_code_hash):
+        _record_verify_failure(req.email)
         raise ValidationException(ERR_VERIFY_CODE_INVALID)
 
-    # 验证成功
+    # 验证成功：清零计数
+    _reset_verify_counter(req.email)
     user.email_verified = True
     user.email_verify_code_hash = None
     user.email_verify_expires_at = None
@@ -499,6 +542,8 @@ async def resend_code(req: ResendCodeRequest, db: AsyncSession = Depends(get_db)
     code = _generate_code()
     user.email_verify_code_hash = _hash_email_verification_code(code)
     user.email_verify_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    # 重发新码后清零失败计数，避免用户被上一轮的爆破锁定误伤
+    _reset_verify_counter(req.email)
 
     try:
         await send_verification_code(req.email, code)

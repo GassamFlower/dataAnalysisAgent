@@ -11,7 +11,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_this_password}
+      # 强制要求显式提供强密码：未设置即启动失败，绝不使用弱默认口令
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 或环境中设置强 DB_PASSWORD}
       POSTGRES_DB: data_analysis_agent
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -36,7 +37,7 @@ services:
       - ./server/.env.production
     environment:
       # 覆盖 DATABASE_URL 指向容器内 db 服务
-      - DATABASE_URL=postgresql+asyncpg://postgres:${DB_PASSWORD:-change_this_password}@db:5432/data_analysis_agent
+      - DATABASE_URL=postgresql+asyncpg://postgres:${DB_PASSWORD:?请在 .env 或环境中设置强 DB_PASSWORD}@db:5432/data_analysis_agent
     networks:
       - daa-network
     expose:

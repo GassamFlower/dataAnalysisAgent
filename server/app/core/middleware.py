@@ -5,7 +5,6 @@ from typing import Callable
 
 from fastapi import Request, Response
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from starlette.config import Config as StarletteConfig
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -35,8 +34,28 @@ def _utf8_read_file(self, env_file, encoding=None):
 StarletteConfig._read_file = _utf8_read_file
 
 # 速率限制器
+#
+# 信任模型：本服务部署在 nginx（唯一公网入口）之后，nginx 已设置 X-Forwarded-For。
+# 若后端被绕过 nginx 直接暴露，客户端可伪造 XFF 头绕过限流——因此必须保证 nginx 是唯一入口。
+def _rate_limit_key(request: Request) -> str:
+    """速率限制键：优先取 X-Forwarded-For 中的真实客户端 IP。
+
+    slowapi 默认的 get_remote_address 只取 request.client.host，在本架构（nginx →
+    Next.js BFF → 后端）下所有用户都显示为同一个内网 IP，限流会退化成"全站共享
+    60 次/分钟"，可被单一攻击者耗尽导致对合法用户误伤。这里改用 nginx 注入的
+    X-Forwarded-For 首项作为限流键，恢复按真实 IP 计数的效果。
+    """
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        # 取链中第一个 IP（最接近真实客户端，nginx 用 proxy_add_x_forwarded_for 追加在末尾）
+        first_ip = xff.split(",")[0].strip()
+        if first_ip:
+            return first_ip
+    return request.client.host if request.client else "unknown"
+
+
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=_rate_limit_key,
     default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"],
 )
 

@@ -177,10 +177,8 @@ async def payment_notify(
     """
     _verify_payment_callback(http_request)
 
-    # 按 order_id 查询（不限制 user_id，回调无登录态）
-    order = await payment_service.get_order_by_id(db, order_id)
-
-    await payment_service.process_payment_notification(db, order_id, request)
+    # 按 order_id 处理（不限制 user_id，回调无登录态；process 内部含金额核验、幂等与行锁）
+    order = await payment_service.process_payment_notification(db, order_id, request)
 
     # 记录审计日志
     await AuditService.log_action(
