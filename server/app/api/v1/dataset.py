@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_paid_plan
+from app.core.dependencies import get_current_user
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.responses import ResponseModel
 from app.models.dataset import Dataset
@@ -34,6 +34,14 @@ router = APIRouter(prefix="/dataset", tags=["dataset"])
 _MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 _ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".sav"}
 
+# 文件头魔数（防扩展名伪装攻击）；.csv 无固定魔数，跳过魔数校验
+_FILE_MAGIC_BYTES: Dict[str, List[bytes]] = {
+    # .xlsx 本质是 ZIP 容器，魔数为 PK\x03\x04
+    ".xlsx": [b"PK\x03\x04"],
+    # .sav 是 SPSS 二进制文件，头 4 字节为 $FL2（0x24 0x46 0x4C 0x32）
+    ".sav": [b"\x24FL2"],
+}
+
 # 最小样本量
 _MIN_SAMPLE_SIZE = 30
 
@@ -41,9 +49,43 @@ _MIN_SAMPLE_SIZE = 30
 _MAX_MISSING_RATIO = 0.30
 
 
+def _validate_file_magic(filename: str, content: bytes) -> None:
+    """校验文件头魔数，防止扩展名伪装攻击。
+
+    .csv 无固定魔数，跳过；.xlsx / .sav 按 _FILE_MAGIC_BYTES 校验。
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    magic_list = _FILE_MAGIC_BYTES.get(ext)
+    if not magic_list:
+        return  # .csv 等无魔数格式跳过
+
+    # 文件内容不足以包含魔数 → 异常
+    if len(content) < 4:
+        raise ValidationException("文件内容过短，疑似损坏或伪造")
+
+    for magic in magic_list:
+        if content.startswith(magic):
+            return
+
+    raise ValidationException(
+        f"文件头魔数与 {ext} 格式不匹配，疑似伪装文件"
+    )
+
+
 def _normalize_text(text: str) -> str:
     """规范化文本：去除首尾空白，合并连续空格。"""
     return re.sub(r"\s+", " ", text.strip())
+
+
+# Excel/CSV 公式注入防护：列名/单元格以这些字符开头会被 Excel 当公式执行。
+_DANGEROUS_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe_cell(value: str) -> str:
+    """防公式注入：去除首尾空白后若以危险字符开头，前置单引号。"""
+    if isinstance(value, str) and value.strip().startswith(_DANGEROUS_PREFIXES):
+        return f"'{value}"
+    return value
 
 
 def _build_column_mapping(
@@ -206,7 +248,8 @@ def _generate_template_buffer(
     if match_by == DatasetTemplateMatchBy.INDEX:
         columns = [f"Q{q.index}" for q in questions]
     else:
-        columns = [q.text for q in questions]
+        # 题面文本为用户可控内容，写入表头前做防公式注入净化
+        columns = [_safe_cell(q.text) for q in questions]
 
     # 生成 3 行示例数据
     example_rows: List[List[Any]] = []
@@ -288,7 +331,7 @@ async def import_real_data(
     file: UploadFile = File(..., description="真实回收数据文件，支持 .csv / .xlsx"),
     match_by: DatasetTemplateMatchBy = Query(DatasetTemplateMatchBy.TEXT),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_paid_plan),
+    current_user: dict = Depends(get_current_user),
 ):
     """导入真实回收数据。"""
     # 0. 校验并扣减免费额度
@@ -320,7 +363,10 @@ async def import_real_data(
     if not content:
         raise ValidationException("文件内容为空")
 
-    # 3. 查询项目题目
+    # 3. 校验文件头魔数（防止扩展名伪装攻击）
+    _validate_file_magic(file.filename, content)
+
+    # 4. 查询项目题目
     result = await db.execute(
         select(Question)
         .where(Question.project_id == project_id)

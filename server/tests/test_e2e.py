@@ -19,8 +19,10 @@ from typing import Optional
 
 import requests
 
-# Windows PowerShell 5 默认编码非 UTF-8，强制标准输出为 UTF-8 以避免中文乱码
-if sys.platform == "win32":
+# Windows PowerShell 5 默认编码非 UTF-8，强制标准输出为 UTF-8 以避免中文乱码。
+# 仅在作为脚本直接运行时才重包 stdout/stderr；被 pytest 收集时不重包，
+# 否则会在导入期替换 sys.stdout，破坏 pytest 的捕获器（I/O on closed file）。
+if sys.platform == "win32" and __name__ == "__main__":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 

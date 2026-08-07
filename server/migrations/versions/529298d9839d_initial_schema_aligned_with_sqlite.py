@@ -189,7 +189,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['simulation_config_id'], ['simulation_configs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('simulation_config_id')
+    sa.UniqueConstraint('simulation_config_id', name='uq_datasets_simulation_config_id')
     )
     op.create_index('idx_datasets_deleted_at', 'datasets', ['deleted_at'], unique=False)
     op.create_index('idx_datasets_project_id', 'datasets', ['project_id'], unique=False)

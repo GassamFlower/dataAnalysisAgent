@@ -5,6 +5,10 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select, delete
 
+# test_e2e.py 是独立运行的手动集成脚本（需后端服务在 localhost:8000），
+# 不参与 pytest 单元/验收测试收集；直接运行时用 `python tests/test_e2e.py`。
+collect_ignore = ["test_e2e.py"]
+
 from app.core.config import settings
 from app.core.database import get_db, init_db, close_db
 from app.main import app

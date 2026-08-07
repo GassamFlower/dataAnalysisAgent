@@ -10,7 +10,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from app.models.questionnaire import Question
+from app.models.question import Question
 
 
 # ---------------------------------------------------------------------------

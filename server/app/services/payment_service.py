@@ -37,9 +37,14 @@ PLAN_DURATION_DAYS: dict[OrderType, int] = {
 # 套餐能力描述
 PLAN_FEATURES: dict[str, list[str]] = {
     "free": [
+        "全功能体验（周配额限制）",
         "题目上传解析",
         "题型/维度/反向题识别",
         "维度归属编辑",
+        "数据预演",
+        "标准统计报告",
+        "R4 诊断",
+        "报告导出",
     ],
     "single": [
         "全部免费能力",
@@ -198,15 +203,25 @@ async def process_payment_notification(
     request: OrderNotifyRequest,
 ) -> Order:
     """处理支付回调（幂等、事务内更新订单与用户套餐）。"""
-    # 1. 查询订单
+    # 1. 查询订单（FOR UPDATE 行锁：PostgreSQL 上生效，串行化并发回调，
+    #    防止两个并发成功回调同时读到 pending 而重复延长套餐）
     result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.deleted_at.is_(None))
+        select(Order)
+        .where(Order.id == order_id, Order.deleted_at.is_(None))
+        .with_for_update()
     )
     order = result.scalar_one_or_none()
     if not order:
         raise NotFoundException(ERR_ORDER_NOT_FOUND)
 
-    # 2. 幂等：已处理过的成功/失败流水不再处理
+    # 2. 金额核验：若回调携带实际扣款金额，必须与订单金额一致（防止"改金额买高配"）
+    if request.amount is not None:
+        if request.amount != order.amount:
+            raise ValidationException(
+                f"回调金额与订单金额不一致：回调={request.amount}，订单={order.amount}"
+            )
+
+    # 3. 幂等：已处理过的成功/失败流水不再处理
     if order.provider_transaction_id == request.transaction_id:
         if order.status == "paid":
             return order
@@ -216,13 +231,17 @@ async def process_payment_notification(
         # 同一订单出现不同流水号，拒绝
         raise ValidationException("订单已存在其他支付流水")
 
-    # 3. 失败回调：仅更新状态
+    # 4. 失败回调：仅更新状态
     if request.status == "failed":
         if order.status == "pending":
             order.status = "cancelled"
         return order
 
-    # 4. 成功回调：事务内更新订单 + 用户套餐
+    # 5. 状态机保护：非 pending 订单不允许激活（配合行锁，双保险防重复激活）
+    if order.status != "pending":
+        raise ValidationException(f"订单当前状态为 {order.status}，不可激活")
+
+    # 6. 成功回调：事务内更新订单 + 用户套餐
     order.status = "paid"
     order.provider_transaction_id = request.transaction_id
     order.paid_at = datetime.now(timezone.utc)
