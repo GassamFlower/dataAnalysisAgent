@@ -313,11 +313,75 @@ def export_word(report_data: Dict[str, Any]) -> bytes:
                 doc.add_paragraph(f"阈值：{issue.get('threshold', '')}")
                 doc.add_paragraph(f"原因：{issue.get('reason', '')}")
                 doc.add_paragraph(f"建议：{issue.get('suggestion', '')}")
+                if issue.get("one_liner"):
+                    doc.add_paragraph(f"一句话结论：{issue.get('one_liner', '')}")
                 doc.add_paragraph()
         else:
             doc.add_paragraph("未发现显著问题。")
     else:
         doc.add_paragraph("无诊断数据")
+
+    # 样本代表性诊断（对应 F-RPT-007，与报告页同源，规则确定性结果）
+    doc.add_heading("六、样本代表性诊断", level=1)
+    rep = report_data.get("sample_representativeness")
+
+    if rep:
+        status_map = {"pass": "通过", "warn": "预警", "fail": "不达标"}
+        doc.add_paragraph(
+            f"综合评级：{rep.get('grade', 'C')}（{rep.get('overall_score', 0)} 分）｜"
+            f"样本量 N = {rep.get('sample_size', 0)}"
+        )
+        doc.add_paragraph(f"结论：{rep.get('summary', '')}")
+        doc.add_paragraph()
+
+        for item in rep.get("items", []):
+            item_status = status_map.get(item.get("status", ""), item.get("status", ""))
+            doc.add_heading(f"{item.get('title', '')}：{item_status}", level=2)
+            doc.add_paragraph(item.get("message", ""))
+            if item.get("suggestion"):
+                doc.add_paragraph(f"建议：{item.get('suggestion', '')}")
+            doc.add_paragraph()
+
+        distributions = rep.get("distributions", [])
+        if distributions:
+            doc.add_paragraph("人口学分布：")
+            for d in distributions:
+                doc.add_paragraph(
+                    f"- {d.get('text', '')}（{d.get('label', '')}）："
+                    f"最高占比类别「{d.get('top_category', '')}」"
+                    f"占 {d.get('top_share', '0')}（N={d.get('total', 0)}）"
+                )
+    else:
+        doc.add_paragraph("无样本代表性数据（模拟预演数据由用户自定参数，不涉及样本代表性）。")
+    doc.add_paragraph()
+
+    # 样本量规划与回收目标（对应 F-RPT-008，与模拟页规划器同源）
+    doc.add_heading("七、样本量规划与回收目标", level=1)
+    plan = report_data.get("sample_size_plan")
+
+    if plan:
+        effect_note = (
+            "，来源预演矩阵"
+            if plan.get("effect_source") == "simulation"
+            else "，来源默认中等效应"
+        )
+        doc.add_paragraph(
+            f"建议回收目标：{plan.get('recommended_n', 0)} 份"
+            f"（相关性分析口径，效应量 |r| = {plan.get('effect_size', '—')}{effect_note}）"
+        )
+        doc.add_paragraph(
+            f"最低样本量：{plan.get('required_n', 0)} 份；"
+            f"实际样本量：{plan.get('planned_n', 0)} 份"
+        )
+        doc.add_paragraph(f"目标达成：{plan.get('verdict_label', '')}")
+        guidance = plan.get("guidance", []) or []
+        if guidance:
+            doc.add_paragraph(guidance[0])
+            for line in guidance[1:]:
+                doc.add_paragraph(f"- {line}")
+    else:
+        doc.add_paragraph("无样本量规划数据。")
+    doc.add_paragraph()
 
     # 附录：信效度速查表
     doc.add_paragraph()
@@ -497,6 +561,83 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
         ws_diff.column_dimensions["I"].width = 50
     else:
         ws_diff.append(["未配置假设路径，无差异检验结果"])
+
+    # 样本代表性诊断 sheet（对应 F-RPT-007，真实数据项目）
+    ws_rep = wb.create_sheet("样本代表性")
+    rep = dataset.get("sample_representativeness")
+
+    if rep:
+        status_map = {"pass": "通过", "warn": "预警", "fail": "不达标"}
+        ws_rep["A1"] = "样本代表性诊断（规则确定性结果，与页面同源）"
+        ws_rep["A2"] = f"综合评级：{rep.get('grade', 'C')}"
+        ws_rep["A3"] = f"综合评分：{rep.get('overall_score', 0)}"
+        ws_rep["A4"] = f"样本量：{rep.get('sample_size', 0)}"
+        ws_rep["A5"] = f"结论：{rep.get('summary', '')}"
+
+        ws_rep.append([])
+        ws_rep.append(["检查项", "结果", "说明", "建议"])
+        for cell in ws_rep[7]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+        for item in rep.get("items", []):
+            ws_rep.append([
+                _safe_cell(item.get("title", "")),
+                status_map.get(item.get("status", ""), item.get("status", "")),
+                _safe_cell(item.get("message", "")),
+                _safe_cell(item.get("suggestion", "")),
+            ])
+
+        distributions = rep.get("distributions", [])
+        if distributions:
+            ws_rep.append([])
+            ws_rep.append(["人口学变量", "类型", "最高占比类别", "占比", "N"])
+            row_idx = ws_rep.max_row
+            for cell in ws_rep[row_idx]:
+                cell.font = Font(bold=True)
+                cell.fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+            for d in distributions:
+                ws_rep.append([
+                    _safe_cell(d.get("text", "")),
+                    _safe_cell(d.get("label", "")),
+                    _safe_cell(d.get("top_category", "")),
+                    _to_float(d.get("top_share"), 0.0),
+                    d.get("total", 0),
+                ])
+
+        ws_rep.column_dimensions["A"].width = 30
+        ws_rep.column_dimensions["B"].width = 10
+        ws_rep.column_dimensions["C"].width = 55
+        ws_rep.column_dimensions["D"].width = 55
+    else:
+        ws_rep.append(["无样本代表性数据（模拟预演数据由用户自定参数，不涉及样本代表性）"])
+
+    # 样本量规划与回收目标 sheet（对应 F-RPT-008，与模拟页规划器同源）
+    ws_plan = wb.create_sheet("样本量规划")
+    plan = dataset.get("sample_size_plan")
+
+    if plan:
+        ws_plan["A1"] = "样本量规划与回收目标（相关性分析口径，公式计算 + 规则建议）"
+        effect_source = "预演矩阵" if plan.get("effect_source") == "simulation" else "默认中等效应"
+        ws_plan["A2"] = f"效应量 |r|：{plan.get('effect_size', '—')}（来源：{effect_source}）"
+        ws_plan["A3"] = f"建议回收目标：{plan.get('recommended_n', 0)} 份"
+        ws_plan["A4"] = f"最低样本量：{plan.get('required_n', 0)} 份"
+        if plan.get("per_group_n"):
+            ws_plan["A5"] = f"每组样本量：{plan.get('per_group_n', 0)} 份"
+        ws_plan.append([])
+        ws_plan.append(["指标", "数值"])
+        for cell in ws_plan[ws_plan.max_row]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+        ws_plan.append(["实际样本量（已收 N）", plan.get("planned_n", 0)])
+        ws_plan.append(["目标达成", plan.get("verdict_label", "")])
+        ws_plan.append(["缺口", plan.get("shortfall", 0)])
+        guidance = plan.get("guidance", []) or []
+        for line in guidance:
+            ws_plan.append(["建议", _safe_cell(line)])
+        ws_plan.column_dimensions["A"].width = 24
+        ws_plan.column_dimensions["B"].width = 70
+    else:
+        ws_plan.append(["无样本量规划数据"])
 
     # 保存到字节流
     buffer = io.BytesIO()
@@ -851,12 +992,117 @@ def export_pdf(report_data: Dict[str, Any]) -> bytes:
                     Paragraph(f"原因：{escape(str(issue.get('reason', '')))}", styles["body"]),
                     Paragraph(f"建议：{escape(str(issue.get('suggestion', '')))}", styles["body"]),
                 ]
+                if issue.get("one_liner"):
+                    issue_flow.append(
+                        Paragraph(
+                            f"一句话结论：{escape(str(issue.get('one_liner', '')))}",
+                            styles["body"],
+                        )
+                    )
                 story.append(KeepTogether(issue_flow))
                 story.append(Spacer(1, 3 * mm))
         else:
             story.append(Paragraph("未发现显著问题。", styles["body"]))
     else:
         story.append(Paragraph("无诊断数据", styles["body"]))
+    story.append(Spacer(1, 6 * mm))
+
+    # 六、样本代表性诊断（对应 F-RPT-007，与报告页同源，规则确定性结果）
+    story.append(Paragraph("六、样本代表性诊断", styles["h1"]))
+    rep = report_data.get("sample_representativeness")
+
+    if rep:
+        status_map = {"pass": "通过", "warn": "预警", "fail": "不达标"}
+        story.append(
+            Paragraph(
+                f"综合评级：{escape(str(rep.get('grade', 'C')))}"
+                f"（{escape(str(rep.get('overall_score', 0)))} 分）｜"
+                f"样本量 N = {escape(str(rep.get('sample_size', 0)))}",
+                styles["body"],
+            )
+        )
+        story.append(
+            Paragraph(f"结论：{escape(str(rep.get('summary', '')))}", styles["body"])
+        )
+        story.append(Spacer(1, 4 * mm))
+
+        for item in rep.get("items", []):
+            item_status = status_map.get(item.get("status", ""), item.get("status", ""))
+            item_flow = [
+                Paragraph(
+                    f"{escape(str(item.get('title', '')))}：{escape(str(item_status))}",
+                    styles["h2"],
+                ),
+                Paragraph(escape(str(item.get("message", ""))), styles["body"]),
+            ]
+            if item.get("suggestion"):
+                item_flow.append(
+                    Paragraph(
+                        f"建议：{escape(str(item.get('suggestion', '')))}",
+                        styles["body"],
+                    )
+                )
+            story.append(KeepTogether(item_flow))
+            story.append(Spacer(1, 3 * mm))
+
+        distributions = rep.get("distributions", [])
+        if distributions:
+            story.append(Paragraph("人口学分布：", styles["body"]))
+            for d in distributions:
+                story.append(
+                    Paragraph(
+                        f"- {escape(str(d.get('text', '')))}（{escape(str(d.get('label', '')))}）："
+                        f"最高占比类别「{escape(str(d.get('top_category', '')))}」"
+                        f"占 {escape(str(d.get('top_share', '0')))}（N={escape(str(d.get('total', 0)))}）",
+                        styles["body"],
+                    )
+                )
+    else:
+        story.append(
+            Paragraph(
+                "无样本代表性数据（模拟预演数据由用户自定参数，不涉及样本代表性）。",
+                styles["body"],
+            )
+        )
+    story.append(Spacer(1, 6 * mm))
+
+    # 七、样本量规划与回收目标（对应 F-RPT-008，与模拟页规划器同源）
+    story.append(Paragraph("七、样本量规划与回收目标", styles["h1"]))
+    plan = report_data.get("sample_size_plan")
+
+    if plan:
+        effect_note = (
+            "，来源预演矩阵"
+            if plan.get("effect_source") == "simulation"
+            else "，来源默认中等效应"
+        )
+        story.append(
+            Paragraph(
+                f"建议回收目标：{escape(str(plan.get('recommended_n', 0)))} 份"
+                f"（相关性分析口径，效应量 |r| = {escape(str(plan.get('effect_size', '—')))}{effect_note}）",
+                styles["body"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"最低样本量：{escape(str(plan.get('required_n', 0)))} 份；"
+                f"实际样本量：{escape(str(plan.get('planned_n', 0)))} 份",
+                styles["body"],
+            )
+        )
+        story.append(
+            Paragraph(
+                f"目标达成：{escape(str(plan.get('verdict_label', '')))}",
+                styles["body"],
+            )
+        )
+        guidance = plan.get("guidance", []) or []
+        if guidance:
+            story.append(Paragraph(escape(str(guidance[0])), styles["body"]))
+            for line in guidance[1:]:
+                story.append(Paragraph(f"- {escape(str(line))}", styles["body"]))
+    else:
+        story.append(Paragraph("无样本量规划数据", styles["body"]))
     story.append(Spacer(1, 6 * mm))
 
     # 附录：信效度速查表

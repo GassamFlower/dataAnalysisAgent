@@ -55,7 +55,13 @@ def export_ppt(report_data: Dict[str, Any]) -> bytes:
     # 6. R4诊断页
     _add_diagnosis_slide(prs, report_data)
 
-    # 7. 免责声明页
+    # 7. 样本代表性页（真实数据项目）
+    _add_representativeness_slide(prs, report_data)
+
+    # 8. 样本量规划页
+    _add_sample_plan_slide(prs, report_data)
+
+    # 9. 免责声明页
     _add_disclaimer_slide(prs)
 
     # 保存到字节流
@@ -402,6 +408,164 @@ def _add_diagnosis_slide(prs: Presentation, report_data: Dict[str, Any]):
             p.font.size = Pt(14)
             p.font.color.rgb = COLOR_FOREGROUND
             top += Inches(0.8)
+
+
+def _add_representativeness_slide(prs: Presentation, report_data: Dict[str, Any]):
+    """添加样本代表性诊断页（F-RPT-007，真实数据项目，规则确定性结果）"""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+    _add_watermark(slide)
+
+    left = Inches(0.75)
+    top = Inches(0.75)
+    width = Inches(11.833)
+    height = Inches(0.8)
+    textbox = slide.shapes.add_textbox(left, top, width, height)
+    text_frame = textbox.text_frame
+    p = text_frame.paragraphs[0]
+    p.text = "样本代表性诊断"
+    p.font.size = Pt(32)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_PRIMARY
+
+    rep = report_data.get("sample_representativeness")
+    if not rep:
+        top = Inches(2)
+        height = Inches(1.5)
+        textbox = slide.shapes.add_textbox(left, top, width, height)
+        text_frame = textbox.text_frame
+        p = text_frame.paragraphs[0]
+        p.text = "无样本代表性数据（模拟预演数据由用户自定参数，不涉及样本代表性）。"
+        p.font.size = Pt(18)
+        p.font.color.rgb = COLOR_FOREGROUND
+        text_frame.word_wrap = True
+        return
+
+    # 综合评级
+    top = Inches(2)
+    height = Inches(0.8)
+    textbox = slide.shapes.add_textbox(left, top, width, height)
+    text_frame = textbox.text_frame
+    p = text_frame.paragraphs[0]
+    p.text = (
+        f"综合评级: {rep.get('grade', 'C')}"
+        f"（{rep.get('overall_score', 0)} 分）｜样本量 N = {rep.get('sample_size', 0)}"
+    )
+    p.font.size = Pt(24)
+    p.font.color.rgb = COLOR_FOREGROUND
+
+    # 结论摘要
+    top = Inches(2.9)
+    height = Inches(0.9)
+    textbox = slide.shapes.add_textbox(left, top, width, height)
+    text_frame = textbox.text_frame
+    p = text_frame.paragraphs[0]
+    p.text = rep.get("summary", "")
+    p.font.size = Pt(16)
+    p.font.color.rgb = COLOR_GRAY
+    text_frame.word_wrap = True
+
+    # 检查项列表（最多显示3个）
+    status_map = {"pass": "通过", "warn": "预警", "fail": "不达标"}
+    top = Inches(4)
+    for item in rep.get("items", [])[:3]:
+        height = Inches(0.9)
+        textbox = slide.shapes.add_textbox(left, top, width, height)
+        text_frame = textbox.text_frame
+        p = text_frame.paragraphs[0]
+        item_status = status_map.get(item.get("status", ""), item.get("status", ""))
+        p.text = f"{item.get('title', '')}: {item_status} - {item.get('message', '')}"
+        p.font.size = Pt(14)
+        p.font.color.rgb = COLOR_FOREGROUND
+        text_frame.word_wrap = True
+        top += Inches(0.9)
+
+
+def _add_sample_plan_slide(prs: Presentation, report_data: Dict[str, Any]):
+    """添加样本量规划与回收目标页（F-RPT-008，与模拟页规划器同源）"""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+    _add_watermark(slide)
+
+    left = Inches(0.75)
+    top = Inches(0.75)
+    width = Inches(11.833)
+    height = Inches(0.8)
+    textbox = slide.shapes.add_textbox(left, top, width, height)
+    text_frame = textbox.text_frame
+    p = text_frame.paragraphs[0]
+    p.text = "样本量规划与回收目标"
+    p.font.size = Pt(32)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_PRIMARY
+
+    plan = report_data.get("sample_size_plan")
+    if not plan:
+        top = Inches(2)
+        height = Inches(1.5)
+        textbox = slide.shapes.add_textbox(left, top, width, height)
+        text_frame = textbox.text_frame
+        p = text_frame.paragraphs[0]
+        p.text = "无样本量规划数据"
+        p.font.size = Pt(18)
+        p.font.color.rgb = COLOR_FOREGROUND
+        return
+
+    # 建议回收目标
+    top = Inches(2)
+    height = Inches(0.8)
+    textbox = slide.shapes.add_textbox(left, top, width, height)
+    text_frame = textbox.text_frame
+    p = text_frame.paragraphs[0]
+    p.text = f"建议回收目标: {plan.get('recommended_n', 0)} 份（相关性分析口径）"
+    p.font.size = Pt(24)
+    p.font.color.rgb = COLOR_PRIMARY
+
+    # 效应量来源
+    top = Inches(2.9)
+    height = Inches(0.7)
+    textbox = slide.shapes.add_textbox(left, top, width, height)
+    text_frame = textbox.text_frame
+    p = text_frame.paragraphs[0]
+    effect_source = (
+        "预演矩阵" if plan.get("effect_source") == "simulation" else "默认中等效应"
+    )
+    p.text = f"效应量 |r| = {plan.get('effect_size', '—')}（来源: {effect_source}）"
+    p.font.size = Pt(16)
+    p.font.color.rgb = COLOR_GRAY
+
+    # 已收 N vs 目标
+    top = Inches(3.7)
+    height = Inches(0.7)
+    textbox = slide.shapes.add_textbox(left, top, width, height)
+    text_frame = textbox.text_frame
+    p = text_frame.paragraphs[0]
+    p.text = (
+        f"实际样本量（已收 N）: {plan.get('planned_n', 0)} 份｜"
+        f"最低样本量: {plan.get('required_n', 0)} 份｜"
+        f"目标达成: {plan.get('verdict_label', '')}"
+    )
+    p.font.size = Pt(16)
+    p.font.color.rgb = COLOR_FOREGROUND
+
+    # 建议（one_liner + 后续）
+    guidance = plan.get("guidance", []) or []
+    if guidance:
+        top = Inches(4.6)
+        height = Inches(1.5)
+        textbox = slide.shapes.add_textbox(left, top, width, height)
+        text_frame = textbox.text_frame
+        p = text_frame.paragraphs[0]
+        p.text = guidance[0]
+        p.font.size = Pt(14)
+        p.font.color.rgb = COLOR_GRAY
+        text_frame.word_wrap = True
+        for line in guidance[1:4]:
+            p = text_frame.add_paragraph()
+            p.text = line
+            p.font.size = Pt(13)
+            p.font.color.rgb = COLOR_GRAY
+            text_frame.word_wrap = True
 
 
 def _add_disclaimer_slide(prs: Presentation):

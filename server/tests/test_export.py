@@ -150,6 +150,14 @@ async def test_export_report_word_success(
     assert "SIMULATED" in full_text or any("SIMULATED" in section.header.paragraphs[0].text for section in doc.sections)
     assert "Cronbach's α" in full_text
 
+    # 新增章节：样本代表性 + 样本量规划（模拟项目代表性不可用、规划必出）
+    assert "六、样本代表性诊断" in full_text
+    assert "无样本代表性数据" in full_text
+    assert "七、样本量规划与回收目标" in full_text
+    assert "建议回收目标" in full_text
+    assert "实际样本量" in full_text
+    assert "目标达成" in full_text
+
 
 @pytest.mark.anyio
 async def test_export_report_excel_success(
@@ -180,6 +188,28 @@ async def test_export_report_excel_success(
     assert "元数据" in wb.sheetnames
     assert "信效度结果" in wb.sheetnames
     assert "诊断问题" in wb.sheetnames
+
+    # 新增 sheet：样本代表性 + 样本量规划（模拟项目代表性不可用、规划必出）
+    assert "样本代表性" in wb.sheetnames
+    assert "样本量规划" in wb.sheetnames
+
+    ws_plan = wb["样本量规划"]
+    plan_text = " ".join(
+        str(ws_plan.cell(row=i, column=1).value or "")
+        + " "
+        + str(ws_plan.cell(row=i, column=2).value or "")
+        for i in range(1, ws_plan.max_row + 1)
+    )
+    assert "建议回收目标" in plan_text
+    assert "实际样本量（已收 N）" in plan_text
+    assert "目标达成" in plan_text
+
+    ws_rep = wb["样本代表性"]
+    rep_text = " ".join(
+        str(ws_rep.cell(row=i, column=1).value or "")
+        for i in range(1, ws_rep.max_row + 1)
+    )
+    assert "无样本代表性数据" in rep_text
 
 
 @pytest.mark.anyio
@@ -255,6 +285,105 @@ async def test_export_report_pdf_success(
     from pypdf import PdfReader
     pdf = PdfReader(io.BytesIO(resp.content))
     assert len(pdf.pages) > 0
+
+    # 新增章节：样本代表性（不可用提示）+ 样本量规划（必出）
+    pdf_text = "\n".join(page.extract_text() for page in pdf.pages)
+    assert "六、样本代表性诊断" in pdf_text
+    assert "无样本代表性数据" in pdf_text
+    assert "七、样本量规划与回收目标" in pdf_text
+    assert "建议回收目标" in pdf_text
+    assert "目标达成" in pdf_text
+
+
+@pytest.mark.anyio
+async def test_export_report_real_project_contains_sample_sections(
+    client: AsyncClient,
+    auth_headers: dict,
+    paid_auth_headers: dict,
+    mock_diagnoser,
+):
+    """真实数据项目：导出 Word 含样本代表性诊断（综合评级 + 检查项）与规划对照。"""
+    from uuid import UUID
+
+    from app.core.database import get_db
+    from app.models.dataset import Dataset
+    from app.models.question import Question
+
+    # 创建真实数据项目：人口学（str 列，供代表性体检）+ 维度题（数值列，供统计分析）
+    resp = await client.post(
+        "/api/v1/projects/",
+        headers=auth_headers,
+        json={"name": "导出真实项目测试", "mode": "real"},
+    )
+    assert resp.status_code == 201
+    project_id = resp.json()["data"]["id"]
+
+    async for db in get_db():
+        pid = UUID(project_id)
+        questions = [
+            Question(project_id=pid, index=1, text="您的性别是？", question_type="demographic",
+                     dimension="人口学", is_reverse=False, confidence="high"),
+            Question(project_id=pid, index=2, text="您的年龄是？", question_type="demographic",
+                     dimension="人口学", is_reverse=False, confidence="high"),
+            Question(project_id=pid, index=3, text="我对学习充满热情", question_type="likert5",
+                     dimension="学习动机", is_reverse=False, confidence="high"),
+            Question(project_id=pid, index=4, text="我能完成困难任务", question_type="likert5",
+                     dimension="自我效能", is_reverse=False, confidence="high"),
+        ]
+        for q in questions:
+            db.add(q)
+
+        dataset = Dataset(
+            project_id=pid,
+            source="real",
+            sample_size=100,
+            columns=["q1", "q2", "q3", "q4"],
+            data=[
+                [1 if i < 80 else 2, 1 + (i % 4), 4, 4]
+                for i in range(100)
+            ],
+        )
+        db.add(dataset)
+
+        project = await db.get(
+            __import__("app.models.project", fromlist=["Project"]).Project,
+            pid,
+        )
+        project.status = "inspected"
+        project.mode = "real"
+        await db.commit()
+        break
+
+    analyze_resp = await client.post(
+        f"/api/v1/report/analyze/{project_id}",
+        headers=paid_auth_headers,
+    )
+    assert analyze_resp.status_code == 200
+    report_id = analyze_resp.json()["data"]["id"]
+
+    resp = await client.post(
+        f"/api/v1/report/export/{report_id}",
+        headers=paid_auth_headers,
+        json={"format": "word"},
+    )
+    assert resp.status_code == 200
+
+    from docx import Document
+    doc = Document(io.BytesIO(resp.content))
+    full_text = "\n".join(p.text for p in doc.paragraphs)
+
+    # 代表性：真实项目必须有评级与检查项（非「无数据」占位）
+    assert "六、样本代表性诊断" in full_text
+    assert "综合评级" in full_text
+    assert "样本量" in full_text
+    assert "性别分布" in full_text
+    assert "无样本代表性数据" not in full_text
+
+    # 规划：必出，且带已收 N 对照
+    assert "七、样本量规划与回收目标" in full_text
+    assert "建议回收目标" in full_text
+    assert "实际样本量" in full_text
+    assert "目标达成" in full_text
 
 
 @pytest.mark.anyio

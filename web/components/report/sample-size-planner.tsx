@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Calculator,
   Target,
@@ -59,8 +59,17 @@ const VERDICT_CONFIG = {
  * 样本量规划卡片（F-RPT-008）。
  * 预演闭环：预演效应量 → 建议回收目标 → 回收后样本代表性诊断回看。
  * 确定性公式计算（无 LLM），免费能力。只做规划与建议，不提供样本购买/投放/收集服务。
+ *
+ * defaultPlannedN：报告页联动入参——自动带入「已收 N」（报告样本量），
+ * 使规划结果直接给出「已收 vs 目标」达标判定。
  */
-export function SampleSizePlanner({ projectId }: { projectId: string }) {
+export function SampleSizePlanner({
+  projectId,
+  defaultPlannedN,
+}: {
+  projectId: string;
+  defaultPlannedN?: number | null;
+}) {
   const mutation = useSampleSizePlanner(projectId);
   const [analysisType, setAnalysisType] = useState<
     "correlation" | "t_test" | "regression"
@@ -69,19 +78,30 @@ export function SampleSizePlanner({ projectId }: { projectId: string }) {
   const [alpha, setAlpha] = useState("0.05");
   const [power, setPower] = useState("0.80");
   const [plannedN, setPlannedN] = useState("");
+  const plannedPrefilled = useRef(false);
 
-  // 首次进入自动按默认参数计算（后端自动解析预演矩阵效应量）
+  // 联动：已收 N 到位后自动带入计划样本量（仅首次，不覆盖用户手填）
   useEffect(() => {
-    runPlan();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+    if (!plannedPrefilled.current && defaultPlannedN != null) {
+      plannedPrefilled.current = true;
+      setPlannedN(String(defaultPlannedN));
+    }
+  }, [defaultPlannedN]);
 
-  const runPlan = () => {
+  // 首次进入自动按默认参数计算（后端自动解析预演矩阵效应量）；
+  // defaultPlannedN 到位时自动重算一次，产出「已收 vs 目标」判定
+  useEffect(() => {
+    runPlan(defaultPlannedN != null ? String(defaultPlannedN) : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, defaultPlannedN]);
+
+  const runPlan = (plannedOverride?: string) => {
+    const plannedRaw = plannedOverride ?? plannedN;
     const effect = effectSize.trim() ? Number(effectSize) : null;
     if (effect !== null && (Number.isNaN(effect) || effect <= 0 || effect >= 1)) {
       return;
     }
-    const planned = plannedN.trim() ? Number(plannedN) : null;
+    const planned = plannedRaw.trim() ? Number(plannedRaw) : null;
     if (planned !== null && (Number.isNaN(planned) || planned < 1)) {
       return;
     }
@@ -195,7 +215,7 @@ export function SampleSizePlanner({ projectId }: { projectId: string }) {
         <div className="flex items-center justify-end">
           <Button
             size="sm"
-            onClick={runPlan}
+            onClick={() => runPlan()}
             disabled={mutation.isPending}
           >
             {mutation.isPending ? "计算中..." : "计算"}

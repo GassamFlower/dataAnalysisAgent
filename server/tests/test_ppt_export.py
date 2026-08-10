@@ -1,7 +1,7 @@
 """PPT 报告导出服务单元测试。
 
 覆盖（testing-strategy 第二步：三类用例）：
-- 正常：完整数据导出、7 页结构验证、水印验证
+- 正常：完整数据导出、9 页结构验证、水印验证
 - 边界：空数据、缺失字段、空列表
 - 异常：缺少 python-pptx 依赖（importorskip）
 
@@ -70,6 +70,36 @@ def _build_full_report_data():
                 {"dimension": "自我效能", "metric": "Cronbach's α", "reason": "α < 0.7"},
             ],
         },
+        "sample_representativeness": {
+            "grade": "B",
+            "overall_score": 82,
+            "sample_size": 120,
+            "summary": "样本结构良好，接近目标总体。",
+            "items": [
+                {
+                    "title": "样本量（N）",
+                    "status": "pass",
+                    "message": "样本量充足。",
+                },
+                {
+                    "title": "性别分布",
+                    "status": "warn",
+                    "message": "性别比例略有偏差。",
+                },
+            ],
+        },
+        "sample_size_plan": {
+            "analysis_type": "correlation",
+            "effect_size": 0.3,
+            "effect_source": "default",
+            "required_n": 85,
+            "per_group_n": None,
+            "recommended_n": 100,
+            "planned_n": 120,
+            "verdict": "sufficient",
+            "verdict_label": "已达标",
+            "guidance": ["样本量已达标，可放心进行统计分析。"],
+        },
     }
 
 
@@ -88,13 +118,13 @@ def test_export_ppt_returns_valid_bytes():
     assert result[:2] == b"PK"
 
 
-def test_export_ppt_has_seven_slides():
-    """正常：导出的 PPT 包含 7 页幻灯片（封面/信效度总览/详情/相关/差异/诊断/免责声明）。"""
+def test_export_ppt_has_nine_slides():
+    """正常：导出的 PPT 包含 9 页幻灯片（封面/信效度总览/详情/相关/差异/诊断/代表性/规划/免责声明）。"""
     data = _build_full_report_data()
     result = export_ppt(data)
 
     prs = Presentation(io.BytesIO(result))
-    assert len(prs.slides) == 7
+    assert len(prs.slides) == 9
 
 
 def test_export_ppt_watermark_on_every_slide():
@@ -176,10 +206,37 @@ def test_export_ppt_disclaimer_slide():
     result = export_ppt(data)
 
     prs = Presentation(io.BytesIO(result))
-    disclaimer_slide = prs.slides[6]
+    disclaimer_slide = prs.slides[8]
     disclaimer_text = _extract_all_text(disclaimer_slide)
     assert "免责声明" in disclaimer_text
     assert "模拟数据" in disclaimer_text
+
+
+def test_export_ppt_representativeness_slide():
+    """正常：样本代表性页显示评级与检查项。"""
+    data = _build_full_report_data()
+    result = export_ppt(data)
+
+    prs = Presentation(io.BytesIO(result))
+    rep_slide = prs.slides[6]
+    rep_text = _extract_all_text(rep_slide)
+    assert "样本代表性诊断" in rep_text
+    assert "B" in rep_text and "82" in rep_text  # grade / score
+    assert "样本量充足" in rep_text  # item message
+
+
+def test_export_ppt_sample_plan_slide():
+    """正常：样本量规划页显示目标、已收 N 与达成判定。"""
+    data = _build_full_report_data()
+    result = export_ppt(data)
+
+    prs = Presentation(io.BytesIO(result))
+    plan_slide = prs.slides[7]
+    plan_text = _extract_all_text(plan_slide)
+    assert "样本量规划与回收目标" in plan_text
+    assert "100" in plan_text  # recommended_n
+    assert "120" in plan_text  # planned_n（已收 N）
+    assert "已达标" in plan_text  # verdict_label
 
 
 # ============================
@@ -187,11 +244,11 @@ def test_export_ppt_disclaimer_slide():
 # ============================
 
 def test_export_ppt_empty_data():
-    """边界：空数据字典仍能导出 7 页（使用默认值）。"""
+    """边界：空数据字典仍能导出 9 页（使用默认值）。"""
     result = export_ppt({})
 
     prs = Presentation(io.BytesIO(result))
-    assert len(prs.slides) == 7
+    assert len(prs.slides) == 9
 
     # 封面页项目 ID 应为 N/A
     cover_text = _extract_all_text(prs.slides[0])
@@ -205,7 +262,7 @@ def test_export_ppt_empty_reliability_results():
 
     result = export_ppt(data)
     prs = Presentation(io.BytesIO(result))
-    assert len(prs.slides) == 7
+    assert len(prs.slides) == 9
 
 
 def test_export_ppt_empty_diff_tests():
@@ -232,3 +289,29 @@ def test_export_ppt_no_diagnosis():
     diag_slide = prs.slides[5]
     diag_text = _extract_all_text(diag_slide)
     assert "无诊断数据" in diag_text
+
+
+def test_export_ppt_no_representativeness():
+    """边界：无代表性数据时，代表性页显示提示文本。"""
+    data = _build_full_report_data()
+    data["sample_representativeness"] = None
+
+    result = export_ppt(data)
+    prs = Presentation(io.BytesIO(result))
+
+    rep_slide = prs.slides[6]
+    rep_text = _extract_all_text(rep_slide)
+    assert "无样本代表性数据" in rep_text
+
+
+def test_export_ppt_no_sample_plan():
+    """边界：无规划数据时，规划页显示提示文本。"""
+    data = _build_full_report_data()
+    data["sample_size_plan"] = None
+
+    result = export_ppt(data)
+    prs = Presentation(io.BytesIO(result))
+
+    plan_slide = prs.slides[7]
+    plan_text = _extract_all_text(plan_slide)
+    assert "无样本量规划数据" in plan_text

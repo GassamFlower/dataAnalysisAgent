@@ -136,13 +136,132 @@ async def _load_report_with_relations(
     return result.scalar_one_or_none()
 
 
+async def _build_sample_context(
+    db: AsyncSession, project: Any
+) -> Dict[str, Any]:
+    """构建样本代表性 + 样本量规划上下文（导出/润色共用）。
+
+    与「样本代表性诊断」「样本量规划」页面共享同一引擎，规则确定性结果，不调用 LLM
+    （导出物需快速、可复现；LLM 说人话结论仅存在于页面端，见 get_sample_representativeness）。
+    规划默认按相关性分析口径，planned_n = 实际样本量，用于「规划目标 vs 已收 N」对照。
+
+    Returns:
+        {"representativeness": dict|None, "sample_size_plan": dict|None}
+    """
+    from app.models.dataset import Dataset
+    from app.services.sample_representativeness import SampleRepresentativenessEngine
+    from app.services.sample_size_planner import build_plan
+
+    context: Dict[str, Any] = {
+        "representativeness": None,
+        "sample_size_plan": None,
+    }
+
+    # 样本代表性：仅真实数据项目支持（模拟数据由用户自定参数，无代表性概念）
+    if project.mode == "real":
+        result = await db.execute(
+            select(Question)
+            .where(Question.project_id == project.id)
+            .order_by(Question.index)
+        )
+        questions = result.scalars().all()
+
+        result = await db.execute(
+            select(Dataset)
+            .where(Dataset.project_id == project.id, Dataset.source == "real")
+            .order_by(Dataset.created_at.desc())
+            .limit(1)
+        )
+        dataset = result.scalar_one_or_none()
+
+        df = pd.DataFrame(dataset.data, columns=dataset.columns) if dataset else None
+        engine_report = SampleRepresentativenessEngine(
+            questions, df, dataset.sample_size if dataset else 0
+        ).run()
+        context["representativeness"] = engine_report.to_dict()
+
+    # 样本量规划：planned_n = 实际样本量 → 目标对照判定
+    from app.core.statistics_constants import (
+        PLANNER_ALPHA_DEFAULT,
+        PLANNER_POWER_DEFAULT,
+        STRENGTH_NOMINAL,
+    )
+    actual_n = await _get_sample_size(db, project.id)
+    matrix_effect = await _load_matrix_max_abs(db, project.id)
+    if matrix_effect is not None:
+        effect_size, effect_source = matrix_effect, "simulation"
+    else:
+        effect_size, effect_source = STRENGTH_NOMINAL["medium"], "default"
+
+    try:
+        context["sample_size_plan"] = build_plan(
+            "correlation",
+            effect_size,
+            PLANNER_ALPHA_DEFAULT,
+            PLANNER_POWER_DEFAULT,
+            effect_source=effect_source,
+            planned_n=actual_n,
+        )
+    except ValueError:
+        context["sample_size_plan"] = None
+
+    return context
+
+
+def _stringify_sample_context(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """导出场景：将样本上下文中的数值字符串化，便于排版。"""
+    out: Dict[str, Any] = {}
+
+    rep = ctx.get("representativeness")
+    if rep:
+        rep = dict(rep)
+        rep["sample_size"] = str(rep.get("sample_size", 0))
+        rep["overall_score"] = str(rep.get("overall_score", 0.0))
+        rep["distributions"] = [
+            {
+                **d,
+                "total": str(d.get("total", 0)),
+                "top_share": str(d.get("top_share", 0.0)),
+            }
+            for d in rep.get("distributions", [])
+        ]
+        rep["items"] = [
+            {**it, "score": str(it.get("score", 0.0))}
+            for it in rep.get("items", [])
+        ]
+        out["sample_representativeness"] = rep
+
+    plan = ctx.get("sample_size_plan")
+    if plan:
+        plan = dict(plan)
+        for key in (
+            "effect_size",
+            "required_n",
+            "per_group_n",
+            "recommended_n",
+            "planned_n",
+            "shortfall",
+        ):
+            if plan.get(key) is not None:
+                plan[key] = str(plan[key])
+        out["sample_size_plan"] = plan
+
+    return out
+
+
 def _build_report_data(
-    report: Report, diff_tests: List[Dict[str, Any]], *, as_str: bool = False
+    report: Report,
+    diff_tests: List[Dict[str, Any]],
+    *,
+    as_str: bool = False,
+    sample_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """构建报告数据字典，供导出 / 润色共用。
 
     export 用 as_str=True（导出的数值需字符串化便于排版）；
     polish 用 as_str=False（LLM 读取需数值类型）。避免两份几乎相同的 dict 重复维护。
+    sample_context 由 _build_sample_context 提供：样本代表性 + 样本量规划（规则确定性，
+    不调用 LLM），导出物与页面同源。
     """
     def _fmt(v: Any) -> Any:
         """按 as_str 标志格式化数值。"""
@@ -150,7 +269,12 @@ def _build_report_data(
             return "0" if as_str else 0.0
         return str(v) if as_str else float(v)
 
-    return {
+    def _diagnosis_one_liner(metric: str, value: Any, threshold: Any) -> str:
+        """诊断问题的「一句话结论」（确定性模板，与报告页 _build_report_response 同源）。"""
+        from app.services.diagnosis_rules import one_liner_for
+        return one_liner_for(metric, value, threshold)
+
+    data: Dict[str, Any] = {
         "project_id": str(report.project_id),
         "overall_alpha": _fmt(report.overall_alpha),
         "passed_count": report.passed_count or 0,
@@ -175,7 +299,8 @@ def _build_report_data(
                         "value": _fmt(issue.value),
                         "threshold": _fmt(issue.threshold),
                         "reason": issue.reason,
-                        "suggestion": issue.suggestion
+                        "suggestion": issue.suggestion,
+                        "one_liner": _diagnosis_one_liner(issue.metric, issue.value, issue.threshold),
                     }
                     for issue in report.diagnosis.issues
                 ]
@@ -185,6 +310,16 @@ def _build_report_data(
         ),
         "diff_tests": diff_tests,
     }
+
+    # 注入样本上下文（代表性 + 规划），与页面同源
+    if sample_context:
+        data.update(
+            _stringify_sample_context(sample_context)
+            if as_str
+            else sample_context
+        )
+
+    return data
 
 
 @router.get(
@@ -511,8 +646,11 @@ async def export(
     if df is not None:
         diff_tests = await _compute_diff_tests(db, report.project_id, df)
 
-    # 4. 转换为字典（导出场景数值字符串化）
-    report_data = _build_report_data(report, diff_tests, as_str=True)
+    # 4. 转换为字典（导出场景数值字符串化）；注入样本上下文（代表性 + 规划，与页面同源）
+    sample_context = await _build_sample_context(db, project)
+    report_data = _build_report_data(
+        report, diff_tests, as_str=True, sample_context=sample_context
+    )
 
     # 5. 调用导出服务
     from app.services.reporter import export_word, export_excel, export_pdf
@@ -586,8 +724,11 @@ async def polish_report(
     if df is not None:
         diff_tests = await _compute_diff_tests(db, report.project_id, df)
 
-    # 4. 构建报告数据（LLM 读取需数值类型）
-    report_data = _build_report_data(report, diff_tests, as_str=False)
+    # 4. 构建报告数据（LLM 读取需数值类型）；注入样本上下文（代表性 + 规划，与页面同源）
+    sample_context = await _build_sample_context(db, project)
+    report_data = _build_report_data(
+        report, diff_tests, as_str=False, sample_context=sample_context
+    )
 
     # 5. 调用润色服务
     from app.services.report_polisher import polish_section
@@ -728,6 +869,29 @@ async def get_sample_representativeness(
 # ---------------------------------------------------------------------------
 
 
+async def _load_matrix_max_abs(db: AsyncSession, project_id: UUID) -> Optional[float]:
+    """读取最新预演矩阵的非对角线最大相关（|r| 最大值，0 排除）。无矩阵时返回 None。"""
+    from app.models.correlation_matrix import CorrelationMatrix
+    result = await db.execute(
+        select(CorrelationMatrix)
+        .where(CorrelationMatrix.project_id == project_id)
+        .order_by(CorrelationMatrix.created_at.desc())
+        .limit(1)
+    )
+    matrix = result.scalar_one_or_none()
+    cells = (matrix.cells if matrix else None) or []
+    values = [
+        float(cell.get("value", 0.0))
+        for row in cells
+        if isinstance(row, list)
+        for cell in row
+    ]
+    max_abs = max((abs(v) for v in values if v != 0), default=0.0)
+    if max_abs > 0 and max_abs < 1:
+        return round(max_abs, 3)
+    return None
+
+
 async def _resolve_effect_size(
     db: AsyncSession,
     project: Any,
@@ -744,24 +908,9 @@ async def _resolve_effect_size(
 
     # 模拟项目：从最新相关矩阵取非对角线最大相关作为效应量
     if project.mode == "simulation":
-        from app.models.correlation_matrix import CorrelationMatrix
-        result = await db.execute(
-            select(CorrelationMatrix)
-            .where(CorrelationMatrix.project_id == project.id)
-            .order_by(CorrelationMatrix.created_at.desc())
-            .limit(1)
-        )
-        matrix = result.scalar_one_or_none()
-        cells = (matrix.cells if matrix else None) or []
-        values = [
-            float(cell.get("value", 0.0))
-            for row in cells
-            if isinstance(row, list)
-            for cell in row
-        ]
-        max_abs = max((abs(v) for v in values if v != 0), default=0.0)
-        if max_abs > 0 and max_abs < 1:
-            return round(max_abs, 3), "simulation"
+        max_abs = await _load_matrix_max_abs(db, project.id)
+        if max_abs is not None:
+            return max_abs, "simulation"
 
     return default, "default"
 
