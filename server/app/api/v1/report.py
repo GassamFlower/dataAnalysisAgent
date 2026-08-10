@@ -1,4 +1,5 @@
 """报告路由：统计分析 + R4 诊断 + 差异检验 + 导出。"""
+import time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -19,7 +20,7 @@ from app.models.diagnosis import Diagnosis
 from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.question import Question
 from app.models.simulation_config import SimulationConfig
-from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest, PolishRequest, PolishResponse
+from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest, PolishRequest, PolishResponse, SampleRepresentativenessResponse
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.quota_service import check_and_consume_quota
 from app.services.audit_service import AuditService, ACTION_TYPES
@@ -83,6 +84,14 @@ def _build_report_response(
     response = ReportResponse.model_validate(report)
     response.diff_tests = [DiffTestResultResponse(**d) for d in diff_tests]
     response.sample_size = sample_size
+
+    # 注入「一句话结论」：每个诊断问题配一句怎么办（确定性模板，不落库）
+    from app.services.diagnosis_rules import one_liner_for
+    if response.diagnosis:
+        for issue in response.diagnosis.issues:
+            issue.one_liner = one_liner_for(
+                issue.metric, issue.value, issue.threshold
+            )
     return response
 
 
@@ -610,3 +619,105 @@ async def polish_report(
             disclaimer=polish_result["disclaimer"],
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# 样本代表性诊断（F-RPT-007）
+# ---------------------------------------------------------------------------
+
+# 进程内缓存：LLM 说人话结论较贵，5 分钟内同一项目复用，避免页面刷新重复调用
+_cache: Dict[str, dict] = {}
+_CACHE_TTL_SECONDS = 300
+
+
+@router.get(
+    "/{project_id}/sample-representativeness",
+    response_model=ResponseModel[SampleRepresentativenessResponse],
+    summary="样本代表性诊断",
+    description="基于真实数据集与人口学变量做样本结构体检（N/性别分布/结构集中度）。免费能力。"
+)
+async def get_sample_representativeness(
+    project_id: UUID,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """样本代表性体检：规则诊断（必出）+ LLM 说人话补充（失败降级）。
+
+    差异化边界：只做诊断与改进建议，不提供样本购买/投放/收集服务。
+    """
+    # 1. 验证项目归属
+    project = await get_owned_project(db, project_id, current_user["id"])
+    if not project:
+        raise NotFoundException("项目不存在或无访问权限")
+
+    # 2. 仅真实数据项目支持（模拟数据由用户自定参数，无代表性概念）
+    if project.mode != "real":
+        return ResponseModel(
+            data=SampleRepresentativenessResponse(
+                supported=False,
+                message="样本代表性诊断仅适用于真实数据项目。模拟预演数据为按假设参数生成，不涉及样本代表性。",
+            )
+        )
+
+    # 3. 加载题目与真实数据集
+    from app.models.dataset import Dataset
+    from app.services.sample_representativeness import (
+        SampleRepresentativenessEngine,
+        llm_enrich,
+    )
+
+    result = await db.execute(
+        select(Question)
+        .where(Question.project_id == project_id)
+        .order_by(Question.index)
+    )
+    questions = result.scalars().all()
+
+    result = await db.execute(
+        select(Dataset)
+        .where(Dataset.project_id == project_id, Dataset.source == "real")
+        .order_by(Dataset.created_at.desc())
+        .limit(1)
+    )
+    dataset = result.scalar_one_or_none()
+
+    # 4. 规则诊断（确定性）
+    df = pd.DataFrame(dataset.data, columns=dataset.columns) if dataset else None
+    engine_report = SampleRepresentativenessEngine(
+        questions, df, dataset.sample_size if dataset else 0
+    ).run()
+
+    # 5. LLM 说人话补充（缓存 5 分钟；失败返回空串，前端降级）
+    cache_key = f"{project_id}:{dataset.id if dataset else 'none'}"
+    ai_conclusion = ""
+    now = time.time()
+    cached = _cache.get(cache_key)
+    if cached and now - cached["ts"] < _CACHE_TTL_SECONDS:
+        ai_conclusion = cached["text"]
+    else:
+        ai_conclusion = llm_enrich(engine_report)
+        if ai_conclusion:
+            _cache[cache_key] = {"ts": now, "text": ai_conclusion}
+
+    response = SampleRepresentativenessResponse(**engine_report.to_dict())
+    response.ai_conclusion = ai_conclusion
+
+    # 6. 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["SAMPLE_REP_CHECK"],
+        project_id=project_id,
+        action_detail={
+            "sample_size": response.sample_size,
+            "has_demographic": response.has_demographic,
+            "grade": response.grade,
+            "score": response.overall_score,
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    await db.flush()
+
+    return ResponseModel(data=response)

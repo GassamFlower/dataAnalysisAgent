@@ -15,6 +15,7 @@ import { CorrelationHeatmap } from "@/components/report/correlation-heatmap";
 import { DiffTestTable } from "@/components/report/diff-test-table";
 import { EffectSizeChart } from "@/components/report/effect-size-chart";
 import { DiagnosisAlert } from "@/components/report/diagnosis-alert";
+import { SampleRepresentativeness } from "@/components/report/sample-representativeness";
 import { ExportButton } from "@/components/report/export-button";
 import { PolishButton } from "@/components/report/polish-button";
 import { PaidActionGuard } from "@/components/common/paid-action-guard";
@@ -369,6 +370,19 @@ export default function ReportPage({
           <EffectSizeChart results={report?.diffTests ?? null} />
         </div>
         <DiffTestTable results={report?.diffTests ?? null} />
+      </section>
+
+      {/* 样本代表性诊断（F-RPT-007，仅真实数据项目；免费） */}
+      <section className="mb-8">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-h2 font-semibold text-ink-900">
+            样本代表性诊断
+          </h2>
+        </div>
+        <p className="mb-4 text-body text-ink-500">
+          基于真实回收数据的样本结构体检：样本量是否足够、性别分布是否失衡、结构是否过度集中。只做诊断与建议，不提供样本购买/投放服务。
+        </p>
+        <SampleRepresentativeness projectId={params.id} />
       </section>
 
       {/* R4 诊断 */}

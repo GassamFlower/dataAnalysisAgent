@@ -148,8 +148,8 @@ export function useQuestionnaireHealth(projectId: string) {
     queryKey: questionnaireKeys.health(projectId),
     queryFn: () =>
       apiClient.get<{
-        total_questions: number;
-        overall_score: number;
+        totalQuestions: number;
+        overallScore: number;
         grade: string;
         summary: string;
         items: Array<{

@@ -78,6 +78,11 @@ export function DiagnosisAlert({ diagnosis }: { diagnosis: Diagnosis }) {
                 )}
               </div>
               <p className="mt-1 text-small text-ink-500">{issue.reason}</p>
+              {issue.oneLiner && (
+                <p className="mt-1.5 text-small font-medium text-primary">
+                  一句话：{issue.oneLiner}
+                </p>
+              )}
               <p className="mt-1.5 text-small text-ink-700">
                 <span className="font-medium text-accent-indigo">建议：</span>
                 {issue.suggestion}

@@ -86,7 +86,43 @@ export interface Diagnosis {
     threshold: number;
     reason: string;
     suggestion: string;
+    /** 一句话结论：告诉你怎么办（确定性模板，F-RPT-008 增强） */
+    oneLiner?: string;
   }>;
+}
+
+/** 样本代表性 - 单个人口学变量分布（F-RPT-007） */
+export interface SampleRepDistribution {
+  index: number;
+  text: string;
+  label: string;
+  counts: Record<string, number>;
+  total: number;
+  topCategory: string;
+  topShare: number;
+}
+
+/** 样本代表性 - 单项检查 */
+export interface SampleRepItem {
+  key: string;
+  title: string;
+  status: "pass" | "warn" | "fail";
+  message: string;
+  suggestion: string;
+}
+
+/** 样本代表性体检报告（F-RPT-007） */
+export interface SampleRepresentativeness {
+  supported: boolean;
+  message: string;
+  sampleSize: number;
+  hasDemographic: boolean;
+  overallScore: number;
+  grade: string;
+  summary: string;
+  distributions: SampleRepDistribution[];
+  items: SampleRepItem[];
+  aiConclusion: string;
 }
 
 /** 差异检验结果（不落库，按假设路径实时计算，对应架构文档 9.6 决策树） */

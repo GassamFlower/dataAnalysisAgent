@@ -42,6 +42,8 @@ class DiagnosisIssueResponse(BaseModel):
     threshold: float
     reason: str
     suggestion: str
+    # 一句话结论（确定性模板生成，F-RPT-008 增强；不落库）
+    one_liner: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -120,3 +122,40 @@ class PolishResponse(BaseModel):
     section: str
     text: str
     disclaimer: str = "此为统计描述参考，非研究结论"
+
+
+class SampleRepDistribution(BaseModel):
+    """样本代表性 - 单个人口学变量分布。"""
+
+    index: int
+    text: str
+    label: str
+    counts: Dict[str, int]
+    total: int
+    top_category: str
+    top_share: float
+
+
+class SampleRepItem(BaseModel):
+    """样本代表性 - 单项检查。"""
+
+    key: str
+    title: str
+    status: str  # pass / warn / fail
+    message: str
+    suggestion: str = ""
+
+
+class SampleRepresentativenessResponse(BaseModel):
+    """样本代表性体检报告（F-RPT-007）。"""
+
+    supported: bool = True
+    message: str = ""
+    sample_size: int = 0
+    has_demographic: bool = False
+    overall_score: float = 0.0
+    grade: str = "C"
+    summary: str = ""
+    distributions: List[SampleRepDistribution] = []
+    items: List[SampleRepItem] = []
+    ai_conclusion: str = ""

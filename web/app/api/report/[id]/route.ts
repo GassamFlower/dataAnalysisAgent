@@ -34,6 +34,7 @@ interface BackendIssue {
   threshold: string | number;
   reason: string;
   suggestion: string;
+  one_liner?: string | null;
 }
 
 interface BackendDiffTest {
@@ -101,6 +102,7 @@ function transformReport(raw: BackendReport) {
             threshold: toNumber(i.threshold),
             reason: i.reason,
             suggestion: i.suggestion,
+            oneLiner: i.one_liner ?? "",
           })),
         }
       : { passed: true, issues: [] },

@@ -406,3 +406,50 @@ def match_regression_pitfalls(
             except Exception:
                 continue
     return hits
+
+
+# ─────────────────────────────────────────────────────────────
+# R4 诊断「一句话结论」（F-RPT-008 增强，打 SPSSAU 弱点）
+# 每个诊断问题配一句「告诉你怎么办」的人话，确定性模板，不依赖 LLM
+# ─────────────────────────────────────────────────────────────
+
+# 指标级问题一句话模板（value/threshold 均非 0 时使用）
+_METRIC_ONE_LINERS: Dict[str, Callable[[float, float], str]] = {
+    "alpha": lambda v, t: f"α={v:.3f} 低于 {t:.3f}：先删掉载荷<0.4的题或反转反向题，再重跑信度",
+    "kmo": lambda v, t: f"KMO={v:.3f} 低于 {t:.3f}：数据不太适合因子分析，先加样本或删掉相关性过低的题",
+    "bartlett_p": lambda v, t: f"Bartlett p={v:.3f} 不显著：题目间相关性不足，考虑扩样本或重新设计题项",
+    "bartlett_p_value": lambda v, t: f"Bartlett p={v:.3f} 不显著：题目间相关性不足，考虑扩样本或重新设计题项",
+}
+
+# 规则级问题一句话模板（value/threshold 为 0 时按 metric 匹配）
+_RULE_ONE_LINERS: Dict[str, str] = {
+    "reverse_items": "有反向题没反转：先在预处理里反转反向题，再重算 α",
+    "alpha_method": "各维度混在一起算 α 了：改成按维度分别计算",
+    "alpha_report": "只报了整体 α：补报每个维度的 α 再下结论",
+    "loading": "有题载荷<0.4：删掉这些题再跑因子分析",
+    "cumulative_variance": "报告里补上累计方差解释率，审稿才会认可",
+    "factor_count": "因子数和理论维度对不上：检查题项归属或调整维度划分",
+    "sample_size": "样本太少了：EFA 至少 100 份，最好做到题目数的 5–10 倍",
+    "value_range": "α/载荷值超出合理区间：请用真实计算结果，别编数",
+    "r_squared": "R² 太低：加关键自变量，或检验非线性关系",
+    "coef_direction": "系数方向和假设反了：先查 VIF 多重共线性和变量编码",
+    "iv_to_sample_ratio": "自变量太多或样本太少：精简自变量或扩样本",
+}
+
+
+def one_liner_for(metric: str, value: Optional[float], threshold: Optional[float]) -> str:
+    """生成诊断问题的「一句话结论」（告诉用户怎么办）。
+
+    规则级问题（value/threshold 为 0）按 metric 匹配模板；
+    指标级问题按 metric 数值模板插值；未知指标回退到空串。
+    """
+    metric = metric or ""
+    if value == 0 and threshold == 0:
+        return _RULE_ONE_LINERS.get(metric, "")
+    template = _METRIC_ONE_LINERS.get(metric)
+    if template is None or value is None or threshold is None:
+        return ""
+    try:
+        return template(float(value), float(threshold))
+    except (TypeError, ValueError):
+        return ""

@@ -1,4 +1,4 @@
-"""审计日志记录服务。"""
+﻿"""审计日志记录服务。"""
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
@@ -238,6 +238,7 @@ ACTION_TYPES = {
     "DATA_IMPORT": "data_import",
     "ANALYSIS_RUN": "analysis_run",
     "REPORT_EXPORT": "report_export",
+    "SAMPLE_REP_CHECK": "sample_rep_check",
     "DATA_EXPORT": "data_export",
     "SIMULATION_GENERATE": "simulation_generate",
     "DIMENSION_EDIT": "dimension_edit",

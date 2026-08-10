@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
-import type { Report } from "@/types";
+import type { Report, SampleRepresentativeness } from "@/types";
 
 /**
  * 报告 hooks。
@@ -64,5 +64,21 @@ export function usePolishReport() {
       }>(`/api/report/${params.reportId}/polish`, {
         section: params.section,
       }),
+  });
+}
+
+/**
+ * 样本代表性诊断（F-RPT-007，免费能力）。
+ * 对应后端：GET /api/report/:projectId/sample-representativeness
+ */
+export function useSampleRepresentativeness(projectId: string) {
+  return useQuery({
+    queryKey: ["report", "sample-rep", projectId],
+    queryFn: () =>
+      apiClient.get<SampleRepresentativeness>(
+        `/api/report/${projectId}/sample-representativeness`
+      ),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 与后端 LLM 缓存对齐：5 分钟
   });
 }

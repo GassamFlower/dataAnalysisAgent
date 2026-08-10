@@ -4,6 +4,7 @@ import {
   ArrowRight,
   FileSearch,
   FlaskConical,
+  Users,
   FileBarChart,
   Download,
   ShieldCheck,
@@ -19,12 +20,13 @@ import { MarketingHeader } from "@/components/layout/marketing-header";
 import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "数据分析智能体 | 本科毕设研究预演工具",
+  title: "数据分析智能体 | 回收前预演，回收后看懂",
   description:
-    "上传问卷题目，先做一次信效度体检；再用一句话描述假设，预演数据是否达标——在正式发问卷之前，就知道方向对不对。免费题目体检，付费生成数据与报告。",
+    "全网唯一支持回收前预演：上传问卷题目先做信效度体检，一句话描述假设预演数据是否达标；回收后用样本代表性诊断看懂样本够不够格——在正式发问卷之前，就知道方向对不对。免费题目体检，付费生成数据与报告。",
   keywords: [
     "数据分析",
     "问卷预演",
+    "样本代表性",
     "信效度检验",
     "本科毕设",
     "SPSS",
@@ -35,9 +37,9 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "数据分析智能体团队" }],
   openGraph: {
-    title: "数据分析智能体 | 本科毕设研究预演工具",
+    title: "数据分析智能体 | 回收前预演，回收后看懂",
     description:
-      "上传问卷题目，先做一次信效度体检；再用一句话描述假设，预演数据是否达标——在正式发问卷之前，就知道方向对不对。",
+      "回收前预演：先体检题目、预演数据是否达标；回收后看懂：样本代表性诊断帮你判断样本够不够格。",
     type: "website",
     locale: "zh_CN",
     siteName: "数据分析智能体",
@@ -46,15 +48,15 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "数据分析智能体 - 本科毕设研究预演工具",
+        alt: "数据分析智能体 - 回收前预演，回收后看懂",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "数据分析智能体 | 本科毕设研究预演工具",
+    title: "数据分析智能体 | 回收前预演，回收后看懂",
     description:
-      "上传问卷题目，先做一次信效度体检；再用一句话描述假设，预演数据是否达标——在正式发问卷之前，就知道方向对不对。",
+      "回收前预演：先体检题目、预演数据是否达标；回收后看懂：样本代表性诊断帮你判断样本够不够格。",
     images: ["/og-image.png"],
   },
   robots: {
@@ -85,6 +87,11 @@ const painPoints = [
   },
   {
     icon: AlertTriangle,
+    title: "样本没代表性",
+    desc: "收回来全是同学填的，男女比 8:2、年龄全在 20 岁上下，答辩一句话就被问住。",
+  },
+  {
+    icon: AlertTriangle,
     title: "相关性不显著",
     desc: "假设的关系跑不出来，论文核心结论站不住脚。",
   },
@@ -99,7 +106,12 @@ const features = [
   {
     icon: FlaskConical,
     title: "数据预演",
-    desc: "一句话描述假设，自动生成相关矩阵与模拟数据，透明可编辑。",
+    desc: "一句话描述假设，自动生成相关矩阵与模拟数据，透明可编辑——回收前就知道方向对不对。",
+  },
+  {
+    icon: Users,
+    title: "样本代表性诊断",
+    desc: "回收后自动体检：样本量够不够、性别分布是否失衡、结构是否集中，给出补收建议。",
   },
   {
     icon: FileBarChart,
@@ -109,16 +121,23 @@ const features = [
   {
     icon: Lightbulb,
     title: "R4 智能诊断",
-    desc: "DeepSeek-R1 推理诊断不达标项，给出可执行的修改建议。",
+    desc: "DeepSeek-R1 推理诊断不达标项，每个问题配一句话告诉你怎么办。",
+  },
+  {
+    icon: Download,
+    title: "一键导入与导出",
+    desc: "问卷星 / SPSS 文件直接导入，Word / Excel / PPT / PDF 报告导出。",
   },
 ];
 
 const trustItems = [
+  "回收前预演数据方向",
+  "样本代表性诊断",
   "Cronbach's α 信度分析",
   "KMO + Bartlett 效度检验",
   "t检验 / ANOVA / 卡方 / 回归",
   "DeepSeek-R1 智能诊断",
-  "Word / Excel 一键导出",
+  "Word / Excel / PPT 一键导出",
   "论文信效度段落自动生成",
 ];
 
@@ -132,16 +151,17 @@ export default function HomePage() {
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-12 text-center">
         <Badge variant="secondary" className="mb-6 font-normal text-ink-500">
           <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-          合规路线 · 仅用于研究预演
+          全网唯一支持回收前预演 · 合规路线 · 仅用于研究预演
         </Badge>
         <h1 className="font-display text-4xl font-bold leading-tight text-ink-900 sm:text-5xl">
-          提前模拟数据方向，
+          回收前预演，回收后看懂
           <br className="hidden sm:block" />
           <span className="text-primary">避免问卷白做一趟</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-body-lg text-ink-500">
-          上传问卷题目，先做一次信效度体检；再用一句话描述假设，
-          预演数据是否达标——在正式发问卷之前，就知道方向对不对。
+          发问卷之前：先做一次信效度体检，一句话描述假设，预演数据是否达标；
+          收问卷之后：用样本代表性诊断看懂样本量、性别分布和结构集中度——
+          两条路都在正式写结论之前，就知道方向对不对。
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Button size="lg" asChild>
@@ -161,7 +181,7 @@ export default function HomePage() {
 
       {/* 痛点区 */}
       <section className="mx-auto max-w-5xl px-6 py-8">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {painPoints.map((p) => (
             <Card key={p.title} className="border-destructive/20 bg-destructive/5 p-6">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
@@ -205,7 +225,7 @@ export default function HomePage() {
         <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
           核心能力
         </h2>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
             <Card key={f.title} className="flex items-start gap-4 p-6">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -243,7 +263,7 @@ export default function HomePage() {
           免费体检，付费预演
         </h2>
         <p className="mt-2 text-body text-ink-500">
-          题目体检永久免费，确认可行后再付费生成数据与报告。
+          题目体检与样本代表性诊断永久免费，确认可行后再付费生成数据与报告。
         </p>
         <Button size="lg" className="mt-6" asChild>
           <Link href="/pricing">

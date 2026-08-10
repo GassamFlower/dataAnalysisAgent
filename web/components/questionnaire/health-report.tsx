@@ -53,7 +53,7 @@ export function HealthReport({ projectId }: { projectId: string }) {
         <CardTitle className="flex items-center justify-between">
           <span>问卷质量体检</span>
           <Badge variant="outline" className="font-normal">
-            共 {data.total_questions} 题
+            共 {data.totalQuestions} 题
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -63,14 +63,14 @@ export function HealthReport({ projectId }: { projectId: string }) {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-2xl font-bold">
-                <span className={gradeCfg.color}>{data.overall_score}</span>
+                <span className={gradeCfg.color}>{data.overallScore}</span>
                 <span className="text-sm font-normal text-muted-foreground"> / 100</span>
               </div>
               <div className={`text-sm font-medium ${gradeCfg.color}`}>
                 等级 {data.grade} · {gradeCfg.label}
               </div>
             </div>
-            <Progress value={data.overall_score} className="w-32" />
+            <Progress value={data.overallScore} className="w-32" />
           </div>
           <p className="mt-2 text-sm text-muted-foreground">{data.summary}</p>
         </div>
