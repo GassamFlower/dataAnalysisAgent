@@ -125,6 +125,36 @@ export interface SampleRepresentativeness {
   aiConclusion: string;
 }
 
+/** 样本量规划请求（F-RPT-008） */
+export interface SampleSizePlannerRequest {
+  analysisType: "correlation" | "t_test" | "regression";
+  effectSize?: number | null; // null → 自动：预演矩阵 / 默认中等效应
+  alpha?: number;
+  power?: number;
+  plannedN?: number | null; // 计划回收样本量（可选，用于判定）
+}
+
+/** 样本量规划结果（F-RPT-008） */
+export interface SampleSizePlannerResult {
+  analysisType: string;
+  analysisLabel: string;
+  effectSize: number;
+  effectLabel: string;
+  effectSource: "user" | "simulation" | "default";
+  alpha: number;
+  power: number;
+  requiredN: number; // 公式所需（t_test 为总数）
+  perGroupN: number | null; // t_test 每组样本量
+  representativeMin: number; // 代表性建议下限
+  recommendedN: number; // 建议回收目标
+  plannedN: number | null;
+  verdict: "sufficient" | "marginal" | "insufficient" | "unknown";
+  verdictLabel: string;
+  shortfall: number;
+  guidance: string[];
+  oneLiner: string;
+}
+
 /** 差异检验结果（不落库，按假设路径实时计算，对应架构文档 9.6 决策树） */
 export interface DiffTestResult {
   predictor: string;

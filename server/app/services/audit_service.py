@@ -239,6 +239,7 @@ ACTION_TYPES = {
     "ANALYSIS_RUN": "analysis_run",
     "REPORT_EXPORT": "report_export",
     "SAMPLE_REP_CHECK": "sample_rep_check",
+    "SAMPLE_PLANNER": "sample_planner",
     "DATA_EXPORT": "data_export",
     "SIMULATION_GENERATE": "simulation_generate",
     "DIMENSION_EDIT": "dimension_edit",

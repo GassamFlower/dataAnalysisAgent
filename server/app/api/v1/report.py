@@ -20,7 +20,7 @@ from app.models.diagnosis import Diagnosis
 from app.models.diagnosis_issue import DiagnosisIssue
 from app.models.question import Question
 from app.models.simulation_config import SimulationConfig
-from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest, PolishRequest, PolishResponse, SampleRepresentativenessResponse
+from app.schemas.report import ReportResponse, DiffTestResultResponse, ExportRequest, PolishRequest, PolishResponse, SampleRepresentativenessResponse, SampleSizePlannerRequest, SampleSizePlannerResponse
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.quota_service import check_and_consume_quota
 from app.services.audit_service import AuditService, ACTION_TYPES
@@ -721,3 +721,131 @@ async def get_sample_representativeness(
     await db.flush()
 
     return ResponseModel(data=response)
+
+
+# ---------------------------------------------------------------------------
+# 样本量规划器（F-RPT-008）
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_effect_size(
+    db: AsyncSession,
+    project: Any,
+    user_effect_size: Optional[float],
+    default: float,
+) -> tuple[float, str]:
+    """解析效应量来源：user（手填）> simulation（预演矩阵）> default（默认中等效应）。
+
+    Returns:
+        (效应量, 来源标识)
+    """
+    if user_effect_size is not None:
+        return user_effect_size, "user"
+
+    # 模拟项目：从最新相关矩阵取非对角线最大相关作为效应量
+    if project.mode == "simulation":
+        from app.models.correlation_matrix import CorrelationMatrix
+        result = await db.execute(
+            select(CorrelationMatrix)
+            .where(CorrelationMatrix.project_id == project.id)
+            .order_by(CorrelationMatrix.created_at.desc())
+            .limit(1)
+        )
+        matrix = result.scalar_one_or_none()
+        cells = (matrix.cells if matrix else None) or []
+        values = [
+            float(cell.get("value", 0.0))
+            for row in cells
+            if isinstance(row, list)
+            for cell in row
+        ]
+        max_abs = max((abs(v) for v in values if v != 0), default=0.0)
+        if max_abs > 0 and max_abs < 1:
+            return round(max_abs, 3), "simulation"
+
+    return default, "default"
+
+
+@router.post(
+    "/{project_id}/sample-size-planner",
+    response_model=ResponseModel[SampleSizePlannerResponse],
+    summary="样本量规划",
+    description="按分析类型与效应量计算所需样本量并给出回收目标（功效分析闭式解，确定性规则）。免费能力。"
+)
+async def plan_sample_size(
+    project_id: UUID,
+    request: SampleSizePlannerRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """样本量规划：公式计算（必出）+ 规则建议（说人话），无 LLM。
+
+    差异化边界：只做规划与建议，不提供样本购买/投放/收集服务。
+    与 F-RPT-007 样本代表性诊断互文：回收前定目标，回收后验结构。
+    """
+    # 1. 验证项目归属（含软删除过滤）
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 2. 解析效应量来源
+    from app.core.statistics_constants import (
+        PLANNER_ALPHA_DEFAULT,
+        PLANNER_POWER_DEFAULT,
+        STRENGTH_NOMINAL,
+        T_TEST_DEFAULT_D,
+    )
+    default_effect = T_TEST_DEFAULT_D if request.analysis_type == "t_test" else STRENGTH_NOMINAL["medium"]
+    effect_size, effect_source = await _resolve_effect_size(
+        db, project, request.effect_size, default_effect
+    )
+
+    # 3. 回归分析需从预演矩阵取自变量个数（无矩阵时按维度数兜底）
+    predictors: Optional[int] = None
+    if request.analysis_type == "regression":
+        from app.models.correlation_matrix import CorrelationMatrix
+        result = await db.execute(
+            select(CorrelationMatrix)
+            .where(CorrelationMatrix.project_id == project_id)
+            .order_by(CorrelationMatrix.created_at.desc())
+            .limit(1)
+        )
+        matrix = result.scalar_one_or_none()
+        dims = (matrix.dimensions if matrix else None) or []
+        dim_names = dims if isinstance(dims, list) else []
+        predictors = max(len(dim_names) - 1, 1)
+
+    # 4. 公式计算 + 规则建议
+    from app.services.sample_size_planner import build_plan
+    try:
+        plan = build_plan(
+            request.analysis_type,
+            effect_size,
+            request.alpha,
+            request.power,
+            effect_source=effect_source,
+            predictors=predictors,
+            planned_n=request.planned_n,
+        )
+    except ValueError as e:
+        raise ValidationException(str(e))
+
+    # 5. 记录审计日志
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES["SAMPLE_PLANNER"],
+        project_id=project_id,
+        action_detail={
+            "analysis_type": plan["analysis_type"],
+            "effect_source": effect_source,
+            "effect_size": plan["effect_size"],
+            "required_n": plan["required_n"],
+            "recommended_n": plan["recommended_n"],
+            "verdict": plan["verdict"],
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+    await db.flush()
+
+    return ResponseModel(data=SampleSizePlannerResponse(**plan))

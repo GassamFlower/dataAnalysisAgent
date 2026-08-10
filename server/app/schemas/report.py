@@ -159,3 +159,35 @@ class SampleRepresentativenessResponse(BaseModel):
     distributions: List[SampleRepDistribution] = []
     items: List[SampleRepItem] = []
     ai_conclusion: str = ""
+
+
+class SampleSizePlannerRequest(BaseModel):
+    """样本量规划请求（F-RPT-008）。"""
+
+    analysis_type: str = "correlation"  # correlation / t_test / regression
+    effect_size: Optional[float] = None  # None → 自动：预演矩阵 / 默认中等效应
+    alpha: float = 0.05
+    power: float = 0.80
+    planned_n: Optional[int] = None  # 计划回收样本量（可选，用于判定）
+
+
+class SampleSizePlannerResponse(BaseModel):
+    """样本量规划结果（F-RPT-008）。"""
+
+    analysis_type: str
+    analysis_label: str
+    effect_size: float
+    effect_label: str
+    effect_source: str  # user / simulation / default
+    alpha: float
+    power: float
+    required_n: int  # 公式所需（t_test 为总数 = 2 × 每组）
+    per_group_n: Optional[int] = None  # t_test 每组样本量
+    representative_min: int  # 代表性建议下限
+    recommended_n: int  # 建议回收目标 = max(required, representative_min)
+    planned_n: Optional[int] = None
+    verdict: str  # sufficient / marginal / insufficient / unknown
+    verdict_label: str
+    shortfall: int = 0  # 距建议目标的缺口
+    guidance: List[str] = []
+    one_liner: str = ""

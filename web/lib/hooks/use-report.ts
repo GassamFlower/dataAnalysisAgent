@@ -3,7 +3,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
-import type { Report, SampleRepresentativeness } from "@/types";
+import type {
+  Report,
+  SampleRepresentativeness,
+  SampleSizePlannerRequest,
+  SampleSizePlannerResult,
+} from "@/types";
 
 /**
  * 报告 hooks。
@@ -80,5 +85,25 @@ export function useSampleRepresentativeness(projectId: string) {
       ),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 与后端 LLM 缓存对齐：5 分钟
+  });
+}
+
+/**
+ * 样本量规划（F-RPT-008，免费能力，确定性公式无 LLM）。
+ * 对应后端：POST /api/report/:projectId/sample-size-planner
+ */
+export function useSampleSizePlanner(projectId: string) {
+  return useMutation({
+    mutationFn: (params: SampleSizePlannerRequest) =>
+      apiClient.post<SampleSizePlannerResult>(
+        `/api/report/${projectId}/sample-size-planner`,
+        {
+          analysis_type: params.analysisType,
+          effect_size: params.effectSize ?? null,
+          alpha: params.alpha ?? 0.05,
+          power: params.power ?? 0.8,
+          planned_n: params.plannedN ?? null,
+        }
+      ),
   });
 }

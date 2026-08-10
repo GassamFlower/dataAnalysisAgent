@@ -12,6 +12,7 @@ import { HypothesisInput } from "@/components/simulation/hypothesis-input";
 import { HypothesisPathList } from "@/components/simulation/hypothesis-path-list";
 import { CorrelationMatrix } from "@/components/simulation/correlation-matrix";
 import { SampleSizeInput } from "@/components/simulation/sample-size-input";
+import { SampleSizePlanner } from "@/components/report/sample-size-planner";
 import { LoadingState } from "@/components/common/loading-state";
 import { Watermark } from "@/components/common/watermark";
 import { ErrorState } from "@/components/common/error-state";
@@ -452,6 +453,9 @@ export default function SimulatePage({
               </p>
             )}
           </Card>
+
+          {/* 步骤 4：样本量规划（F-RPT-008，回收目标建议） */}
+          <SampleSizePlanner projectId={params.id} />
         </div>
       )}
 

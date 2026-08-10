@@ -254,3 +254,18 @@ GENDER_MIN_RATIO: float = 0.30
 
 # 单项集中度阈值：人口学变量中单一类别占比超过该值视为结构集中
 CONCENTRATION_RATIO: float = 0.80
+
+# ─────────────────────────────────────────────────────────────
+# 样本量规划阈值（唯一来源，F-RPT-008）
+# 来源：docs/b-功能清单.md F-RPT-008（功效分析闭式解 + 代表性下限对齐）
+# ─────────────────────────────────────────────────────────────
+
+# 默认显著性水平（双侧）与检验功效
+PLANNER_ALPHA_DEFAULT: float = 0.05
+PLANNER_POWER_DEFAULT: float = 0.80
+
+# 差异检验默认效应量（未提供时采用 Cohen d=0.5 中等效应）
+T_TEST_DEFAULT_D: float = 0.50
+
+# 规划器建议回收下限：与样本代表性诊断口径一致（中等效应 r≈0.3 建议 N）
+PLANNER_MIN_TARGET: int = REPRESENTATIVE_MIN_SAMPLE
