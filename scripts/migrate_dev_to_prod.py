@@ -1,8 +1,17 @@
 """
-数据迁移脚本：从开发环境 SQLite 导出数据，生成 PostgreSQL INSERT 语句。
+数据迁移脚本：从开发环境 SQLite 导出数据，生成 PostgreSQL INSERT 语句。【一次性工具·已归档】
 
-用法：
-  python scripts/migrate_dev_to_prod.py
+⚠️ 该脚本为历史一次性数据搬运工具：
+  - 仅覆盖 12 张基础业务表；**不包含** users 的 email/password_hash/refresh_token/is_admin、
+    user_quotas / llm_configs / user_agreements / audit_logs / analytics_events / tutorial* 等新表与新字段；
+  - 采用「DELETE 目标表后重插」的危险语义，直接在生产库上执行会清空数据；
+  - 生产环境的 schema 演进请一律使用 Alembic（见 docs/database*.md）。
+
+因此本脚本默认**拒绝执行**，仅当明确以 `--dangerous` 参数运行时才生成 SQL，
+并且仅当你确认目标表无生产数据 / 已被备份的情况下使用。
+
+用法（危险）：
+  python scripts/migrate_dev_to_prod.py --dangerous
 
 输出：
   scripts/migrate_data.sql  — 可直接在生产 PostgreSQL 中执行的 SQL 文件
@@ -11,8 +20,9 @@
   - 脚本放在项目根目录 scripts/ 下，不在 uvicorn 监控范围内
   - SQLAlchemy 的 Uuid 类型在 DB 中以 32 位 hex 存储（无连字符），
     迁移时必须保持 hex 格式，不能转为 36 位标准 UUID，否则 db.get() 查询不匹配
-  - 迁移顺序按外键依赖：users → projects → questions/hypotheses/correlation_matrices/simulation_configs/reports → hypothesis_paths/datasets/reliability_results/diagnoses → diagnosis_issues
+  - 迁移顺序按外键依赖：users → projects → questions/hypotheses/... → ...
 """
+import argparse
 import json
 import sqlite3
 import sys
@@ -60,6 +70,20 @@ def format_datetime(dt_str: str) -> str:
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dangerous",
+        action="store_true",
+        help="确认执行：仅当目标表无生产数据/已备份且你清楚后果时才传入",
+    )
+    args = parser.parse_args()
+
+    if not args.dangerous:
+        print("⚠️  本脚本为一次性危险工具（DELETE 后重插），已默认禁止执行。")
+        print("   确认你对目标表已备份/清空后，请显式传 --dangerous 参数。")
+        print("   生产 schema 演进请使用 Alembic，而非本脚本。")
+        sys.exit(2)
+
     if not DB_PATH.exists():
         print(f"错误：数据库文件不存在: {DB_PATH}")
         sys.exit(1)

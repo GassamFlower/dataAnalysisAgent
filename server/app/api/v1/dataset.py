@@ -334,7 +334,10 @@ async def import_real_data(
     current_user: dict = Depends(get_current_user),
 ):
     """导入真实回收数据。"""
-    # 0. 校验并扣减免费额度
+    # 0. 先验证项目存在且属于当前用户（含软删除过滤），通过后才扣额度
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 0.1 校验并扣减免费额度（归属校验通过后才扣）
     await check_and_consume_quota(
         db,
         current_user["id"],
@@ -342,9 +345,6 @@ async def import_real_data(
         current_user["plan"],
         current_user.get("plan_expires_at"),
     )
-
-    # 1. 验证项目存在且属于当前用户
-    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 校验文件
     if not file.filename:

@@ -267,5 +267,14 @@ PLANNER_POWER_DEFAULT: float = 0.80
 # 差异检验默认效应量（未提供时采用 Cohen d=0.5 中等效应）
 T_TEST_DEFAULT_D: float = 0.50
 
+# ANOVA 默认效应量（未提供时采用 Cohen f=0.25 中等效应）
+ANOVA_DEFAULT_F: float = 0.25
+
+# 配对 t 检验默认效应量（未提供时采用 Cohen dz=0.5 中等效应）
+PAIRED_DEFAULT_DZ: float = 0.50
+
+# 分层抽样默认层数（未提供时采用 2 层）
+STRATIFIED_DEFAULT_STRATA: int = 2
+
 # 规划器建议回收下限：与样本代表性诊断口径一致（中等效应 r≈0.3 建议 N）
 PLANNER_MIN_TARGET: int = REPRESENTATIVE_MIN_SAMPLE

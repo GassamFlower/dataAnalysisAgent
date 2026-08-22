@@ -112,14 +112,17 @@ export default function ReportPage({
   };
 
   /** 确认数据来源后触发浏览器下载 */
-  const handleExportConfirm = (dataSource: "real" | "simulated") => {
+  const handleExportConfirm = (
+    dataSource: "real" | "simulated",
+    includeAiConclusion: boolean
+  ) => {
     if (!pendingExportFormat) return;
     const format = pendingExportFormat;
     setShowDataSourceDialog(false);
     setPendingExportFormat(null);
 
     exportMutation.mutate(
-      { projectId: params.id, format, dataSource },
+      { projectId: params.id, format, dataSource, includeAiConclusion },
       {
         onSuccess: ({ blob, filename }) => {
           const url = URL.createObjectURL(blob);

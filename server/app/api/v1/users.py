@@ -2,6 +2,7 @@
 import asyncio
 import base64
 import hashlib
+import logging
 import random
 import string
 from datetime import datetime, timedelta, timezone
@@ -16,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.exceptions import ValidationException
+from app.core.exceptions import AppException, ValidationException
 from app.core.responses import success_response
 from app.core.security import hash_password, verify_password
 from app.core.error_messages import (
@@ -26,6 +27,8 @@ from app.core.error_messages import (
 )
 from app.models.user import User
 from app.services.audit_service import ACTION_TYPES, AuditService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["用户"])
 
@@ -216,9 +219,11 @@ async def email_change_request(
         from app.services.email_service import send_verification_code
 
         await send_verification_code(req.new_email, code)
-    except Exception:
-        # 邮件发送失败不阻塞，开发环境可跳过
-        pass
+    except Exception as exc:  # noqa: BLE001
+        # 邮件发送失败时，不再假装"已发送"：记录日志并明确报错，避免用户空等验证码。
+        logger.warning("新邮箱验证码发送失败 | email=%s error=%s",
+                       req.new_email, exc, exc_info=True)
+        raise AppException(50002, "验证码发送失败，请稍后重试", status_code=500)
 
     return success_response(
         message="验证码已发送至新邮箱",

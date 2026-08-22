@@ -480,6 +480,19 @@ def _add_representativeness_slide(prs: Presentation, report_data: Dict[str, Any]
         text_frame.word_wrap = True
         top += Inches(0.9)
 
+    # 可选：LLM 说人话结论（仅当导出开启 include_ai_conclusion 时存在）
+    ai_conclusion = rep.get("ai_conclusion")
+    if ai_conclusion:
+        top += Inches(0.2)
+        height = Inches(1.2)
+        textbox = slide.shapes.add_textbox(left, top, width, height)
+        text_frame = textbox.text_frame
+        p = text_frame.paragraphs[0]
+        p.text = f"AI 说人话结论: {ai_conclusion}"
+        p.font.size = Pt(14)
+        p.font.color.rgb = COLOR_PRIMARY
+        text_frame.word_wrap = True
+
 
 def _add_sample_plan_slide(prs: Presentation, report_data: Dict[str, Any]):
     """添加样本量规划与回收目标页（F-RPT-008，与模拟页规划器同源）"""

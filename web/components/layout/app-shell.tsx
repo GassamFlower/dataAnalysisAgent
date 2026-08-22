@@ -10,7 +10,6 @@ import {
   FileText,
   Loader2,
   Menu,
-  BookOpen,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -28,7 +27,6 @@ import { Disclaimer } from "@/components/compliance/disclaimer";
 const navItems = [
   { href: "/projects", label: "我的项目", icon: LayoutDashboard },
   { href: "/projects/new", label: "新建项目", icon: Plus },
-  { href: "/learn", label: "统计小课堂", icon: BookOpen },
   { href: "/settings", label: "设置", icon: Settings },
 ];
 

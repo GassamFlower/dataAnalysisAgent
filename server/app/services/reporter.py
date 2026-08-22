@@ -351,6 +351,13 @@ def export_word(report_data: Dict[str, Any]) -> bytes:
                     f"最高占比类别「{d.get('top_category', '')}」"
                     f"占 {d.get('top_share', '0')}（N={d.get('total', 0)}）"
                 )
+
+        # 可选：LLM 说人话结论（仅当导出开启 include_ai_conclusion 时存在）
+        ai_conclusion = rep.get("ai_conclusion")
+        if ai_conclusion:
+            doc.add_paragraph()
+            doc.add_heading("AI 说人话结论", level=2)
+            doc.add_paragraph(ai_conclusion)
     else:
         doc.add_paragraph("无样本代表性数据（模拟预演数据由用户自定参数，不涉及样本代表性）。")
     doc.add_paragraph()
@@ -603,6 +610,12 @@ def export_excel(dataset: Dict[str, Any]) -> bytes:
                     _to_float(d.get("top_share"), 0.0),
                     d.get("total", 0),
                 ])
+
+        # 可选：LLM 说人话结论（仅当导出开启 include_ai_conclusion 时存在）
+        ai_conclusion = rep.get("ai_conclusion")
+        if ai_conclusion:
+            ws_rep.append([])
+            ws_rep.append(["AI 说人话结论", _safe_cell(ai_conclusion)])
 
         ws_rep.column_dimensions["A"].width = 30
         ws_rep.column_dimensions["B"].width = 10
@@ -1057,6 +1070,15 @@ def export_pdf(report_data: Dict[str, Any]) -> bytes:
                         styles["body"],
                     )
                 )
+
+        # 可选：LLM 说人话结论（仅当导出开启 include_ai_conclusion 时存在）
+        ai_conclusion = rep.get("ai_conclusion")
+        if ai_conclusion:
+            story.append(Spacer(1, 4 * mm))
+            story.append(Paragraph("AI 说人话结论", styles["h2"]))
+            story.append(
+                Paragraph(escape(str(ai_conclusion)), styles["body"])
+            )
     else:
         story.append(
             Paragraph(

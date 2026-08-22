@@ -108,6 +108,7 @@ class ExportRequest(BaseModel):
 
     format: str = "word"  # word / excel / pdf / ppt
     data_source: str = "simulated"  # real / simulated
+    include_ai_conclusion: bool = False  # 可选开关：导出代表性章节是否接入 LLM 说人话结论（默认关闭，保证确定性）
 
 
 class PolishRequest(BaseModel):
@@ -164,10 +165,12 @@ class SampleRepresentativenessResponse(BaseModel):
 class SampleSizePlannerRequest(BaseModel):
     """样本量规划请求（F-RPT-008）。"""
 
-    analysis_type: str = "correlation"  # correlation / t_test / regression
+    analysis_type: str = "correlation"  # correlation / t_test / paired_t_test / anova / regression / stratified
     effect_size: Optional[float] = None  # None → 自动：预演矩阵 / 默认中等效应
     alpha: float = 0.05
     power: float = 0.80
+    groups: Optional[int] = None  # ANOVA 组数（≥2）
+    strata: Optional[int] = None  # 分层抽样层数（≥1）
     planned_n: Optional[int] = None  # 计划回收样本量（可选，用于判定）
 
 

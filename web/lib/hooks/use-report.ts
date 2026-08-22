@@ -43,10 +43,15 @@ export function useExportReport() {
       projectId: string;
       format: "word" | "excel" | "pdf" | "ppt";
       dataSource: "real" | "simulated";
+      includeAiConclusion?: boolean;
     }) =>
       apiClient.postBlob(
         `/api/report/${params.projectId}/export`,
-        { format: params.format, data_source: params.dataSource }
+        {
+          format: params.format,
+          data_source: params.dataSource,
+          include_ai_conclusion: params.includeAiConclusion ?? false,
+        }
       ),
   });
 }
@@ -102,6 +107,8 @@ export function useSampleSizePlanner(projectId: string) {
           effect_size: params.effectSize ?? null,
           alpha: params.alpha ?? 0.05,
           power: params.power ?? 0.8,
+          groups: params.groups ?? null,
+          strata: params.strata ?? null,
           planned_n: params.plannedN ?? null,
         }
       ),

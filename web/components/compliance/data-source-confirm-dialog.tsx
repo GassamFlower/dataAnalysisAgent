@@ -12,14 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Sparkles } from "lucide-react";
 
 type DataSourceType = "real" | "simulated";
 
 interface DataSourceConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (dataSource: DataSourceType) => void;
+  onConfirm: (dataSource: DataSourceType, includeAiConclusion: boolean) => void;
   onCancel: () => void;
   /** 项目模式：simulation 模式下导出将强制标记为 simulated */
   projectMode?: "real" | "simulation";
@@ -40,19 +40,22 @@ export function DataSourceConfirmDialog({
   const [dataSource, setDataSource] = useState<DataSourceType>(
     projectMode === "simulation" ? "simulated" : "real"
   );
+  const [includeAiConclusion, setIncludeAiConclusion] = useState(false);
 
   useEffect(() => {
     if (open) {
       setDataSource(projectMode === "simulation" ? "simulated" : "real");
+      setIncludeAiConclusion(false);
     }
   }, [open, projectMode]);
 
   const handleConfirm = () => {
-    onConfirm(dataSource);
+    onConfirm(dataSource, includeAiConclusion);
   };
 
   const handleCancel = () => {
     setDataSource(projectMode === "simulation" ? "simulated" : "real");
+    setIncludeAiConclusion(false);
     onCancel();
   };
 
@@ -119,6 +122,31 @@ export function DataSourceConfirmDialog({
               {isModeMismatch && (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
                   <strong>注意：</strong>当前项目基于模拟数据生成，选择「真实数据」与项目类型不一致，导出文件仍会标记为模拟数据。
+                </div>
+              )}
+
+              {/* 可选：导出代表性章节接入 LLM 说人话结论（仅真实数据项目） */}
+              {projectMode === "real" && (
+                <div className="flex items-start space-x-3 rounded-lg border border-border p-3">
+                  <input
+                    type="checkbox"
+                    id="include-ai-conclusion"
+                    checked={includeAiConclusion}
+                    onChange={(e) => setIncludeAiConclusion(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-border text-brand-indigo focus:ring-brand-indigo"
+                  />
+                  <div className="flex-1 space-y-1">
+                    <Label
+                      htmlFor="include-ai-conclusion"
+                      className="flex items-center gap-1.5 font-semibold text-ink-900"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-brand-indigo" />
+                      在代表性章节加入 AI 说人话结论
+                    </Label>
+                    <p className="text-xs text-ink-600">
+                      可选开关，默认关闭。开启后由 AI 生成一句话总结与建议（可能消耗 AI 配额）。
+                    </p>
+                  </div>
                 </div>
               )}
 

@@ -130,29 +130,35 @@ def _verify_payment_callback(request: Request) -> None:
 
     校验顺序：
     1. DEBUG 模式放行（开发/测试环境，便于本地联调）
-    2. X-Payment-Signature 请求头与配置的 PAYMENT_CALLBACK_TOKEN 匹配
-    3. 请求 IP 在 PAYMENT_ALLOWED_IPS 白名单内（若已配置）
+    2. X-Payment-Signature 请求头与配置的 PAYMENT_CALLBACK_TOKEN 恒时比对
+    3. 请求 IP 在 PAYMENT_ALLOWED_IPS 白名单内（生产必配，缺失即拒绝）
 
-    生产环境必须同时配置 TOKEN 与 IP 白名单。
+    生产环境必须同时配置 PAYMENT_CALLBACK_TOKEN 与 PAYMENT_ALLOWED_IPS，
+    否则回调一律拒绝（防止"仅静态 token"单点防护被绕过）。
     """
+    from secrets import compare_digest
+
     if settings.DEBUG:
         return
 
-    # 1. 签名校验
+    # 1. 签名校验（存在性 + 恒时比较，防时序侧信道）
     token = settings.PAYMENT_CALLBACK_TOKEN
     if not token:
         raise UnauthorizedException("支付回调未配置签名 token，拒绝访问")
     signature = request.headers.get("X-Payment-Signature", "")
-    if signature != token:
+    if not signature or not compare_digest(signature.encode("utf-8"), token.encode("utf-8")):
         raise UnauthorizedException("支付回调签名校验失败")
 
-    # 2. IP 白名单校验（若已配置）
+    # 2. IP 白名单（生产必配：缺失即拒绝，不再"可配可不配"）
     allowed_ips_str = settings.PAYMENT_ALLOWED_IPS
-    if allowed_ips_str:
-        allowed_ips = {ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()}
-        client_ip = request.client.host if request.client else ""
-        if client_ip and client_ip not in allowed_ips:
-            raise UnauthorizedException(f"请求 IP {client_ip} 不在支付回调白名单内")
+    allowed_ips = {
+        ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()
+    } if allowed_ips_str else set()
+    if not settings.DEBUG and not allowed_ips:
+        raise UnauthorizedException("PAYMENT_ALLOWED_IPS 未配置，拒绝回调（生产环境必须配置支付渠道 IP 白名单）")
+    client_ip = request.client.host if request.client else ""
+    if client_ip and client_ip not in allowed_ips:
+        raise UnauthorizedException(f"请求 IP {client_ip} 不在支付回调白名单内")
 
 
 @router.post(

@@ -248,7 +248,10 @@ export default function SimulatePage({
   };
 
   /** 确认数据来源后导出模拟数据集 */
-  const handleExportDatasetConfirm = (dataSource: "real" | "simulated") => {
+  const handleExportDatasetConfirm = (
+    dataSource: "real" | "simulated",
+    _includeAiConclusion?: boolean
+  ) => {
     setShowDataSourceDialog(false);
     exportDatasetMutation.mutate(
       { projectId: params.id, format: "excel", dataSource },
@@ -455,7 +458,16 @@ export default function SimulatePage({
           </Card>
 
           {/* 步骤 4：样本量规划（F-RPT-008，回收目标建议） */}
-          <SampleSizePlanner projectId={params.id} />
+          <SampleSizePlanner
+            projectId={params.id}
+            recommendedAnalysisType={
+              paths.length > 1
+                ? "regression"
+                : paths.length === 1
+                  ? "correlation"
+                  : undefined
+            }
+          />
         </div>
       )}
 

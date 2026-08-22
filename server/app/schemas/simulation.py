@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class HypothesisCreateRequest(BaseModel):
@@ -50,7 +50,8 @@ class CorrelationMatrixResponse(BaseModel):
 class SimulationGenerateRequest(BaseModel):
     """数据生成请求。"""
 
-    sample_size: int = Field(..., gt=0, description="样本量")
+    # 样本量合理上限：防止超大请求造成内存/CPU DoS（生成矩阵为 N×D 数组）
+    sample_size: int = Field(..., gt=0, le=100000, description="样本量（1~100000）")
     # 后端按 project_id 自动取最新 hypothesis 与 matrix，前端无需传入
 
 
@@ -98,7 +99,7 @@ class MatrixSaveCell(BaseModel):
 
     row: str
     col: str
-    value: float
+    value: float = Field(..., ge=-1.0, le=1.0, description="相关系数必须在 [-1, 1]")
     source: str  # "user" | "system"
 
 
@@ -107,6 +108,25 @@ class MatrixSaveRequest(BaseModel):
 
     dimensions: List[str]
     cells: List[List[MatrixSaveCell]]
+
+    @model_validator(mode="after")
+    def _validate_matrix_shape_and_diagonal(self) -> "MatrixSaveRequest":
+        n = len(self.dimensions)
+        if n < 1:
+            raise ValueError("矩阵至少需要 1 个维度")
+        if len(self.cells) != n:
+            raise ValueError(f"矩阵行数 {len(self.cells)} 与维度数 {n} 不一致")
+        for i, row in enumerate(self.cells):
+            if len(row) != n:
+                raise ValueError(f"矩阵第 {i} 行长度 {len(row)} 与维度数 {n} 不一致")
+        # 校验对角线必须为 1（变量与自身相关为 1）
+        for i in range(n):
+            diag = self.cells[i][i]
+            if diag.row != self.dimensions[i] or diag.col != self.dimensions[i]:
+                raise ValueError(f"矩阵对角线位置 ({i},{i}) 维度名不一致")
+            if abs(diag.value - 1.0) > 1e-6:
+                raise ValueError(f"矩阵对角线 {self.dimensions[i]} 相关必须为 1")
+        return self
 
 
 class MatrixSaveResponse(BaseModel):

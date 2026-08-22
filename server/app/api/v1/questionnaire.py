@@ -567,7 +567,7 @@ async def get_questionnaire_health(
 
     纯规则引擎，不调用 LLM，响应快、零成本。需先完成题目识别（inspect）或问卷星导入。
     """
-    project = await get_owned_project(db, project_id, user.id)
+    project = await get_owned_project(db, project_id, user["id"])
     if not project:
         raise NotFoundException("项目不存在或无访问权限")
 

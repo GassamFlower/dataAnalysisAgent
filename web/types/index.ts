@@ -127,10 +127,18 @@ export interface SampleRepresentativeness {
 
 /** 样本量规划请求（F-RPT-008） */
 export interface SampleSizePlannerRequest {
-  analysisType: "correlation" | "t_test" | "regression";
+  analysisType:
+    | "correlation"
+    | "t_test"
+    | "paired_t_test"
+    | "anova"
+    | "regression"
+    | "stratified";
   effectSize?: number | null; // null → 自动：预演矩阵 / 默认中等效应
   alpha?: number;
   power?: number;
+  groups?: number | null; // ANOVA 组数（≥2）
+  strata?: number | null; // 分层抽样层数（≥1）
   plannedN?: number | null; // 计划回收样本量（可选，用于判定）
 }
 

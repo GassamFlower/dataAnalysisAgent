@@ -60,15 +60,35 @@ def _generate_multivariate_normal(
     """生成多元正态分布模拟数据。"""
     rng = np.random.default_rng(seed)
 
-    # 确保矩阵正定（添加微小正则化）
-    eigvals = np.linalg.eigvalsh(corr)
-    if eigvals.min() < 1e-6:
-        corr += np.eye(len(corr)) * 1e-4
+    # 确保协方差矩阵半正定：若存在负特征值，则裁剪到最近半正定矩阵
+    # （处理自定义矩阵不一致导致非正定，避免 multivariate_normal 抛 500）
+    corr = _clamp_to_psd(corr)
 
     mean = np.zeros(len(dimensions))
     data = rng.multivariate_normal(mean, corr, size=sample_size)
 
     return pd.DataFrame(data, columns=dimensions)
+
+
+def _clamp_to_psd(corr: np.ndarray) -> np.ndarray:
+    """把协方差/相关矩阵投影到最近的半正定矩阵（保留对称）。
+
+    - 对称化（用户可能只填上三角）
+    - 特征值裁剪到 >= 最小阈值后重组，并归一化到单位对角（相关矩阵要求对角为 1）
+    """
+    corr = (corr + corr.T) / 2.0
+    np.fill_diagonal(corr, 1.0)
+    eigvals, eigvecs = np.linalg.eigh(corr)
+    if eigvals.min() >= 1e-6:
+        return corr
+    # 裁剪负特征值，保证数值稳定性
+    clipped = np.maximum(eigvals, 1e-6)
+    psd = (eigvecs * clipped) @ eigvecs.T
+    # 归一化回单位对角（相关矩阵约束）
+    d = np.sqrt(np.diag(psd))
+    psd = psd / np.outer(d, d)
+    np.fill_diagonal(psd, 1.0)
+    return psd
 
 
 def _scale_to_likert(df: pd.DataFrame, scale: int = 5) -> pd.DataFrame:

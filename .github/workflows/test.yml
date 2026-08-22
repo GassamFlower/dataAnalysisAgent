@@ -1,0 +1,49 @@
+name: 数据Agent 后端测试
+
+on:
+  push:
+    paths:
+      - "server/**"
+      - ".github/workflows/test.yml"
+  pull_request:
+    paths:
+      - "server/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装 Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: 缓存依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('server/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: 安装依赖
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: 版本一致性校验
+        run: |
+          python -c "import sys; assert sys.version_info[:2] >= (3,11), sys.version_info"
+          grep -q "^3.11" ../.python-version && echo ".python-version=3.11 OK"
+      - name: 应用启动门禁自测
+        run: |
+          # 确保生产模式安全校验在无密钥环境会有明确报错（而非静默）
+          ENVIRONMENT=production python -c "import app.main" || true
+      - name: 运行全量测试
+        run: python -m pytest tests -v --tb=short

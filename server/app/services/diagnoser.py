@@ -69,7 +69,7 @@ def _build_prompt(reliability_results: List[Dict], rule_hits: List[Dict]) -> str
       "dimension": "维度名称",
       "metric": "指标名称（alpha/kmo/bartlett_p）",
       "value": 0.123,
-      "threshold": 0.7,
+      "threshold": {THRESHOLDS['alpha']},
       "reason": "问题原因分析",
       "suggestion": "修改建议"
     }}

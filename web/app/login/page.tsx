@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Mail, Lock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -41,7 +41,6 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -66,7 +65,25 @@ function LoginForm() {
     }
   }, [searchParams]);
 
-  const redirectPath = searchParams.get("redirect") ?? "/projects";
+  const redirectPath0 = searchParams.get("redirect") ?? "/projects";
+  // 防止把已登录用户弹回登录页（如 redirect 指回 /login）或跳到空地址
+  const redirectPath =
+    redirectPath0 && !(redirectPath0.startsWith("/login") || redirectPath0 === "/")
+      ? redirectPath0
+      : "/projects";
+
+  /**
+   * 登录/注册/验证成功后统一跳转。
+   * 使用整页导航而非 `router.push`：
+   *  - 保证对目标页重新执行 middleware（读取最新 auth cookie）；
+   *  - 保证 zustand persist 在目标页完成水合，避免 AppShell 路由守卫
+   *    在客户端过渡瞬间读到过期 `isAuthenticated=false` 而把用户弹回登录页，
+   *    导致"登录成功却停在登录页、手动进其他页才发现已登录"。
+   */
+  const navigateAfterAuth = useCallback((to: string) => {
+    // 避免在同一导航 tick 内执行导致的空间竞争；交给浏览器完整导航
+    window.location.href = to;
+  }, []);
 
   const checkLoginStatus = useCallback(() => {
     try {
@@ -85,11 +102,11 @@ function LoginForm() {
       if (checkLoginStatus()) {
         clearInterval(interval);
         setQrOpen(false);
-        router.push(redirectPath);
+        navigateAfterAuth(redirectPath);
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [qrOpen, redirectPath, router, checkLoginStatus]);
+  }, [qrOpen, redirectPath, navigateAfterAuth, checkLoginStatus]);
 
   const loading = emailLogin.isPending || devLogin.isPending;
 
@@ -102,7 +119,7 @@ function LoginForm() {
       {
         onSuccess: () => {
           toast.success("登录成功");
-          router.push(redirectPath);
+          navigateAfterAuth(redirectPath);
         },
         onError: (e) => {
           setError(e instanceof Error ? e.message : "登录失败，请重试");
@@ -117,7 +134,7 @@ function LoginForm() {
     devLogin.mutate(undefined, {
       onSuccess: () => {
         toast.success("测试账号登录成功");
-        router.push(redirectPath);
+        navigateAfterAuth(redirectPath);
       },
       onError: (e) => {
         setError(e instanceof Error ? e.message : "登录失败，请重试");

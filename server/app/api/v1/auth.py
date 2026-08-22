@@ -625,6 +625,9 @@ async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(g
         raise ValidationException(ERR_USER_NOT_FOUND)
 
     user.password_hash = hash_password(req.new_password)
+    # 显式提交，不依赖 get_db 的隐式 commit 语义；
+    # 之后再刷新/复用本会话也不至于读到未提交状态。
+    await db.commit()
 
     return success_response(message="密码重置成功，请使用新密码登录")
 

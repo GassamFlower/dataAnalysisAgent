@@ -1,5 +1,6 @@
 """应用入口。"""
 import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Depends
@@ -25,6 +26,17 @@ from app.services.llm.config_service import reload_from_db
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# Python 最低版本：与 Dockerfile (python:3.11-slim) 及代码中 dict[str, ...] / X|None 语法对齐。
+# 在本地/CI 用旧解释器启动会立刻报错而不是神秘 import 失败。
+_MIN_PYTHON = (3, 11)
+if sys.version_info < _MIN_PYTHON:
+    raise RuntimeError(
+        "数据分析 Agent 需要 Python >= 3.11（当前 "
+        f"{sys.version_info.major}.{getattr(sys.version_info, 'minor')}）。"
+        "请升级解释器或重建 venv/pyenv/Poetry，并运行 .python-version 确认 3.11。"
+        "触发宪法第 22 章『Python 3.8 断裂即升级 3.11/3.12』。"
+    )
+
 
 def _validate_production_settings() -> None:
     """生产环境启动前强制校验关键安全配置。
@@ -44,6 +56,16 @@ def _validate_production_settings() -> None:
         raise RuntimeError("生产环境 RESET_JWT_SECRET_KEY 必须至少 32 位")
     if settings.RESET_JWT_SECRET_KEY == settings.JWT_SECRET_KEY:
         raise RuntimeError("生产环境 RESET_JWT_SECRET_KEY 必须与 JWT_SECRET_KEY 不同")
+
+    # 支付回调：生产必须同时具备签名 token 与 IP 白名单，否则拒绝回调
+    if not settings.PAYMENT_CALLBACK_TOKEN:
+        raise RuntimeError("生产环境必须设置 PAYMENT_CALLBACK_TOKEN（支付回调签名）")
+    if not settings.PAYMENT_ALLOWED_IPS:
+        raise RuntimeError("生产环境必须设置 PAYMENT_ALLOWED_IPS（支付渠道 IP 白名单）")
+
+    # 数据库必须在启动前就绪（避免 init_db 内裸抛；生产禁止退回 SQLite 默认）
+    if not settings.DATABASE_URL or settings.DATABASE_URL.startswith("sqlite"):
+        raise RuntimeError("生产环境必须设置 DATABASE_URL 为 PostgreSQL 连接串（禁止使用 SQLite 默认）")
 
 
 @asynccontextmanager

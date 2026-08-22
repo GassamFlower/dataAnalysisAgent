@@ -235,7 +235,10 @@ async def create_hypothesis(
     current_user: dict = Depends(get_current_user)
 ):
     """创建假设：解析用户假设为主效应路径。"""
-    # 0. 校验并扣减免费额度（付费用户自动放行）
+    # 0. 先验证项目存在且属于当前用户（含软删除过滤），通过后才扣额度
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 0.1 校验并扣减免费额度（付费用户自动放行；归属校验通过后才扣）
     await check_and_consume_quota(
         db,
         current_user["id"],
@@ -243,9 +246,6 @@ async def create_hypothesis(
         current_user["plan"],
         current_user.get("plan_expires_at"),
     )
-
-    # 1. 验证项目存在且属于当前用户（含软删除过滤）
-    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 获取项目维度（来自题目体检）
     result = await db.execute(
@@ -322,7 +322,10 @@ async def generate(
     current_user: dict = Depends(get_current_user)
 ):
     """按份数 + 期望趋势生成模拟数据。"""
-    # 0. 校验并扣减免费额度
+    # 0. 先验证项目存在且属于当前用户（含软删除过滤），通过后才扣额度
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 0.1 校验并扣减免费额度（归属校验通过后才扣）
     await check_and_consume_quota(
         db,
         current_user["id"],
@@ -330,9 +333,6 @@ async def generate(
         current_user["plan"],
         current_user.get("plan_expires_at"),
     )
-
-    # 1. 验证项目存在且属于当前用户（含软删除过滤）
-    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 获取最新假设
     result = await db.execute(
@@ -457,7 +457,10 @@ async def export_data(
     current_user: dict = Depends(get_current_user)
 ):
     """导出模拟数据集（Excel/CSV），含 simulated 水印。"""
-    # 0. 校验并扣减免费额度
+    # 0. 先验证项目存在且属于当前用户（含软删除过滤），通过后才扣额度
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 0.1 校验并扣减免费额度（归属校验通过后才扣）
     await check_and_consume_quota(
         db,
         current_user["id"],
@@ -465,9 +468,6 @@ async def export_data(
         current_user["plan"],
         current_user.get("plan_expires_at"),
     )
-
-    # 1. 验证项目存在且属于当前用户（含软删除过滤）
-    project = await get_owned_project(db, project_id, current_user["id"])
 
     # 2. 验证项目状态（至少已生成数据）
     if project.status not in ("simulated", "analyzed"):

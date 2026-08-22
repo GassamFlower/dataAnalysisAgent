@@ -137,19 +137,23 @@ async def _load_report_with_relations(
 
 
 async def _build_sample_context(
-    db: AsyncSession, project: Any
+    db: AsyncSession, project: Any, *, include_ai_conclusion: bool = False
 ) -> Dict[str, Any]:
     """构建样本代表性 + 样本量规划上下文（导出/润色共用）。
 
-    与「样本代表性诊断」「样本量规划」页面共享同一引擎，规则确定性结果，不调用 LLM
-    （导出物需快速、可复现；LLM 说人话结论仅存在于页面端，见 get_sample_representativeness）。
+    与「样本代表性诊断」「样本量规划」页面共享同一引擎，规则确定性结果。
+    默认不调用 LLM（导出物需快速、可复现）；当 include_ai_conclusion=True 时，
+    额外调用 llm_enrich 生成「说人话」结论并写入代表性数据（可选开关，默认关闭）。
     规划默认按相关性分析口径，planned_n = 实际样本量，用于「规划目标 vs 已收 N」对照。
 
     Returns:
         {"representativeness": dict|None, "sample_size_plan": dict|None}
     """
     from app.models.dataset import Dataset
-    from app.services.sample_representativeness import SampleRepresentativenessEngine
+    from app.services.sample_representativeness import (
+        SampleRepresentativenessEngine,
+        llm_enrich,
+    )
     from app.services.sample_size_planner import build_plan
 
     context: Dict[str, Any] = {
@@ -178,7 +182,15 @@ async def _build_sample_context(
         engine_report = SampleRepresentativenessEngine(
             questions, df, dataset.sample_size if dataset else 0
         ).run()
-        context["representativeness"] = engine_report.to_dict()
+        rep_dict = engine_report.to_dict()
+
+        # 可选开关：接入 LLM 说人话结论（默认关闭，保证导出确定性）
+        if include_ai_conclusion:
+            ai_conclusion = llm_enrich(engine_report)
+            if ai_conclusion:
+                rep_dict["ai_conclusion"] = ai_conclusion
+
+        context["representativeness"] = rep_dict
 
     # 样本量规划：planned_n = 实际样本量 → 目标对照判定
     from app.core.statistics_constants import (
@@ -378,7 +390,10 @@ async def analyze(
     current_user: dict = Depends(get_current_user)
 ):
     """跑标准统计套餐 + R4 诊断结论。"""
-    # 0. 校验并扣减免费额度
+    # 0. 先验证项目存在且属于当前用户（含软删除过滤），再扣额度——避免为用户之外的项目白扣
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 0.1 校验并扣减免费额度（归属校验通过后才扣）
     await check_and_consume_quota(
         db,
         current_user["id"],
@@ -387,10 +402,7 @@ async def analyze(
         current_user.get("plan_expires_at"),
     )
 
-    # 1. 验证项目存在且属于当前用户（含软删除过滤）
-    project = await get_owned_project(db, project_id, current_user["id"])
-
-    # 2. 验证项目状态（真实数据：inspected / analyzed；模拟数据：simulated）
+    # 1. 验证项目状态（真实数据：inspected / analyzed；模拟数据：simulated）
     is_real = project.mode == "real"
     if is_real:
         if project.status not in ("inspected", "analyzed"):
@@ -609,7 +621,13 @@ async def export(
     current_user: dict = Depends(get_current_user)
 ):
     """导出报告（word / excel / pdf），含 simulated 水印。"""
-    # 0. 校验并扣减免费额度
+    # 0. 先加载报告并验证项目归属（含软删除过滤），通过后才扣额度——避免对不存在/他人/已删报告白扣次数
+    report = await _load_report_with_relations(db, report_id)
+    if not report:
+        raise NotFoundException(ERR_REPORT_NOT_FOUND)
+    project = await get_owned_project(db, report.project_id, current_user["id"])
+
+    # 0.1 校验并扣减免费额度（归属校验通过后才扣）
     await check_and_consume_quota(
         db,
         current_user["id"],
@@ -617,14 +635,6 @@ async def export(
         current_user["plan"],
         current_user.get("plan_expires_at"),
     )
-
-    # 1. 加载报告及关联数据
-    report = await _load_report_with_relations(db, report_id)
-    if not report:
-        raise NotFoundException(ERR_REPORT_NOT_FOUND)
-
-    # 2. 验证项目归属（含软删除过滤）
-    project = await get_owned_project(db, report.project_id, current_user["id"])
 
     # 2.5 记录审计日志
     await AuditService.log_action(
@@ -647,7 +657,9 @@ async def export(
         diff_tests = await _compute_diff_tests(db, report.project_id, df)
 
     # 4. 转换为字典（导出场景数值字符串化）；注入样本上下文（代表性 + 规划，与页面同源）
-    sample_context = await _build_sample_context(db, project)
+    sample_context = await _build_sample_context(
+        db, project, include_ai_conclusion=request.include_ai_conclusion
+    )
     report_data = _build_report_data(
         report, diff_tests, as_str=True, sample_context=sample_context
     )
@@ -701,7 +713,13 @@ async def polish_report(
     current_user: dict = Depends(get_current_user)
 ):
     """报告文字润色：将统计结果转化为论文段落。"""
-    # 0. 校验并扣减免费额度（report_polish: 免费 2 次/周，付费无限）
+    # 0. 先加载报告并验证/取得项目归属（含软删除过滤），通过后才扣额度——避免对他人/已删报告白扣次数
+    report = await _load_report_with_relations(db, report_id)
+    if not report:
+        raise NotFoundException(ERR_REPORT_NOT_FOUND)
+    project = await get_owned_project(db, report.project_id, current_user["id"])
+
+    # 0.1 校验并扣减免费额度（report_polish: 免费 2 次/周，付费无限）
     await check_and_consume_quota(
         db,
         current_user["id"],
@@ -709,14 +727,6 @@ async def polish_report(
         current_user["plan"],
         current_user.get("plan_expires_at"),
     )
-
-    # 1. 加载报告及关联数据
-    report = await _load_report_with_relations(db, report_id)
-    if not report:
-        raise NotFoundException(ERR_REPORT_NOT_FOUND)
-
-    # 2. 验证项目归属
-    await get_owned_project(db, report.project_id, current_user["id"])
 
     # 3. 实时计算差异检验
     diff_tests: List[Dict[str, Any]] = []
@@ -938,12 +948,20 @@ async def plan_sample_size(
 
     # 2. 解析效应量来源
     from app.core.statistics_constants import (
+        ANOVA_DEFAULT_F,
+        PAIRED_DEFAULT_DZ,
         PLANNER_ALPHA_DEFAULT,
         PLANNER_POWER_DEFAULT,
         STRENGTH_NOMINAL,
         T_TEST_DEFAULT_D,
     )
-    default_effect = T_TEST_DEFAULT_D if request.analysis_type == "t_test" else STRENGTH_NOMINAL["medium"]
+    # 按分析类型选择默认效应量（t_test→d，paired_t_test→dz，anova→f，其他→r）
+    _default_by_type = {
+        "t_test": T_TEST_DEFAULT_D,
+        "paired_t_test": PAIRED_DEFAULT_DZ,
+        "anova": ANOVA_DEFAULT_F,
+    }
+    default_effect = _default_by_type.get(request.analysis_type, STRENGTH_NOMINAL["medium"])
     effect_size, effect_source = await _resolve_effect_size(
         db, project, request.effect_size, default_effect
     )
@@ -973,6 +991,8 @@ async def plan_sample_size(
             request.power,
             effect_source=effect_source,
             predictors=predictors,
+            groups=request.groups,
+            strata=request.strata,
             planned_n=request.planned_n,
         )
     except ValueError as e:

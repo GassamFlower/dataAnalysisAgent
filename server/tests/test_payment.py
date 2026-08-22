@@ -312,8 +312,11 @@ async def test_payment_notify_rejects_without_signature_in_prod(
     # 临时关闭 DEBUG 模拟生产环境
     original_debug = settings.DEBUG
     original_token = settings.PAYMENT_CALLBACK_TOKEN
+    original_ips = settings.PAYMENT_ALLOWED_IPS
     settings.DEBUG = False
     settings.PAYMENT_CALLBACK_TOKEN = "prod-secret-token"
+    # 生产新规：必须配置 IP 白名单，否则即使签名正确也会被拒绝
+    settings.PAYMENT_ALLOWED_IPS = "127.0.0.1,testserver,1.2.3.4"
     try:
         # 无签名头 → 401
         resp = await client.post(
@@ -353,6 +356,7 @@ async def test_payment_notify_rejects_without_signature_in_prod(
     finally:
         settings.DEBUG = original_debug
         settings.PAYMENT_CALLBACK_TOKEN = original_token
+        settings.PAYMENT_ALLOWED_IPS = original_ips
 
 
 @pytest.mark.anyio
@@ -381,6 +385,42 @@ async def test_payment_notify_ip_whitelist(
             json={
                 "channel": "wechat",
                 "transaction_id": f"wx-ip-{uuid.uuid4().hex[:8]}",
+                "status": "success",
+            },
+        )
+        assert resp.status_code == 401
+        assert "白名单" in resp.json().get("message", "")
+    finally:
+        settings.DEBUG = original_debug
+        settings.PAYMENT_CALLBACK_TOKEN = original_token
+        settings.PAYMENT_ALLOWED_IPS = original_ips
+
+
+@pytest.mark.anyio
+async def test_payment_notify_rejects_without_whitelist_in_prod(
+    client: AsyncClient, auth_headers: dict
+):
+    """生产新规：PAYMENT_ALLOWED_IPS 未配置时，即使签名正确也拒绝回调。"""
+    order_resp = await client.post(
+        "/api/v1/payment/orders",
+        headers=auth_headers,
+        json={"plan_type": "single"},
+    )
+    order_id = order_resp.json()["data"]["id"]
+
+    original_debug = settings.DEBUG
+    original_token = settings.PAYMENT_CALLBACK_TOKEN
+    original_ips = settings.PAYMENT_ALLOWED_IPS
+    settings.DEBUG = False
+    settings.PAYMENT_CALLBACK_TOKEN = "prod-secret-token"
+    settings.PAYMENT_ALLOWED_IPS = ""  # 未配置
+    try:
+        resp = await client.post(
+            f"/api/v1/payment/orders/{order_id}/notify",
+            headers={"X-Payment-Signature": "prod-secret-token"},
+            json={
+                "channel": "wechat",
+                "transaction_id": f"wx-nowl-{uuid.uuid4().hex[:8]}",
                 "status": "success",
             },
         )

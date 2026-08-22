@@ -30,10 +30,18 @@ export default function ExportPage({ params }: { params: { id: string } }) {
     setShowDataSourceDialog(true);
   };
 
-  const handleDownloadConfirm = (dataSource: "real" | "simulated") => {
+  const handleDownloadConfirm = (
+    dataSource: "real" | "simulated",
+    includeAiConclusion?: boolean
+  ) => {
     setShowDataSourceDialog(false);
     exportMutation.mutate(
-      { projectId: params.id, format: exportFormat, dataSource },
+      {
+        projectId: params.id,
+        format: exportFormat,
+        dataSource,
+        includeAiConclusion,
+      },
       {
         onSuccess: ({ blob, filename }) => {
           const url = URL.createObjectURL(blob);

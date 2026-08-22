@@ -28,8 +28,23 @@ import type { SampleSizePlannerResult } from "@/types";
 const ANALYSIS_OPTIONS = [
   { value: "correlation", label: "相关分析" },
   { value: "t_test", label: "独立样本 t 检验" },
+  { value: "paired_t_test", label: "配对样本 t 检验" },
+  { value: "anova", label: "单因素方差分析（ANOVA）" },
   { value: "regression", label: "多元回归分析" },
+  { value: "stratified", label: "分层抽样" },
 ] as const;
+
+type AnalysisType = (typeof ANALYSIS_OPTIONS)[number]["value"];
+
+/** 各分析类型的效应量 placeholder 与说明 */
+const EFFECT_PLACEHOLDER: Record<AnalysisType, string> = {
+  correlation: "r，如 0.3",
+  t_test: "d，如 0.5",
+  paired_t_test: "dz，如 0.5",
+  anova: "f，如 0.25",
+  regression: "（回归按自变量数估算）",
+  stratified: "（分层按设计效应估算）",
+};
 
 const ALPHA_OPTIONS = [
   { value: "0.01", label: "0.01（更严格）" },
@@ -62,23 +77,36 @@ const VERDICT_CONFIG = {
  *
  * defaultPlannedN：报告页联动入参——自动带入「已收 N」（报告样本量），
  * 使规划结果直接给出「已收 vs 目标」达标判定。
+ * recommendedAnalysisType：模拟页联动入参——根据模拟页假设路径自动推荐分析类型，
+ * 首次渲染自动带入（不覆盖用户手动切换）。
  */
 export function SampleSizePlanner({
   projectId,
   defaultPlannedN,
+  recommendedAnalysisType,
 }: {
   projectId: string;
   defaultPlannedN?: number | null;
+  recommendedAnalysisType?: AnalysisType;
 }) {
   const mutation = useSampleSizePlanner(projectId);
-  const [analysisType, setAnalysisType] = useState<
-    "correlation" | "t_test" | "regression"
-  >("correlation");
+  const [analysisType, setAnalysisType] = useState<AnalysisType>("correlation");
   const [effectSize, setEffectSize] = useState("");
   const [alpha, setAlpha] = useState("0.05");
   const [power, setPower] = useState("0.80");
+  const [groups, setGroups] = useState("3");
+  const [strata, setStrata] = useState("2");
   const [plannedN, setPlannedN] = useState("");
   const plannedPrefilled = useRef(false);
+  const analysisTypePrefilled = useRef(false);
+
+  // 联动：模拟页推荐分析类型到位后自动带入（仅首次，不覆盖用户手动切换）
+  useEffect(() => {
+    if (recommendedAnalysisType && !analysisTypePrefilled.current) {
+      setAnalysisType(recommendedAnalysisType);
+      analysisTypePrefilled.current = true;
+    }
+  }, [recommendedAnalysisType]);
 
   // 联动：已收 N 到位后自动带入计划样本量（仅首次，不覆盖用户手填）
   useEffect(() => {
@@ -98,18 +126,29 @@ export function SampleSizePlanner({
   const runPlan = (plannedOverride?: string) => {
     const plannedRaw = plannedOverride ?? plannedN;
     const effect = effectSize.trim() ? Number(effectSize) : null;
-    if (effect !== null && (Number.isNaN(effect) || effect <= 0 || effect >= 1)) {
+    // 相关分析 r 需在 (0,1) 内；其余效应量（d/dz/f）只需 > 0
+    const isCorrelation = analysisType === "correlation";
+    if (
+      effect !== null &&
+      (Number.isNaN(effect) ||
+        effect <= 0 ||
+        (isCorrelation && effect >= 1))
+    ) {
       return;
     }
     const planned = plannedRaw.trim() ? Number(plannedRaw) : null;
     if (planned !== null && (Number.isNaN(planned) || planned < 1)) {
       return;
     }
+    const groupsNum = groups.trim() ? Number(groups) : null;
+    const strataNum = strata.trim() ? Number(strata) : null;
     mutation.mutate({
       analysisType,
       effectSize: effect,
       alpha: Number(alpha),
       power: Number(power),
+      groups: analysisType === "anova" ? groupsNum : null,
+      strata: analysisType === "stratified" ? strataNum : null,
       plannedN: planned,
     });
   };
@@ -134,9 +173,7 @@ export function SampleSizePlanner({
             <label className="text-xs font-medium text-ink-900">分析类型</label>
             <Select
               value={analysisType}
-              onValueChange={(v) =>
-                setAnalysisType(v as "correlation" | "t_test" | "regression")
-              }
+              onValueChange={(v) => setAnalysisType(v as AnalysisType)}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -158,14 +195,40 @@ export function SampleSizePlanner({
               type="number"
               step="0.01"
               min="0.01"
-              max="0.99"
-              placeholder={
-                analysisType === "t_test" ? "d，如 0.5" : "r，如 0.3"
-              }
+              max={analysisType === "correlation" ? "0.99" : undefined}
+              placeholder={EFFECT_PLACEHOLDER[analysisType]}
               value={effectSize}
               onChange={(e) => setEffectSize(e.target.value)}
             />
           </div>
+
+          {/* ANOVA 组数（仅 ANOVA 显示） */}
+          {analysisType === "anova" && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-ink-900">组数</label>
+              <Input
+                type="number"
+                min="2"
+                placeholder="如 3"
+                value={groups}
+                onChange={(e) => setGroups(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* 分层抽样层数（仅分层显示） */}
+          {analysisType === "stratified" && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-ink-900">分层数</label>
+              <Input
+                type="number"
+                min="1"
+                placeholder="如 2"
+                value={strata}
+                onChange={(e) => setStrata(e.target.value)}
+              />
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium text-ink-900">
               显著性水平 α
