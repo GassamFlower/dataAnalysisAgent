@@ -1,0 +1,26 @@
+#!/bin/sh
+# pre-commit hook: 提交前扫描感知密钥，命中即阻止提交。
+# 防止"真密钥进公开仓库"这类问题复发（历史教训: deploy/deploy.sh 硬编码 sk-）。
+# 由 scripts/install-secret-hooks.sh 安装到 .git/hooks/pre-commit。
+
+set -e
+
+# 只扫描将被提交的已暂存文件
+STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || true)
+[ -z "$STAGED" ] && exit 0
+
+HIT=0
+for f in $STAGED; do
+  if grep -nE 'sk-[A-Za-z0-9]{20,}' \
+        -e'(sk|api[_-]?key|apikey|secret|token|passwd|password)[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9_\-]{24,}' \
+        "$f" 2>/dev/null; then
+    echo "✗ 检测到疑似硬编码密钥: $f"
+    HIT=1
+  fi
+done
+
+if [ "$HIT" -eq 1 ]; then
+  echo "✗ 提交已阻止。请将密钥移到 .env(已 gitignore) 或改为占位符。"
+  exit 1
+fi
+exit 0
