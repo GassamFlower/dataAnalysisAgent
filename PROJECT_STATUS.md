@@ -136,6 +136,8 @@
 | 2026-08-03~04 | 竞品调研（问卷派/SPSSAU/SPSS/问卷星），定位收敛为"预演+诊断深井" | 明确不碰样本投放，短期对标 SPSSAU、长期防问卷派 |
 | 2026-08-04 | 更新立项文档(a) v2.0、功能清单(b) v2.0、系统架构文档 v3.0 | 新增竞品分析、竞争壁垒、差异化叙事映射表 |
 | 2026-08-04 | 撰写用户手册 | 12 章 + 3 附录，覆盖用户完整使用流程 |
+| 2026-08-11 | 前端 CI 门禁补强（frontend-ci.yml：npm ci→lint→tsc→next build）+ 移除 compose 废弃 `version` + 新登录页 bug | 前端此前"零 CI、零构建门禁"，TS 错误往往在服务器 docker build 才爆；本地验证 tsc/lint/build 全绿 |
+| 2026-08-11 | **安全紧急整改**：发现 `deploy/deploy.sh` 自初始提交硬编码真实 sk- API Key 并已进入公开 GitHub 历史 | 密钥视为已泄露，需在 DeepSeek/Agnes 控制台轮换重建；脚本已改为读 .env；已加 CI secret 扫描 + 本地 pre-commit 钩子防复发；git 历史清理暂缓待密钥轮换后决策 |
 
 ---
 
