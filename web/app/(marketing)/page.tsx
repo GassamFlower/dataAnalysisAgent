@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { ReportPreview } from "@/components/marketing/report-preview";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
 import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -149,112 +151,139 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-12 text-center">
-        <Badge variant="secondary" className="mb-6 font-normal text-ink-500">
-          <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-          全网唯一支持回收前预演 · 合规路线 · 仅用于研究预演
-        </Badge>
-        <h1 className="font-display text-4xl font-bold leading-tight text-ink-900 sm:text-5xl">
-          回收前预演，回收后看懂
-          <br className="hidden sm:block" />
-          <span className="text-primary">避免问卷白做一趟</span>
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-body-lg text-ink-500">
-          发问卷之前：先做一次信效度体检，一句话描述假设，预演数据是否达标；
-          收问卷之后：用样本代表性诊断看懂样本量、性别分布和结构集中度——
-          两条路都在正式写结论之前，就知道方向对不对。
-        </p>
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <Button size="lg" asChild>
-            <Link href="/projects/new">
-              开始免费体检
-              <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Link>
-          </Button>
-          <Button variant="outline" size="lg" asChild>
-            <Link href="/pricing">查看定价</Link>
-          </Button>
-        </div>
-        <p className="mt-4 font-mono text-caption tracking-wider text-ink-400">
-          {SIMULATED_WATERMARK}
-        </p>
+        <Stagger step={0.12} amount={0.3}>
+          <StaggerItem>
+            <Badge variant="secondary" className="mb-6 font-normal text-ink-500">
+              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+              全网唯一支持回收前预演 · 合规路线 · 仅用于研究预演
+            </Badge>
+          </StaggerItem>
+          <StaggerItem>
+            <h1 className="font-display text-4xl font-bold leading-tight text-ink-900 sm:text-5xl">
+              回收前预演，回收后看懂
+              <br className="hidden sm:block" />
+              <span className="text-primary">避免问卷白做一趟</span>
+            </h1>
+          </StaggerItem>
+          <StaggerItem>
+            <p className="mx-auto mt-6 max-w-2xl text-body-lg text-ink-500">
+              发问卷之前：先做一次信效度体检，一句话描述假设，预演数据是否达标；
+              收问卷之后：用样本代表性诊断看懂样本量、性别分布和结构集中度——
+              两条路都在正式写结论之前，就知道方向对不对。
+            </p>
+          </StaggerItem>
+          <StaggerItem>
+            <div className="mt-8 flex items-center justify-center gap-3">
+              <Button size="lg" asChild>
+                <Link href="/projects/new">
+                  开始免费体检
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="lg" asChild>
+                <Link href="/pricing">查看定价</Link>
+              </Button>
+            </div>
+          </StaggerItem>
+          <StaggerItem>
+            <p className="mt-4 font-mono text-caption tracking-wider text-ink-400">
+              {SIMULATED_WATERMARK}
+            </p>
+          </StaggerItem>
+        </Stagger>
       </section>
+
+      {/* 报告预览：首次印象让外行看得懂成品 */}
+      <ReportPreview />
 
       {/* 痛点区 */}
       <section className="mx-auto max-w-5xl px-6 py-8">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Stagger step={0.07} className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {painPoints.map((p) => (
-            <Card key={p.title} className="border-destructive/20 bg-destructive/5 p-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-                <p.icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-h3 font-semibold text-ink-900">{p.title}</h3>
-              <p className="mt-2 text-body text-ink-500">{p.desc}</p>
-            </Card>
+            <StaggerItem key={p.title}>
+              <Card className="h-full border-destructive/20 bg-destructive/5 p-6 transition-shadow duration-base hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+                  <p.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 text-h3 font-semibold text-ink-900">{p.title}</h3>
+                <p className="mt-2 text-body text-ink-500">{p.desc}</p>
+              </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </section>
 
       {/* 三步流程 */}
       <section className="mx-auto max-w-5xl px-6 py-12">
-        <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
-          三步完成研究预演
-        </h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <Reveal>
+          <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
+            三步完成研究预演
+          </h2>
+        </Reveal>
+        <Stagger step={0.1} className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {PROJECT_STEPS.map((step, i) => {
             const Icon = stepIcons[i];
             return (
-              <Card key={step.key} className="p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="mt-4 text-caption font-medium text-ink-400">
-                  步骤 {i + 1}
-                </div>
-                <h3 className="mt-1 text-h3 font-semibold text-ink-900">
-                  {step.label}
-                </h3>
-                <p className="mt-2 text-body text-ink-500">{step.description}</p>
-              </Card>
+              <StaggerItem key={step.key}>
+                <Card className="h-full p-6 transition-shadow duration-base hover:shadow-md">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="mt-4 text-caption font-medium text-ink-400">
+                    步骤 {i + 1}
+                  </div>
+                  <h3 className="mt-1 text-h3 font-semibold text-ink-900">
+                    {step.label}
+                  </h3>
+                  <p className="mt-2 text-body text-ink-500">{step.description}</p>
+                </Card>
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       </section>
 
       {/* 功能特性区 */}
       <section className="mx-auto max-w-5xl px-6 py-12">
-        <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
-          核心能力
-        </h2>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Reveal>
+          <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
+            核心能力
+          </h2>
+        </Reveal>
+        <Stagger step={0.06} className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
-            <Card key={f.title} className="flex items-start gap-4 p-6">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <f.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-h3 font-semibold text-ink-900">{f.title}</h3>
-                <p className="mt-2 text-body text-ink-500">{f.desc}</p>
-              </div>
-            </Card>
+            <StaggerItem key={f.title}>
+              <Card className="flex h-full items-start gap-4 p-6 transition-shadow duration-base hover:shadow-md">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <f.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-h3 font-semibold text-ink-900">{f.title}</h3>
+                  <p className="mt-2 text-body text-ink-500">{f.desc}</p>
+                </div>
+              </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </section>
 
       {/* 信任背书区 */}
       <section className="mx-auto max-w-5xl px-6 py-12">
-        <Card className="bg-cream-surface p-8">
-          <h2 className="text-center text-h2 font-semibold text-ink-900">
-            覆盖论文所需全部统计方法
-          </h2>
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {trustItems.map((item) => (
-              <div key={item} className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
-                <span className="text-body text-ink-700">{item}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <Reveal>
+          <Card className="bg-cream-surface p-8 transition-shadow duration-base hover:shadow-md">
+            <h2 className="text-center text-h2 font-semibold text-ink-900">
+              覆盖论文所需全部统计方法
+            </h2>
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {trustItems.map((item) => (
+                <div key={item} className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                  <span className="text-body text-ink-700">{item}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Reveal>
       </section>
 
       {/* 定价引导 */}

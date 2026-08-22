@@ -17,6 +17,7 @@ import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { OnboardingTour } from "@/components/tutorial/OnboardingTour";
+import { Reveal } from "@/components/motion/reveal";
 import { toast } from "@/components/ui/toaster";
 import { useProject } from "@/lib/hooks/use-project";
 import {
@@ -120,6 +121,7 @@ export default function WorkbenchPage({
     <div>
       <StepNav projectId={params.id} current="inspect" />
 
+      <Reveal onView={false} delay={0.05}>
       <PageHeader
         title={project ? project.name : "题目体检"}
         description={
@@ -214,6 +216,7 @@ export default function WorkbenchPage({
           </div>
         </div>
       </Card>
+      </Reveal>
 
       {/* 新手引导 */}
       <OnboardingTour projectId={params.id} />

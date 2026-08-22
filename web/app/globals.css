@@ -39,3 +39,49 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* ===== M1/M3 呼吸感微动效＝可复用工具类（对齐 tokens 缓动/时长） ===== */
+@layer utilities {
+  @keyframes dsh-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes dsh-fade-up-sm {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 通用：进站/滚动后的淡入 */
+  .anim-fade-up {
+    animation: dsh-fade-up 0.5s var(--ease-out) both;
+  }
+  .anim-fade-up-sm {
+    animation: dsh-fade-up-sm 0.4s var(--ease-out) both;
+  }
+
+  /* Tab 内容切换：每次变为 active 时重放淡入 */
+  .data-state-active\:anim-tab-enter[data-state="active"] {
+    animation: dsh-fade-up-sm 0.4s var(--ease-out) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .anim-fade-up,
+    .anim-fade-up-sm,
+    .data-state-active\:anim-tab-enter[data-state="active"] {
+      animation: none;
+    }
+  }
+}

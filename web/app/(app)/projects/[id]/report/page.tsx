@@ -30,6 +30,7 @@ import { DataSourceConfirmDialog } from "@/components/compliance/data-source-con
 import { MetricTooltip } from "@/components/tutorial/MetricTooltip";
 import { OnboardingTour } from "@/components/tutorial/OnboardingTour";
 import { AIInterpretButton } from "@/components/tutorial/AIInterpretButton";
+import { Reveal } from "@/components/motion/reveal";
 import { toast } from "@/components/ui/toaster";
 import { useReport, useAnalyzeReport, useExportReport } from "@/lib/hooks/use-report";
 import { useSimulation } from "@/lib/hooks/use-simulation";
@@ -267,7 +268,8 @@ export default function ReportPage({
         </div>
       )}
 
-      <Tabs defaultValue="stats" className="mt-2">
+      <Reveal onView={false} delay={0.05}>
+        <Tabs defaultValue="stats" className="mt-2">
         <TabsList className="mb-4 w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="stats">统计结果</TabsTrigger>
           <TabsTrigger value="hypothesis">假设检验</TabsTrigger>
@@ -487,6 +489,7 @@ export default function ReportPage({
           <Disclaimer variant="full" />
         </TabsContent>
       </Tabs>
+      </Reveal>
 
       {/* 数据来源确认弹窗 */}
       <DataSourceConfirmDialog

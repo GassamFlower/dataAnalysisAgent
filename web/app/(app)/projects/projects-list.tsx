@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Plus,
-  FolderOpen,
   Search,
   Trash2,
   Pencil,
@@ -37,6 +34,7 @@ import {
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { FirstRunGuide } from "@/components/projects/first-run-guide";
 import { toast } from "@/components/ui/toaster";
 import {
   useProjects,
@@ -312,21 +310,7 @@ export function ProjectsList() {
   }
 
   if (total === 0) {
-    return (
-      <EmptyState
-        icon={FolderOpen}
-        title="还没有项目"
-        description="新建一个项目，上传问卷题目开始免费体检。"
-        action={
-          <Button asChild>
-            <Link href="/projects/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              创建第一个项目
-            </Link>
-          </Button>
-        }
-      />
-    );
+    return <FirstRunGuide />;
   }
 
   return (
