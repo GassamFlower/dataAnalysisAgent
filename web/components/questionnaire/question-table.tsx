@@ -79,12 +79,12 @@ export function QuestionTable({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="bg-cream-surface hover:bg-cream-surface">
             <TableHead className="w-16">题号</TableHead>
-            <TableHead>题干</TableHead>
+            <TableHead className="min-w-[200px]">题干</TableHead>
             <TableHead className="w-32">题型</TableHead>
             <TableHead className="w-40">维度</TableHead>
             <TableHead className="w-24">反向题</TableHead>
