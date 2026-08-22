@@ -32,7 +32,8 @@ export default function ExportPage({ params }: { params: { id: string } }) {
 
   const handleDownloadConfirm = (
     dataSource: "real" | "simulated",
-    includeAiConclusion?: boolean
+    // 数据集导出不包含 AI 结论（includeAiConclusion 仅用于报告导出 useExportReport）
+    _includeAiConclusion?: boolean
   ) => {
     setShowDataSourceDialog(false);
     exportMutation.mutate(
@@ -40,7 +41,6 @@ export default function ExportPage({ params }: { params: { id: string } }) {
         projectId: params.id,
         format: exportFormat,
         dataSource,
-        includeAiConclusion,
       },
       {
         onSuccess: ({ blob, filename }) => {
