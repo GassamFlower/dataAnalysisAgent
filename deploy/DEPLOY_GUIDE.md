@@ -80,6 +80,9 @@ dataAnalysisAgent/
 │   └── conf.d/default.conf    # 反向代理 + 限流
 └── deploy/
     ├── deploy.sh              # 一键部署脚本
+    ├── release.sh             # 常规发布（构建+健康检查+自动回滚）
+    ├── rollback.sh            # 一键回滚脚本
+    ├── security-hardening.sh  # 安全加固
     └── DEPLOY_GUIDE.md        # 本文档
 ```
 
@@ -100,7 +103,30 @@ dataAnalysisAgent/
 
 ---
 
-## 常用命令
+## 常规发布（推荐：健康检查 + 失败自动回滚）
+
+docker-compose 已支持 `IMAGE_TAG` 标签化镜像（默认 `latest`）。发布用 `release.sh`，失败自动回滚：
+
+```bash
+cd /opt/dataAnalysisAgent
+git pull origin main          # 拉取最新代码
+sudo bash deploy/release.sh "v1.5 说明"   # 构建+切换+健康检查，失败自动回滚
+```
+
+- 成功 → `.release.current` 记录新版本，`latest` 同步推进。
+- 失败 → 自动回滚到上一版本，服务不中断，只有极短暂抖动。
+
+# 一键回滚
+
+```bash
+sudo bash deploy/rollback.sh                 # 回滚到 latest（上一个可用版本）
+sudo bash deploy/rollback.sh <TAG>           # 回滚到指定镜像标签
+sudo docker images | grep -E "daa-"          # 查看本地已构建的可回滚版本
+```
+
+> 回滚依赖本地已存在的历史镜像；不要频繁 `docker image prune -af` 清掉它们，否则失去回滚能力。
+
+# 常用命令
 
 ```bash
 # 查看服务状态

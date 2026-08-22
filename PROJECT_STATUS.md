@@ -138,6 +138,7 @@
 | 2026-08-04 | 撰写用户手册 | 12 章 + 3 附录，覆盖用户完整使用流程 |
 | 2026-08-11 | 前端 CI 门禁补强（frontend-ci.yml：npm ci→lint→tsc→next build）+ 移除 compose 废弃 `version` + 新登录页 bug | 前端此前"零 CI、零构建门禁"，TS 错误往往在服务器 docker build 才爆；本地验证 tsc/lint/build 全绿 |
 | 2026-08-11 | **安全紧急整改**：发现 `deploy/deploy.sh` 自初始提交硬编码真实 sk- API Key 并已进入公开 GitHub 历史 | 密钥视为已泄露，需在 DeepSeek/Agnes 控制台轮换重建；脚本已改为读 .env；已加 CI secret 扫描 + 本地 pre-commit 钩子防复发；git 历史清理暂缓待密钥轮换后决策 |
+| 2026-08-11 | 阶段推进 Phase2/3：发布/回滚脚本 + docs 备份。release.sh（构建+健康检查+失败自动回滚）、rollback.sh（一键回滚）、compose 支持 IMAGE_TAG 标签镜像；backup-docs.sh 把 docs/（含敏感复盘/定价策略）快照进独立本地库 .doc-backup 防丢失 | 全部 bash -n 语法通过；.doc-backup 首次提交已建立（37 文件）；backup-docs.sh 可再配私有 remote 异地备份 |
 
 ---
 

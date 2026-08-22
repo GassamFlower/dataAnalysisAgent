@@ -58,6 +58,9 @@ server/tmp/
 # 文档文件（仅本地维护，不上传 GitHub）
 docs/
 
+# docs/ 本地备份库（独立 git 库，含敏感复盘/定价策略，勿上传公开库）
+.doc-backup/
+
 # IDE 临时文件
 .trae/
 

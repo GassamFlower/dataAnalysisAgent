@@ -29,6 +29,9 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+      tags:
+        - "${IMAGE_REGISTRY:-daa-backend}:${IMAGE_TAG:-latest}"
+    image: "${IMAGE_REGISTRY:-daa-backend}:${IMAGE_TAG:-latest}"
     container_name: daa-backend
     restart: unless-stopped
     env_file:
@@ -55,6 +58,9 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      tags:
+        - "${IMAGE_REGISTRY:-daa-frontend}:${IMAGE_TAG:-latest}"
+    image: "${IMAGE_REGISTRY:-daa-frontend}:${IMAGE_TAG:-latest}"
     container_name: daa-frontend
     restart: unless-stopped
     environment:
