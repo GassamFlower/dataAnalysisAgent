@@ -1,0 +1,43 @@
+name: 前端构建与类型检查
+
+on:
+  push:
+    paths:
+      - "web/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "web/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: ESLint 检查
+        run: npm run lint
+
+      - name: 类型检查（tsc --noEmit）
+        run: npx tsc --noEmit
+
+      - name: 生产构建（next build）
+        run: npm run build
+        env:
+          # next build 需要显式提供这些，避免生产模式校验/启动门禁误拦构建
+          NEXT_PUBLIC_API_BASE: ""
+          BACKEND_URL: "http://127.0.0.1:8000"

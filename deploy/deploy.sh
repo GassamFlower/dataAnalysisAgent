@@ -157,21 +157,35 @@ fi
 
 # 生成后端 .env.production
 if [ ! -f server/.env.production ] || [ "$1" == "--force" ]; then
+    # ⚠️ 高风险警告：此处严禁内嵌真实 API Key。
+    # 早期版本在 deploy.sh 中硬编码过 sk- 密钥并被提交到公开 GitHub，
+    # 该密钥已视为泄露。API Key 一律从 .env（已 gitignore）读取或运行时提示输入，
+    # 绝不写入任何被 git 跟踪的文件。
+    if [ -n "$DEEPSEEK_API_KEY" ]; then
+        LLM_KEY="$DEEPSEEK_API_KEY"
+    elif [ -f .env ] && grep -q DEEPSEEK_API_KEY .env; then
+        LLM_KEY=$(grep DEEPSEEK_API_KEY .env | head -1 | cut -d'=' -f2)
+    else
+        read -r -s -p "请输入 DeepSeek API Key（不会写入 git，仅写入 gitignore 的 .env.production）: " LLM_KEY
+        echo ""
+        grep -q "^DEEPSEEK_API_KEY=" .env 2>/dev/null || echo "DEEPSEEK_API_KEY=${LLM_KEY}" >> .env
+    fi
+
     cat > server/.env.production << EOF
 # 生产环境配置 - 数据分析 Agent 后端
 
-# LLM API（Agnes AI - OpenAI 兼容接口）
-DEEPSEEK_API_KEY=sk-4c02FDZrjpEkmqhpDuj1G72Cmi4vdYKoo9x26FhooLzJmumT
-DEEPSEEK_BASE_URL=https://apihub.agnes-ai.com/v1
-
-# 模型配置（V3 用于 R1~R3，R1 用于 R4 诊断，均用 agnes-2.0-flash）
-DEEPSEEK_V3_MODEL=agnes-2.0-flash
-DEEPSEEK_R1_MODEL=agnes-2.0-flash
+# LLM API（OpenAI 兼容接口；密钥来自 .env，绝不硬编码在脚本中）
+DEEPSEEK_API_KEY=${LLM_KEY}
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_V4_FLASH_MODEL=deepseek-v4-flash
+DEEPSEEK_V4_PRO_MODEL=deepseek-v4-pro
 
 # 服务配置
 HOST=0.0.0.0
 PORT=8000
 DEBUG=false
+ALLOW_DEV_TOKEN=false
+DEV_TOKEN=
 
 # 前端地址（CORS）
 FRONTEND_URL=http://${SERVER_IP}
@@ -179,7 +193,7 @@ FRONTEND_URL=http://${SERVER_IP}
 # JWT 密钥
 JWT_SECRET_KEY=${JWT_SECRET}
 EOF
-    echo -e "${GREEN}  ✓ server/.env.production 已生成（含 Agnes AI 配置）${NC}"
+    echo -e "${GREEN}  ✓ server/.env.production 已生成（DEEPSEEK_API_KEY 来自 .env）${NC}"
 else
     echo -e "${YELLOW}  ⚠️  server/.env.production 已存在，跳过（如需重新生成用 --force）${NC}"
 fi
