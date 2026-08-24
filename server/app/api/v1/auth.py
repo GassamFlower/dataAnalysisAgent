@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.exceptions import UnauthorizedException, ValidationException
+from app.core.exceptions import ForbiddenException, UnauthorizedException, ValidationException
 from app.core.responses import success_response
 from app.core.security import create_access_token, create_refresh_token, verify_token
 from app.core.error_messages import (
@@ -101,6 +101,7 @@ async def _issue_tokens(user: User, db: AsyncSession) -> dict:
             "avatar": user.avatar,
             "email": user.email,
             "plan": user.plan,
+            "is_admin": bool(user.is_admin),
         },
     }
 
@@ -575,6 +576,9 @@ async def email_login(req: EmailLoginRequest, db: AsyncSession = Depends(get_db)
 
     if not user.email_verified:
         raise ValidationException("邮箱未验证，请先完成邮箱验证")
+
+    if user.disabled_at is not None:
+        raise ForbiddenException("账号已被禁用，请联系管理员")
 
     tokens = await _issue_tokens(user, db)
     return success_response(data=tokens)

@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 受保护路由前缀
-  const protectedPrefixes = ["/projects", "/settings"];
+  const protectedPrefixes = ["/projects", "/settings", "/admin"];
   const isProtected = protectedPrefixes.some((prefix) =>
     pathname === prefix || pathname.startsWith(`${prefix}/`)
   );

@@ -76,6 +76,9 @@ async def get_current_user(
     if not user:
         raise UnauthorizedException(ERR_USER_NOT_FOUND)
 
+    if user.disabled_at is not None:
+        raise UnauthorizedException("账号已被禁用，请联系管理员")
+
     return {
         "id": user.id,
         "email": user.email,

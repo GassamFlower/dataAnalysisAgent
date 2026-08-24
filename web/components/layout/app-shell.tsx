@@ -11,6 +11,7 @@ import {
   Loader2,
   Menu,
   GraduationCap,
+  ShieldCheck,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ const navItems = [
   { href: "/settings", label: "设置", icon: Settings },
 ];
 
+const adminNavItem = { href: "/admin/metrics", label: "管理后台", icon: ShieldCheck };
+
 /**
  * 应用 Shell：桌面端左侧固定栏，移动端顶部 header + Sheet 抽屉。
  * 用于 (app) 路由组（需登录的产品页）。
@@ -41,8 +44,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAdmin = useAuthStore((s) => s.user?.isAdmin);
   const mounted = useMounted();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // 管理后台入口：仅对管理员展示
+  const visibleNav = isAdmin ? [...navItems, adminNavItem] : navItems;
 
   // 路由守卫：未登录跳转到 /login（带 redirect 参数）
   useEffect(() => {
@@ -81,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <nav className="px-3 py-4">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(item.href + "/");
             return (
@@ -111,7 +118,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SheetTitle className="font-display text-lg text-ink-900">预演</SheetTitle>
             </SheetHeader>
             <nav className="px-3 py-4">
-              {navItems.map((item) => {
+              {visibleNav.map((item) => {
                 const active =
                   pathname === item.href || pathname.startsWith(item.href + "/");
                 return (

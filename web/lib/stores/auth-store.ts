@@ -9,6 +9,7 @@ interface User {
   id: string;
   nickname: string;
   avatar?: string;
+  isAdmin?: boolean;
   plan: "free" | "single" | "subscription";
   planExpiresAt?: string;
 }

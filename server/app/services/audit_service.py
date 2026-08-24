@@ -1,4 +1,4 @@
-﻿"""审计日志记录服务。"""
+"""审计日志记录服务。"""
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
@@ -259,4 +259,7 @@ ACTION_TYPES = {
     "PROJECT_CREATE": "project_create",
     "PROJECT_UPDATE": "project_update",
     "PROJECT_DELETE": "project_delete",
+    # 管理后台（F-ADM）
+    "ADMIN_CHANGE_PLAN": "admin_change_plan",
+    "ADMIN_TOGGLE_DISABLED": "admin_toggle_disabled",
 }

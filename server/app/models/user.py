@@ -52,6 +52,8 @@ class User(Base):
         UTCDateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+    # 运营禁用：非空即被管理员禁用，所有鉴权/登录均拒绝（管理后台 F-ADM-001）
+    disabled_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime, nullable=True)
 
     # 关联
     projects: Mapped[List["Project"]] = relationship(back_populates="user")

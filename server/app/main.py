@@ -76,6 +76,14 @@ async def lifespan(app: FastAPI):
     logger.info("启动数据分析智能体 API...")
     await init_db()
     logger.info("数据库初始化完成")
+    # 管理员 bootstrap：将 ADMIN_EMAILS 声明的账号自动晋升为管理员（F-ADM / 立项 G1）
+    try:
+        from app.core.database import async_session
+        from app.services.admin_service import promote_configured_emails
+        async with async_session() as _sess:
+            await promote_configured_emails(_sess)
+    except Exception as exc:  # noqa: BLE001 启动晋升失败不应阻断服务
+        logger.warning("管理员 bootstrap 失败（可忽略，稍后用 CLI 补齐）: %s", exc)
     await reload_from_db()
     logger.info("LLM 配置加载完成")
     yield

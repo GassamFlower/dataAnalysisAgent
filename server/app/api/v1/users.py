@@ -113,6 +113,7 @@ def _user_dict(user: User) -> dict:
         "avatar": user.avatar,
         "email_verified": user.email_verified,
         "plan": user.plan,
+        "is_admin": bool(user.is_admin),
         "plan_expires_at": user.plan_expires_at.isoformat() if user.plan_expires_at else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "updated_at": user.updated_at.isoformat() if user.updated_at else None,

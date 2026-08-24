@@ -15,6 +15,7 @@ export interface AuthUser {
   email?: string;
   avatar?: string;
   plan: string;
+  is_admin?: boolean;
 }
 
 export interface AuthResponse {
