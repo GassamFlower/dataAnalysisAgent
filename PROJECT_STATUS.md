@@ -106,7 +106,13 @@
 2. ~~**导出代表性接入 LLM 说人话结论**~~ ✅ 已完成（2026-08-11：可选开关，默认规则结果保证确定性）
 3. ~~**教程 SEO/学习路径增强**~~ ✅ 已完成（2026-08-11：学习路径导航 + 相关文章推荐）
 
+> **技术债待办（2026-08-24 复核新增，运维/环境类，非代码）**
+> 1. 本地解释器统一 3.11：`server/venv` 仍为 Python 3.8.6，`main.py` 的 3.11 门禁导致本地跑不了全量测试（181 passed 不可复现）；`.python-version`/Dockerfile 已为 3.11。需升 venv/解释器。
+> 2. git 历史密钥轮换：早期 `deploy.sh` 曾硬编码真实 sk- key 并进公开历史（已视为泄露），需在 DeepSeek 控制台轮换部署密钥 + 决策是否清理 git 历史。
+
 > 下一阶段候选（待排期）：规划器与模拟页检验方法深度联动（按变量类型决策树自动带入）、导出物 AI 结论的配额/计费策略细化、教程 SEO 结构化数据（JSON-LD）
+
+> ⚠️ 2026-08-24 技术债复核：`验收-总验收审查清单.md`（生成于 2026-08，早于 `d13df30` 整改提交）所标 🔴 项已在 `d13df30`「上线前整改(defect/security/env)」中逐项清零。本日复核对齐后仅剩两类运维/环境待办，见「下一步·技术债待办」。
 
 ---
 
@@ -144,6 +150,7 @@
 | 2026-08-11 | **前端样式分层优化**：主题三态化（light/sepia/dark）+ 持久化 + 暗色改暖褐；品牌记忆点（纸质纹理 + `.brand-watermark` hero 卷首字）；控件手感（按钮按下反馈 / 输入软 focus / 表格 `DataCell`+sticky）；动效层级（`.anim-delay-*` / `.lift`）；可读性（`ink-400` 收窄为占位专用 + 补齐失效的 `text-body/caption` 语义字号）。新增设计系统单一真源文档 `docs/FRONTEND_ARCHITECTURE.md`（第五章 token）。 | `tsc --noEmit` 全绿；next build 受本机沙箱 `spawn EPERM`（jest-worker 需要输出到子进程）环境阻断，非代码问题，已用 tsc 校验替代；三态切换由 `theme-provider` 移除 light/sepia/dark 三类后加当前类，保持正确 |
 | 2026-08-11 | 前端硬编码颜色收敛：新增语义色阶工具类 `tone-text-success/warning/danger/info` + `tone-*-surface`（`color-mix` 半透明点缀，三主题自适应）；`health-report`/`sample-representativeness`/`sample-size-planner` 从 Tailwind 原生 `red/amber/blue/emerald-*` 调色板改为语义 tone；`register/login/reset/forgot` 四处错误提示 `text-red-600` → `text-destructive`；`OnboardingTour` 白卡 `bg-white/95` → `bg-card/95`；`diff-test-table` 改用 `DataCell` + sticky 表头 | 全库扫描确认 `components/` 与 `app/` 已无硬编码 Tailwind 原生调色板；`tsc --noEmit` 全绿 |
 | 2026-08-11 | 前端优化再推进：营销页 features/steps/painPoints 卡片统一 `.lift` hover 上浮（替代散落 `transition-shadow`）；品牌水印 `.brand-watermark` 从首页推广到 4 个认证页（login/register/forgot/reset，容器 `relative overflow-hidden` + `aria-hidden` 无障碍）；`ink-400` 全库审计确认仅用于占位/图标/辅助角标，无正文误用 | `tsc --noEmit` 全绿 |
+| 2026-08-24 | 技术债复核就医清单：对照 `验收-总验收审查清单.md`（早于 `d13df30` 的旧快照）逐项核对当前 HEAD，确认其 🔴 项已在 `d13df30`「上线前整改(defect/security/env)」清零（体检500/HTTPS/密钥注入+门禁/恒时回调/仿真边界/PSD/阈值常量/3.11门禁/幽灵pyc）| 完成本批代码清理：`diff_test.py`→`diff_methods.py`（消除 pytest `*_test.py` 误收集，同步 report/diagnoser/diagnosis_rules 引用）、CORS 死分支清理、移除空 `app/utils`；`py_compile` 全绿；commit `d26adcc` |
 
 ---
 
