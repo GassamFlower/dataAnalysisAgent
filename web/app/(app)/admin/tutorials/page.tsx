@@ -56,7 +56,7 @@ const CATEGORY_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
 export default function AdminTutorialsPage() {
   const { data, isLoading, isError, error, refetch } = useTutorialArticles({
     page: 1,
-    page_size: 100,
+    page_size: 50, // 后端 tutorials 端点 page_size 上限为 50（超过返回 42200）
   });
   const deleteArticle = useDeleteTutorialArticle();
 
