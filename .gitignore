@@ -57,6 +57,12 @@ server/tmp/
 
 # 一次性数据迁移遗留产物（含 DELETE，勿跟踪/勿生产自动执行；结构变更走 Alembic）
 scripts/migrate_data.sql
+# 服务器根目录可能残留的同名生成脚本（untracked）
+/migrate_data.sql
+
+# 生产运行期产物 / 临时备份（勿入库）
+nginx/html/
+nginx/conf.d/*.bak.*
 
 # 文档文件（仅本地维护，不上传 GitHub）
 docs/
