@@ -74,14 +74,24 @@ fi
 # ---------- 3. 切换并健康检查 ----------
 echo -e "\n${GREEN}==[3/4] 切换到新版本并健康检查 ...${NC}"
 if IMAGE_TAG="$NEW_TAG" docker compose up -d --no-build 2>&1; then
-  sleep 8
-  HEALTHY=1
-  for url in "http://127.0.0.1:8000/health" "http://127.0.0.1:3000/"; do
-    if ! curl -fsS --max-time 20 "$url" >/dev/null 2>&1; then
-      echo -e "${YELLOW}  ✗ 健康检查失败: $url${NC}"
-      HEALTHY=0
-    fi
+
+  # ✅ 健康检查改为「检查容器自身 healthcheck 状态」而非 curl 宿主端口（宿主并不映射 8000/3000）
+  check_containers() {
+    for c in daa-backend daa-frontend; do
+      if ! docker inspect --format '{{.State.Health.Status}}' "$c" 2>/dev/null | grep -q healthy; then
+        echo -e "${YELLOW}  ✗ 容器 $c 未达 healthy${NC}"
+        return 1
+      fi
+    done
+  }
+
+  # 轮询等待容器达到 healthy（最长 60s，间隔 5s）；任一循环结束仍未全 healthy 则判定失败
+  HEALTHY=0
+  for i in $(seq 1 12); do
+    sleep 5
+    if check_containers; then HEALTHY=1; break; fi
   done
+
   if [ "$HEALTHY" -eq 1 ]; then
     echo "$NEW_TAG" > "$CURRENT_FILE"
     # 新成功 → 推进 latest 指向新版本
@@ -96,9 +106,7 @@ fi
 echo -e "\n${RED}✗ 新版本健康检查未通过，自动回滚到 $CURRENT_TAG ...${NC}"
 if IMAGE_TAG="$CURRENT_TAG" docker compose up -d --no-build 2>&1; then
   sleep 8
-  for url in "http://127.0.0.1:8000/health" "http://127.0.0.1:3000/"; do
-    curl -fsS --max-time 20 "$url" >/dev/null 2>&1 || echo -e "${YELLOW}  ⚠️ 回滚后 $url 仍不可用，请人工介入${NC}"
-  done
+  check_containers || echo -e "${YELLOW}  ⚠️ 回滚后仍有容器未达 healthy，请人工介入${NC}"
   echo -e "${GREEN}✓ 已回滚到 $CURRENT_TAG (请在控制台确认服务正常)${NC}"
 else
   echo -e "${RED}✗ 回滚命令本身也失败！请人工介入: docker compose ps / logs${NC}"
