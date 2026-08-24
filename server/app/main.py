@@ -106,7 +106,7 @@ app.add_middleware(RequestLoggingMiddleware)
 # 3. CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL] if settings.DEBUG else [settings.FRONTEND_URL],
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],

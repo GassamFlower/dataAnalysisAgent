@@ -54,7 +54,7 @@ async def _compute_diff_tests(
     """
     from app.models.hypothesis import Hypothesis
     from app.models.hypothesis_path import HypothesisPath
-    from app.services.diff_test import run_diff_tests
+    from app.services.diff_methods import run_diff_tests
 
     result = await db.execute(
         select(HypothesisPath)

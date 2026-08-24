@@ -149,7 +149,7 @@ def diagnose(
             has_reverse_items / reverse_scored / loadings /
             loading_matrix / cumulative_variance / extracted_factor_count）。
             可选，缺失时相应规则自动跳过。
-        diff_tests: 差异检验结果列表（来自 diff_test.run_diff_tests）。
+        diff_tests: 差异检验结果列表（来自 diff_methods.run_diff_tests）。
             提供时检测回归翻车点（R11~R14）。可选。
 
     Returns:

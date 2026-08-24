@@ -256,8 +256,8 @@ def match_pitfalls(
 # ─────────────────────────────────────────────────────────────
 # 回归翻车点规则（P1，架构文档 9.1 / 9.4）
 # 来源：统计学最佳实践（模板包回归翻车点 + 公开规范）
-# 检测对象：diff_test.py 的 linear_regression 结果
-# 注：VIF / Cook's distance / Durbin-Watson 等需扩展 diff_test 输出后补充
+# 检测对象：diff_methods.py 的 linear_regression 结果
+# 注：VIF / Cook's distance / Durbin-Watson 等需扩展 diff_methods 输出后补充
 # ─────────────────────────────────────────────────────────────
 
 
@@ -361,7 +361,7 @@ def match_regression_pitfalls(
     仅检测 method == "linear_regression" 的结果。
 
     Args:
-        diff_tests: 差异检验结果列表（来自 diff_test.run_diff_tests）。
+        diff_tests: 差异检验结果列表（来自 diff_methods.run_diff_tests）。
         sample_size: 样本量，用于样本量/过拟合检测。可选。
 
     Returns:
