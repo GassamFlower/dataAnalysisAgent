@@ -156,6 +156,8 @@
 | 2026-08-24 | 教程 SEO 增强提升（x1.5 门户）：`tutorial_articles` 新增 `tags`/`difficulty`（模型+迁移 `f3c6d7e8a9b0`+API `tag/difficulty` 筛选+服务 `_encode/_decode_tags`+管理端表单+公开列表展示）；新增 8 篇 SEO 长尾文（21~28，结构化 front matter）；新增**公开样本量计算器工具页** `/learn/tools/sample-size`（`SampleSizeCalculator` 组件，`(marketing)` 组、无登录，Pearson/t检验/ANOVA 三场景估算，纯查表近似不引统计库），learn 列表页置顶「免费工具」入口 | 迁移链核验线性无分叉（head=`f3c6d7e8a9b0`）；前端工具页与列表/文章互链闭环；已核验无密钥/调试泄漏；commit `c4c961d`（迁移+内容）+ `2ea818b`（前后端实现）；产品版本升 v1.5 |
 | 2026-08-24 | `docs/管理后台-立项文档.md` 立项 + **统一管理后台基建** 前后端落地：后端 `api/v1/admin.py`（users/订单/审计全量 require_admin + 看板复用 analytics）、`admin_service.emails` bootstrap、启动时 `ADMIN_EMAILS` 自动晋升、`promote_admin.py` CLI、`users.disabled_at` 禁用列（迁移 `abf2c1011234` 接 `f3c6d7e8a9b0`）+ 登录/鉴权禁用拦截 + `is_admin` 下发进 token；前端 `is_admin` 注入 auth-store + middleware 保护 `/admin` + `AdminShell` 布局（登录+管理员双重守卫）+ users/orders/audit/configs 五页 + **LLM 配置并入统一后台**（`/admin/llm-configs` 复用既有 `llm-configs` API 的增删改查/白名单） + AppShell 管理员入口 | 管理门禁统一用 `require_admin`（收敛散落 `_check_admin`/内联判断）；禁用用户 JWT 与 email-login 双路拦截；admin 改套餐/禁用均写审计且同事务提交；前端 `tsc --noEmit` 0 错；管理员入口 bootstrap 需在生产 `ADMIN_EMAILS` 或在 `server/` 跑 `python -m scripts.promote_admin <email>` 指定首个管理员 |
 
+| 2026-08-24 | 管理后台**生产启用**：在 Liekkas 生产库用容器内 `python -m scripts.promote_admin 1462882928@qq.com` 晋升首管（`is_admin=true` 已核验）；修复 `admin/tutorials` 页 `page_size:100` 超出后端 `/tutorial/articles` `le=50` 导致的 `42200`（改 50，commit `a43b77f`） | **生产事故处置**：上线重建时后端 `daa-backend`循环 `Restarting`、compose `dependency failed to start`——新上线的生产密钥门禁（`_validate_production_settings`）拦截 `RESET_JWT_SECRET_KEY` 仍为占位符；生成 96 位随机 hex 替换 `server/.env.production`（已备份 `.bak`）并重建后端→四容器(backend/frontend/nginx/db)全部 healthy，端到端 `/health` 200；⚠️ 密钥值一次出现在对话，建议再轮换一次 |
+
 ---
 
 ## 规则变更记录
