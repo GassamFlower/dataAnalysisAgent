@@ -150,7 +150,15 @@ export default function HomePage() {
       <MarketingHeader />
 
       {/* Hero */}
-      <section className="mx-auto max-w-5xl px-6 pb-16 pt-12 text-center">
+      <section className="relative mx-auto max-w-5xl overflow-hidden px-6 pb-16 pt-12 text-center">
+        {/* 品牌水印：超大低透明衬线字，营造"研究期刊卷首"氛围 */}
+        <span
+          aria-hidden
+          className="brand-watermark absolute left-1/2 top-0 w-full -translate-x-1/2 select-none whitespace-nowrap text-[9rem] sm:text-[12rem]"
+        >
+          预演
+        </span>
+        <div className="relative">
         <Stagger step={0.12} amount={0.3}>
           <StaggerItem>
             <Badge variant="secondary" className="mb-6 font-normal text-ink-500">
@@ -191,6 +199,7 @@ export default function HomePage() {
             </p>
           </StaggerItem>
         </Stagger>
+        </div>
       </section>
 
       {/* 报告预览：首次印象让外行看得懂成品 */}
@@ -201,7 +210,7 @@ export default function HomePage() {
         <Stagger step={0.07} className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {painPoints.map((p) => (
             <StaggerItem key={p.title}>
-              <Card className="h-full border-destructive/20 bg-destructive/5 p-6 transition-shadow duration-base hover:shadow-md">
+              <Card className="lift h-full border-destructive/20 bg-destructive/5 p-6">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
                   <p.icon className="h-5 w-5" />
                 </div>
@@ -225,7 +234,7 @@ export default function HomePage() {
             const Icon = stepIcons[i];
             return (
               <StaggerItem key={step.key}>
-                <Card className="h-full p-6 transition-shadow duration-base hover:shadow-md">
+                <Card className="lift h-full p-6">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -253,7 +262,7 @@ export default function HomePage() {
         <Stagger step={0.06} className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
             <StaggerItem key={f.title}>
-              <Card className="flex h-full items-start gap-4 p-6 transition-shadow duration-base hover:shadow-md">
+              <Card className="lift flex h-full items-start gap-4 p-6">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <f.icon className="h-5 w-5" />
                 </div>

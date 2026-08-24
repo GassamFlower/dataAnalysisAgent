@@ -73,7 +73,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-10 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -92,6 +92,22 @@ const TableCell = React.forwardRef<
   />
 ))
 TableCell.displayName = "TableCell"
+
+/** 数字对齐单元格：右对齐 + 等宽数字，用于统计量/表格数据 */
+const DataCell = React.forwardRef<
+  HTMLTableCellElement,
+  React.TdHTMLAttributes<HTMLTableCellElement>
+>(({ className, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn(
+      "p-4 text-right align-middle font-variant-numeric tabular-nums",
+      className
+    )}
+    {...props}
+  />
+))
+DataCell.displayName = "DataCell"
 
 const TableCaption = React.forwardRef<
   HTMLTableCaptionElement,
@@ -113,5 +129,6 @@ export {
   TableHead,
   TableRow,
   TableCell,
+  DataCell,
   TableCaption,
 }

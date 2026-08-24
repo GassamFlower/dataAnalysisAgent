@@ -64,9 +64,9 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 const VERDICT_CONFIG = {
-  sufficient: { label: "达标", cls: "border-emerald-200 bg-emerald-50 text-emerald-700", Icon: CheckCircle2 },
-  marginal: { label: "够功效但低于建议下限", cls: "border-amber-200 bg-amber-50 text-amber-700", Icon: AlertTriangle },
-  insufficient: { label: "不足", cls: "border-red-200 bg-red-50 text-red-700", Icon: XCircle },
+  sufficient: { label: "达标", cls: "tone-success-surface", Icon: CheckCircle2 },
+  marginal: { label: "够功效但低于建议下限", cls: "tone-warning-surface", Icon: AlertTriangle },
+  insufficient: { label: "不足", cls: "tone-danger-surface", Icon: XCircle },
   unknown: { label: "待填计划样本量", cls: "border-muted bg-muted/50 text-ink-700", Icon: Target },
 };
 

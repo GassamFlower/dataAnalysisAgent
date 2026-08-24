@@ -75,6 +75,7 @@
 | v1.3 | 2026-08-10 | 样本代表性诊断 F-RPT-007（免费） + 首页叙事重写 + R4 一句话结论 + v1.2 遗留 BFF 缺路修复 |
 | v1.3.1 | 2026-08-10 | 样本量规划器 F-RPT-008（预演闭环：效应量→回收目标→代表性回看，公式引擎无 LLM） |
 | v1.4 | 2026-08-10 | 导出物一致性（Word/Excel/PDF/PPT 含代表性+规划+一句话结论）+ 报告页 Tabs 化（5 页签）+ 规划已收 N 联动对照 + 教程扩篇 2 篇 |
+| v2.1（前端） | 2026-08-11 | 前端样式分层升级：theme 三态化（light/sepia/dark）+ 暗色改暖褐；品牌记忆点（纸质纹理/水印字）；控件手感（按钮/输入/表格）；动效层级；可读性收敛；新增设计系统真源文档 |
 | v2.0（定位） | 2026-08-04 | 文档层面定位更新，立项文档/功能清单/系统架构文档同步修订 |
 
 ---
@@ -93,6 +94,7 @@
 | [s-2026-08-10-导出物一致性验收报告.md](docs/s-2026-08-10-导出物一致性验收报告.md) | v1.4 | 导出物一致性 + 报告页 Tabs 化 + 规划联动 + 教程扩篇验收 |
 | [t-项目复盘报告.md](docs/t-项目复盘报告.md) | v1.0 | 项目复盘与踩坑记录 |
 | [q-业务模块开发清单.md](docs/q-业务模块开发清单.md) | v2.1 | 业务模块开发进度 |
+| [FRONTEND_ARCHITECTURE.md](docs/FRONTEND_ARCHITECTURE.md) | v2.0 | 前端设计系统单一真源（设计 token / 三主题 / 样式工具类） |
 
 ---
 
@@ -139,6 +141,9 @@
 | 2026-08-11 | 前端 CI 门禁补强（frontend-ci.yml：npm ci→lint→tsc→next build）+ 移除 compose 废弃 `version` + 新登录页 bug | 前端此前"零 CI、零构建门禁"，TS 错误往往在服务器 docker build 才爆；本地验证 tsc/lint/build 全绿 |
 | 2026-08-11 | **安全紧急整改**：发现 `deploy/deploy.sh` 自初始提交硬编码真实 sk- API Key 并已进入公开 GitHub 历史 | 密钥视为已泄露，需在 DeepSeek/Agnes 控制台轮换重建；脚本已改为读 .env；已加 CI secret 扫描 + 本地 pre-commit 钩子防复发；git 历史清理暂缓待密钥轮换后决策 |
 | 2026-08-11 | 阶段推进 Phase2/3：发布/回滚脚本 + docs 备份。release.sh（构建+健康检查+失败自动回滚）、rollback.sh（一键回滚）、compose 支持 IMAGE_TAG 标签镜像；backup-docs.sh 把 docs/（含敏感复盘/定价策略）快照进独立本地库 .doc-backup 防丢失 | 全部 bash -n 语法通过；.doc-backup 首次提交已建立（37 文件）；backup-docs.sh 可再配私有 remote 异地备份 |
+| 2026-08-11 | **前端样式分层优化**：主题三态化（light/sepia/dark）+ 持久化 + 暗色改暖褐；品牌记忆点（纸质纹理 + `.brand-watermark` hero 卷首字）；控件手感（按钮按下反馈 / 输入软 focus / 表格 `DataCell`+sticky）；动效层级（`.anim-delay-*` / `.lift`）；可读性（`ink-400` 收窄为占位专用 + 补齐失效的 `text-body/caption` 语义字号）。新增设计系统单一真源文档 `docs/FRONTEND_ARCHITECTURE.md`（第五章 token）。 | `tsc --noEmit` 全绿；next build 受本机沙箱 `spawn EPERM`（jest-worker 需要输出到子进程）环境阻断，非代码问题，已用 tsc 校验替代；三态切换由 `theme-provider` 移除 light/sepia/dark 三类后加当前类，保持正确 |
+| 2026-08-11 | 前端硬编码颜色收敛：新增语义色阶工具类 `tone-text-success/warning/danger/info` + `tone-*-surface`（`color-mix` 半透明点缀，三主题自适应）；`health-report`/`sample-representativeness`/`sample-size-planner` 从 Tailwind 原生 `red/amber/blue/emerald-*` 调色板改为语义 tone；`register/login/reset/forgot` 四处错误提示 `text-red-600` → `text-destructive`；`OnboardingTour` 白卡 `bg-white/95` → `bg-card/95`；`diff-test-table` 改用 `DataCell` + sticky 表头 | 全库扫描确认 `components/` 与 `app/` 已无硬编码 Tailwind 原生调色板；`tsc --noEmit` 全绿 |
+| 2026-08-11 | 前端优化再推进：营销页 features/steps/painPoints 卡片统一 `.lift` hover 上浮（替代散落 `transition-shadow`）；品牌水印 `.brand-watermark` 从首页推广到 4 个认证页（login/register/forgot/reset，容器 `relative overflow-hidden` + `aria-hidden` 无障碍）；`ink-400` 全库审计确认仅用于占位/图标/辅助角标，无正文误用 | `tsc --noEmit` 全绿 |
 
 ---
 
@@ -154,6 +159,7 @@
 | 2026-08-04 | 立项文档(a) 定位锚点收敛：从"急救+预防双定位"改为"预演+诊断深井差异化" | 2026 年竞品调研发现问卷派走全闭环、SPSSAU 走在线统计，我们的差异化在预演和说人话诊断 |
 | 2026-08-04 | 功能清单(b) 新增 F-RPT-007 样本代表性诊断 + 差异化叙事映射表 | 明确不碰样本投放，用轻量诊断解决痛点② |
 | 2026-08-04 | 系统架构文档 v3.0 新增〇章"竞品定位与差异化锚点" | 将竞品策略写入架构文档，作为长期开发参考 |
+| 2026-08-11 | 前端设计 token / 主题体系确立单一真源 `docs/FRONTEND_ARCHITECTURE.md`（第五章 = design token），`tokens.css` 注释指向它；主题从 light/dark 升为 light/sepia/dark 三态 | `tokens.css` 原注释引用的 `FRONTEND_ARCHITECTURE.md` 此前并不存在；且 design token 说明散落在过时/编码损坏的 m-/p- 文档中，需一个权威且反映当前实际值的真源 |
 
 ---
 

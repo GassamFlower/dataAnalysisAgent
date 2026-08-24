@@ -22,12 +22,12 @@ export function StatCard({
   tooltipType?: string;
 }) {
   return (
-    <Card className="p-5">
-      <div className="flex items-center gap-1.5 text-caption text-ink-500">
+    <Card className="lift p-5">
+      <div className="anim-fade-up-sm flex items-center gap-1.5 text-caption text-ink-500">
         {label}
         {tooltipType ? <MetricTooltip metricType={tooltipType} /> : null}
       </div>
-      <div className="mt-2 flex items-baseline gap-1">
+      <div className="anim-fade-up anim-delay-1 mt-2 flex items-baseline gap-1">
         <span
           className={cn(
             "tabular text-3xl font-bold",
@@ -41,7 +41,7 @@ export function StatCard({
       {threshold ? (
         <div
           className={cn(
-            "mt-2 text-caption",
+            "anim-fade-up anim-delay-2 mt-2 text-caption",
             passed ? "text-success" : "text-destructive"
           )}
         >

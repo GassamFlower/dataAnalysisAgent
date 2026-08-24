@@ -34,16 +34,23 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6">
+      {/* 品牌水印：找回密码页延续"研究期刊卷首"气质 */}
+      <span
+        aria-hidden
+        className="brand-watermark pointer-events-none absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 select-none whitespace-nowrap text-center text-[11rem]"
+      >
+        预演
+      </span>
       <Link
         href="/login"
-        className="absolute left-6 top-6 inline-flex items-center text-body text-ink-500 hover:text-ink-900"
+        className="absolute left-6 top-6 z-10 inline-flex items-center text-body text-ink-500 hover:text-ink-900"
       >
         <ArrowLeft className="mr-1.5 h-4 w-4" />
         返回登录
       </Link>
 
-      <Card className="w-full max-w-sm p-8">
+      <Card className="relative z-10 w-full max-w-sm p-8">
         <div className="text-center">
           <h1 className="font-display text-2xl font-bold text-ink-900">
             重置密码
@@ -84,7 +91,7 @@ export default function ForgotPasswordPage() {
             </div>
 
             {error && (
-              <p className="text-center text-caption text-red-600">{error}</p>
+              <p className="text-center text-caption text-destructive">{error}</p>
             )}
 
             <Button type="submit" size="lg" disabled={loading}>

@@ -146,7 +146,7 @@ export function OnboardingTour({
               getStepPosition(activeStep.target)
             )}
           >
-            <Card className="relative overflow-hidden border-2 border-primary/20 bg-white/95 p-0 backdrop-blur-md">
+            <Card className="relative overflow-hidden border-2 border-primary/20 bg-card/95 p-0 backdrop-blur-md">
               {/* 顶部进度条 */}
               <div className="absolute left-0 top-0 h-1 bg-primary/10 w-full">
                 <div

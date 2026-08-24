@@ -100,6 +100,15 @@ const config: Config = {
         "2xl": ["var(--text-h2)", { lineHeight: "var(--text-h2-line)" }],
         "3xl": ["var(--text-h1)", { lineHeight: "var(--text-h1-line)" }],
         "4xl": ["var(--text-display)", { lineHeight: "var(--text-display-line)" }],
+        // 按 token 名提供的语义字号别名（与 tokens.css 一一对应）
+        caption: ["var(--text-caption)", { lineHeight: "var(--text-caption-line)" }],
+        small: ["var(--text-small)", { lineHeight: "var(--text-small-line)" }],
+        body: ["var(--text-body)", { lineHeight: "var(--text-body-line)" }],
+        "body-lg": ["var(--text-body-lg)", { lineHeight: "var(--text-body-lg-line)" }],
+        h3: ["var(--text-h3)", { lineHeight: "var(--text-h3-line)" }],
+        h2: ["var(--text-h2)", { lineHeight: "var(--text-h2-line)" }],
+        h1: ["var(--text-h1)", { lineHeight: "var(--text-h1-line)" }],
+        display: ["var(--text-display)", { lineHeight: "var(--text-display-line)" }],
       },
       borderRadius: {
         sm: "var(--radius-sm)",
@@ -124,6 +133,12 @@ const config: Config = {
         fast: "var(--duration-fast)",
         base: "var(--duration-base)",
         slow: "var(--duration-slow)",
+      },
+      transitionDelay: {
+        1: "var(--delay-1)",
+        2: "var(--delay-2)",
+        3: "var(--delay-3)",
+        4: "var(--delay-4)",
       },
     },
   },

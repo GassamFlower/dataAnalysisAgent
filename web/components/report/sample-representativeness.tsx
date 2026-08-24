@@ -7,16 +7,16 @@ import { Sparkles, Users, Ban } from "lucide-react";
 import { useSampleRepresentativeness } from "@/lib/hooks/use-report";
 
 const STATUS_CONFIG = {
-  pass: { label: "通过", tone: "default" as const, color: "text-emerald-600", bar: "bg-emerald-500" },
-  warn: { label: "警告", tone: "secondary" as const, color: "text-amber-600", bar: "bg-amber-500" },
-  fail: { label: "不通过", tone: "destructive" as const, color: "text-red-600", bar: "bg-red-500" },
+  pass: { label: "通过", tone: "default" as const, cls: "tone-success-surface" },
+  warn: { label: "警告", tone: "secondary" as const, cls: "tone-warning-surface" },
+  fail: { label: "不通过", tone: "destructive" as const, cls: "tone-danger-surface" },
 };
 
 const GRADE_CONFIG = {
-  A: { label: "优秀", color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200" },
-  B: { label: "良好", color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
-  C: { label: "一般", color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
-  D: { label: "较差", color: "text-red-600", bg: "bg-red-50 border-red-200" },
+  A: { label: "优秀", cls: "tone-success-surface" },
+  B: { label: "良好", cls: "tone-info-surface" },
+  C: { label: "一般", cls: "tone-warning-surface" },
+  D: { label: "较差", cls: "tone-danger-surface" },
 };
 
 /**
@@ -92,14 +92,14 @@ export function SampleRepresentativeness({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* 综合得分 */}
-        <div className={`rounded-lg border p-4 ${gradeCfg.bg}`}>
+        <div className={`rounded-lg border p-4 ${gradeCfg.cls}`}>
           <div className="flex items-center justify-between">
             <div>
               <div className="text-2xl font-bold">
-                <span className={gradeCfg.color}>{data.overallScore}</span>
+                {data.overallScore}
                 <span className="text-sm font-normal text-muted-foreground"> / 100</span>
               </div>
-              <div className={`text-sm font-medium ${gradeCfg.color}`}>
+              <div className="text-sm font-medium">
                 等级 {data.grade} · {gradeCfg.label}
               </div>
             </div>

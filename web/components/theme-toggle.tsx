@@ -1,27 +1,48 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Sunrise } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useUIStore } from "@/lib/stores/ui-store";
+import {
+  useUIStore,
+  type UITheme,
+} from "@/lib/stores/ui-store";
 
 /**
  * 主题切换按钮。
- * 用于验证 design token 的亮色 / 暗色模式切换。
+ * light → sepia → dark 循环切换，并给出对应的图标提示。
  */
 export function ThemeToggle() {
   const theme = useUIStore((state) => state.theme);
   const setTheme = useUIStore((state) => state.setTheme);
 
-  const toggle = () => setTheme(theme === "light" ? "dark" : "light");
+  const cycle: Record<UITheme, UITheme> = {
+    light: "sepia",
+    sepia: "dark",
+    dark: "light",
+  };
+
+  const next = cycle[theme];
+
+  const Icon =
+    theme === "dark" ? Moon : theme === "sepia" ? Sunrise : Sun;
+
+  const ariaLabel =
+    theme === "light"
+      ? "切换到复古棕榈墨主题"
+      : theme === "sepia"
+        ? "切换到暗色主题"
+        : "切换到亮色主题";
 
   return (
-    <Button variant="outline" size="icon" onClick={toggle} aria-label="切换主题">
-      {theme === "light" ? (
-        <Sun className="h-4 w-4" />
-      ) : (
-        <Moon className="h-4 w-4" />
-      )}
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={() => setTheme(next)}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+    >
+      <Icon className="h-4 w-4" />
     </Button>
   );
 }

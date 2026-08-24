@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 
 import {
+  DataCell,
   Table,
   TableBody,
   TableCell,
@@ -18,7 +19,7 @@ import type { ReliabilityResult } from "@/types";
 export function ReliabilityTable({ results }: { results: ReliabilityResult[] }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
-      <Table>
+      <Table className="table-sticky-head">
         <TableHeader>
           <TableRow className="bg-cream-surface hover:bg-cream-surface">
             <TableHead>维度</TableHead>
@@ -47,26 +48,24 @@ export function ReliabilityTable({ results }: { results: ReliabilityResult[] }) 
           {results.map((r) => (
             <TableRow key={r.dimension}>
               <TableCell className="font-medium text-ink-900">{r.dimension}</TableCell>
-              <TableCell className="text-right text-ink-700">
-                <span className="tabular">{r.alpha.toFixed(3)}</span>
+              <DataCell className="text-ink-700">
+                {r.alpha.toFixed(3)}
                 {r.alphaGrade && (
                   <span className="ml-1.5 text-caption text-ink-400">({r.alphaGrade})</span>
                 )}
-              </TableCell>
-              <TableCell className="text-right text-ink-700">
-                <span className="tabular">{r.kmo.toFixed(3)}</span>
+              </DataCell>
+              <DataCell className="text-ink-700">
+                {r.kmo.toFixed(3)}
                 {r.kmoGrade && (
                   <span className="ml-1.5 text-caption text-ink-400">({r.kmoGrade})</span>
                 )}
-              </TableCell>
-              <TableCell className="text-right text-ink-700">
-                <span className="tabular">
-                  {r.bartlettPValue < 0.001 ? "<0.001" : r.bartlettPValue.toFixed(3)}
-                </span>
+              </DataCell>
+              <DataCell className="text-ink-700">
+                {r.bartlettPValue < 0.001 ? "<0.001" : r.bartlettPValue.toFixed(3)}
                 {r.bartlettGrade && (
                   <span className="ml-1.5 text-caption text-ink-400">({r.bartlettGrade})</span>
                 )}
-              </TableCell>
+              </DataCell>
               <TableCell className="text-center">
                 {r.passed ? (
                   <Check className="mx-auto h-4 w-4 text-success" />

@@ -38,6 +38,33 @@
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
+
+  /* 正文可读性：正文最低 ink-500，ink-400 仅限占位 / 辅助角标 */
+  .text-body-copy {
+    color: var(--ink-700);
+  }
+  .text-help {
+    color: var(--ink-500);
+  }
+}
+
+/* ===== 品牌氛围：奶油暖纸上的纸质纹理 ===== */
+@layer base {
+  /* 全站背景：极淡噪点 + 暖纸色，避免大片纯白显得空 */
+  body {
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+    opacity: var(--noise-opacity);
+    mix-blend-mode: overlay;
+  }
 }
 
 /* ===== M1/M3 呼吸感微动效＝可复用工具类（对齐 tokens 缓动/时长） ===== */
@@ -83,5 +110,96 @@
     .data-state-active\:anim-tab-enter[data-state="active"] {
       animation: none;
     }
+  }
+
+  /* 错峰入场：配合 anim-fade-up 做分层 stagger（标题→图表→说明） */
+  .anim-delay-1 {
+    animation-delay: var(--delay-1);
+  }
+  .anim-delay-2 {
+    animation-delay: var(--delay-2);
+  }
+  .anim-delay-3 {
+    animation-delay: var(--delay-3);
+  }
+  .anim-delay-4 {
+    animation-delay: var(--delay-4);
+  }
+
+  /* 交互手感：hover 轻微上浮，与 shadow 渐进配合 */
+  .lift {
+    transition:
+      transform 0.2s var(--ease-out),
+      box-shadow 0.2s var(--ease-out);
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .lift-press {
+    transition: transform 0.12s var(--ease-out);
+  }
+  .lift-press:active {
+    transform: scale(0.98);
+  }
+
+  /* 品牌水印：超大低透明衬线文字，作为 hero 的"期刊卷首"氛围 */
+  .brand-watermark {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--primary);
+    opacity: var(--watermark-opacity);
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* 数据深层表格：sticky 表头 + 数字右对齐（配合 .tabular） */
+  .table-sticky-head thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    backdrop-filter: blur(6px);
+    background-color: color-mix(
+      in srgb,
+      var(--card) 88%,
+      transparent 12%
+    );
+  }
+
+  /* 语义色阶（三主题自适应）：等级/状态的文字 + 点缀底 + 边框 */
+  .tone-text-success {
+    color: var(--success);
+  }
+  .tone-text-warning {
+    color: var(--warning);
+  }
+  .tone-text-danger {
+    color: var(--destructive);
+  }
+  .tone-text-info {
+    color: var(--accent-indigo);
+  }
+  .tone-success-surface {
+    color: var(--success);
+    background-color: color-mix(in srgb, var(--success) 10%, transparent);
+    border-color: color-mix(in srgb, var(--success) 28%, transparent);
+  }
+  .tone-warning-surface {
+    color: var(--warning);
+    background-color: color-mix(in srgb, var(--warning) 12%, transparent);
+    border-color: color-mix(in srgb, var(--warning) 32%, transparent);
+  }
+  .tone-danger-surface {
+    color: var(--destructive);
+    background-color: color-mix(in srgb, var(--destructive) 10%, transparent);
+    border-color: color-mix(in srgb, var(--destructive) 28%, transparent);
+  }
+  .tone-info-surface {
+    color: var(--accent-indigo);
+    background-color: color-mix(in srgb, var(--accent-indigo) 10%, transparent);
+    border-color: color-mix(in srgb, var(--accent-indigo) 28%, transparent);
   }
 }

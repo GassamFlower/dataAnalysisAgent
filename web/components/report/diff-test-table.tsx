@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 
 import {
+  DataCell,
   Table,
   TableBody,
   TableCell,
@@ -39,7 +40,7 @@ export function DiffTestTable({ results }: { results: DiffTestResult[] | null | 
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
-      <Table>
+      <Table className="table-sticky-head">
         <TableHeader>
           <TableRow className="bg-cream-surface hover:bg-cream-surface">
             <TableHead>假设路径</TableHead>
@@ -67,18 +68,14 @@ export function DiffTestTable({ results }: { results: DiffTestResult[] | null | 
                     r.methodName ?? r.method ?? "—"
                   )}
                 </TableCell>
-                <TableCell className="text-right text-ink-700">
-                  <span className="tabular">{formatNum(r.statistic, 4)}</span>
-                </TableCell>
-                <TableCell className="text-right text-ink-700">
-                  <span className="tabular">{formatP(r.pValue)}</span>
-                </TableCell>
-                <TableCell className="text-right text-ink-700">
+                <DataCell className="text-ink-700">{formatNum(r.statistic, 4)}</DataCell>
+                <DataCell className="text-ink-700">{formatP(r.pValue)}</DataCell>
+                <DataCell className="text-ink-700">
                   {r.effectSize === null || r.effectSize === undefined ? (
                     <span className="text-ink-400">—</span>
                   ) : (
                     <span>
-                      <span className="tabular">{r.effectSize.toFixed(3)}</span>
+                      {r.effectSize.toFixed(3)}
                       {r.effectSizeName && (
                         <span className="ml-1 text-caption text-ink-400">
                           {r.effectSizeName}
@@ -91,7 +88,7 @@ export function DiffTestTable({ results }: { results: DiffTestResult[] | null | 
                       )}
                     </span>
                   )}
-                </TableCell>
+                </DataCell>
                 <TableCell className="text-center">
                   {r.significant === undefined ? (
                     <span className="text-ink-400">—</span>
