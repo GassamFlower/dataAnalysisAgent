@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, LayoutDashboard, Menu } from "lucide-react";
+import { User, LogOut, LayoutDashboard, Menu, GraduationCap } from "lucide-react";
 
 function Brand() {
   return (
@@ -50,6 +50,7 @@ export function MarketingHeader() {
 
   const navLinks = [
     { href: "/pricing", label: "定价" },
+    { href: "/learn", label: "统计小课堂" },
     { href: "/about", label: "关于" },
   ];
 
@@ -61,6 +62,12 @@ export function MarketingHeader() {
         <nav className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
             <Link href="/pricing">定价</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+            <Link href="/learn">
+              <GraduationCap className="mr-1.5 h-4 w-4" />
+              统计小课堂
+            </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
             <Link href="/about">关于</Link>
@@ -84,6 +91,12 @@ export function MarketingHeader() {
       <nav className="hidden items-center gap-2 md:flex">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/pricing">定价</Link>
+        </Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/learn">
+            <GraduationCap className="mr-1.5 h-4 w-4" />
+            统计小课堂
+          </Link>
         </Button>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/about">关于</Link>
