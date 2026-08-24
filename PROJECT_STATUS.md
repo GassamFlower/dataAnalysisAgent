@@ -10,7 +10,7 @@
 - **文档根目录**：`docs/`
 - **开始日期**：2026-07-18（首轮上线）
 - **当前门禁**：上线门 — ✅ 已通过（2026-07-29 上线前风险项全部清零）
-- **当前产品版本**：v1.4（2026-08-10 最新）
+- **当前产品版本**：v1.5（2026-08-24 最新）
 - **定位版本**：v2.0（2026-08-04 定位锚点收敛为"预演+诊断深井"）
 
 ---
@@ -76,6 +76,7 @@
 | v1.3.1 | 2026-08-10 | 样本量规划器 F-RPT-008（预演闭环：效应量→回收目标→代表性回看，公式引擎无 LLM） |
 | v1.4 | 2026-08-10 | 导出物一致性（Word/Excel/PDF/PPT 含代表性+规划+一句话结论）+ 报告页 Tabs 化（5 页签）+ 规划已收 N 联动对照 + 教程扩篇 2 篇 |
 | v2.1（前端） | 2026-08-11 | 前端样式分层升级：theme 三态化（light/sepia/dark）+ 暗色改暖褐；品牌记忆点（纸质纹理/水印字）；控件手感（按钮/输入/表格）；动效层级；可读性收敛；新增设计系统真源文档 |
+| v1.5 | 2026-08-24 | 教程 SEO 增强 + 样本量计算器：tutorial_articles 新增 tags/difficulty（模型+迁移+API+服务+管理端表单+公开列表筛选）、8 篇 SEO 长尾文（21~28，含信效度不达标/样本量/维度/不显著等查清单）、公开样本量计算器工具页（/learn/tools/sample-size，Pearson/t检验/ANOVA 估算，无登录） |
 | v2.0（定位） | 2026-08-04 | 文档层面定位更新，立项文档/功能清单/系统架构文档同步修订 |
 
 ---
@@ -152,6 +153,7 @@
 | 2026-08-11 | 前端硬编码颜色收敛：新增语义色阶工具类 `tone-text-success/warning/danger/info` + `tone-*-surface`（`color-mix` 半透明点缀，三主题自适应）；`health-report`/`sample-representativeness`/`sample-size-planner` 从 Tailwind 原生 `red/amber/blue/emerald-*` 调色板改为语义 tone；`register/login/reset/forgot` 四处错误提示 `text-red-600` → `text-destructive`；`OnboardingTour` 白卡 `bg-white/95` → `bg-card/95`；`diff-test-table` 改用 `DataCell` + sticky 表头 | 全库扫描确认 `components/` 与 `app/` 已无硬编码 Tailwind 原生调色板；`tsc --noEmit` 全绿 |
 | 2026-08-11 | 前端优化再推进：营销页 features/steps/painPoints 卡片统一 `.lift` hover 上浮（替代散落 `transition-shadow`）；品牌水印 `.brand-watermark` 从首页推广到 4 个认证页（login/register/forgot/reset，容器 `relative overflow-hidden` + `aria-hidden` 无障碍）；`ink-400` 全库审计确认仅用于占位/图标/辅助角标，无正文误用 | `tsc --noEmit` 全绿 |
 | 2026-08-24 | 技术债复核就医清单：对照 `验收-总验收审查清单.md`（早于 `d13df30` 的旧快照）逐项核对当前 HEAD，确认其 🔴 项已在 `d13df30`「上线前整改(defect/security/env)」清零（体检500/HTTPS/密钥注入+门禁/恒时回调/仿真边界/PSD/阈值常量/3.11门禁/幽灵pyc）| 完成本批代码清理：`diff_test.py`→`diff_methods.py`（消除 pytest `*_test.py` 误收集，同步 report/diagnoser/diagnosis_rules 引用）、CORS 死分支清理、移除空 `app/utils`；`py_compile` 全绿；commit `d26adcc` |
+| 2026-08-24 | 教程 SEO 增强提升（x1.5 门户）：`tutorial_articles` 新增 `tags`/`difficulty`（模型+迁移 `f3c6d7e8a9b0`+API `tag/difficulty` 筛选+服务 `_encode/_decode_tags`+管理端表单+公开列表展示）；新增 8 篇 SEO 长尾文（21~28，结构化 front matter）；新增**公开样本量计算器工具页** `/learn/tools/sample-size`（`SampleSizeCalculator` 组件，`(marketing)` 组、无登录，Pearson/t检验/ANOVA 三场景估算，纯查表近似不引统计库），learn 列表页置顶「免费工具」入口 | 迁移链核验线性无分叉（head=`f3c6d7e8a9b0`）；前端工具页与列表/文章互链闭环；已核验无密钥/调试泄漏；commit `c4c961d`（迁移+内容）+ `2ea818b`（前后端实现）；产品版本升 v1.5 |
 
 ---
 
