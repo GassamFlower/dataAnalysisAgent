@@ -46,20 +46,39 @@ def _validate_production_settings() -> None:
     if settings.ENVIRONMENT != "production":
         return
 
+    # 占位符黑名单：拒绝常见占位串继续当真实密钥使用（防上线用默认/占位密钥）
+    _PLACEHOLDERS = {
+        "change_to_strong_random_secret",
+        "change_to_another_strong_random_secret",
+        "change_to_strong_random_payment_token",
+        "change_to_another_strong_random_secret_for_password_reset",
+        "your_secret_key",
+        "changeme",
+    }
+
+    def _reject_placeholder(value: str, name: str) -> None:
+        if value and value.lower() in {p.lower() for p in _PLACEHOLDERS}:
+            raise RuntimeError(f"生产环境 {name} 仍为占位符，请设置为强随机值")
+
     if settings.DEBUG:
         raise RuntimeError("生产环境必须设置 DEBUG=False")
     if settings.ALLOW_DEV_TOKEN:
         raise RuntimeError("生产环境必须设置 ALLOW_DEV_TOKEN=False")
     if not settings.JWT_SECRET_KEY or len(settings.JWT_SECRET_KEY) < 32:
         raise RuntimeError("生产环境 JWT_SECRET_KEY 必须至少 32 位")
+    _reject_placeholder(settings.JWT_SECRET_KEY, "JWT_SECRET_KEY")
     if not settings.RESET_JWT_SECRET_KEY or len(settings.RESET_JWT_SECRET_KEY) < 32:
         raise RuntimeError("生产环境 RESET_JWT_SECRET_KEY 必须至少 32 位")
+    _reject_placeholder(settings.RESET_JWT_SECRET_KEY, "RESET_JWT_SECRET_KEY")
     if settings.RESET_JWT_SECRET_KEY == settings.JWT_SECRET_KEY:
         raise RuntimeError("生产环境 RESET_JWT_SECRET_KEY 必须与 JWT_SECRET_KEY 不同")
 
     # 支付回调：生产必须同时具备签名 token 与 IP 白名单，否则拒绝回调
     if not settings.PAYMENT_CALLBACK_TOKEN:
         raise RuntimeError("生产环境必须设置 PAYMENT_CALLBACK_TOKEN（支付回调签名）")
+    _reject_placeholder(
+        settings.PAYMENT_CALLBACK_TOKEN, "PAYMENT_CALLBACK_TOKEN"
+    )
     if not settings.PAYMENT_ALLOWED_IPS:
         raise RuntimeError("生产环境必须设置 PAYMENT_ALLOWED_IPS（支付渠道 IP 白名单）")
 

@@ -1,0 +1,139 @@
+# 数据分析 Agent 站点配置 — HTTPS 上线模板
+# =============================================================================
+# 用途：正式上线启用 HTTPS 时，将此文件内容应用到 nginx/conf.d/default.conf
+#       （或直接替换该文件并 reload Nginx）。
+#
+# 前提（必做，否则站点不可用）：
+#   1. 域名已解析到本机公网 IP（把下面 <your-domain.com> 全替换成真实域名）
+#   2. 已有 TLS 证书，放在 nginx/ssl/fullchain.pem 和 nginx/ssl/privkey.pem
+#      推荐用 certbot 自动签发：
+#        sudo apt install certbot python3-certbot-nginx
+#        sudo certbot --nginx -d <your-domain.com>
+#      （certbot 会自动改 nginx 配置并放置证书，优于手改；若不用 certbot，
+#        也请把证书放到 nginx/ssl 并同步 server/.env.production 的 FRONTEND_URL）
+#   3. docker-compose.yml 中 nginx 已暴露 443 / 已映射 nginx/ssl 卷（当前已具备）
+#
+# 生效方式：
+#   docker compose exec nginx nginx -s reload   # 或 docker compose up -d --force-recreate nginx
+#
+# 关键点：
+#   - 80 端口仅用于 301 → HTTPS，不再承载明文业务
+#   - 全文使用 HTTPS 代理转发到前端（BFF）
+#   - 保留 /health 直连后端（healthcheck 用容器内 localhost，此处仅参考）
+# =============================================================================
+
+# ── HTTP server：仅为 301 跳转 + 微信域名验证（明文不放业务）──
+server {
+    listen 80;
+    listen [::]:80;
+    server_name <你的域名>;
+
+    # 微信域名验证文件（明文 80 验权需要时保留）
+    location ~ ^/MP_verify_.*\.txt$ {
+        root /usr/share/nginx/html;
+        access_log off;
+    }
+
+    # 其余一律 301 到 HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ── HTTPS server：正式流量入口 ──
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name <你的域名>;
+
+    ssl_certificate     /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # HSTS：仅在 HTTPS 下发送
+    add_header Strict-Transport-Security "max-age=15768000; includeSubDomains" always;
+
+    # 安全头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+    # 认证端点：更严格限流
+    location ~ ^/api/v1/auth/ {
+        limit_req zone=login_limit burst=3 nodelay;
+        proxy_pass http://frontend:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    # 支付回调：较宽松超时
+    location /api/payment/orders/ {
+        limit_req zone=api_limit burst=20 nodelay;
+        proxy_pass http://frontend:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # API 限流
+    location /api/ {
+        limit_req zone=api_limit burst=20 nodelay;
+        proxy_pass http://frontend:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+    }
+
+    # 其余 → 前端
+    location / {
+        proxy_pass http://frontend:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # 微信域名验证文件
+    location ~ ^/MP_verify_.*\.txt$ {
+        root /usr/share/nginx/html;
+        access_log off;
+    }
+
+    # 禁止访问敏感文件
+    location ~ /\. { deny all; access_log off; log_not_found off; }
+    location ~* \.(env|git|htaccess)$ { deny all; }
+}
