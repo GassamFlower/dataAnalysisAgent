@@ -55,6 +55,9 @@ server/tmp/
 /test_*.py
 /verify_*.py
 
+# 一次性数据迁移遗留产物（含 DELETE，勿跟踪/勿生产自动执行；结构变更走 Alembic）
+scripts/migrate_data.sql
+
 # 文档文件（仅本地维护，不上传 GitHub）
 docs/
 

@@ -12,7 +12,34 @@ PROJECT_DIR="$(pwd)"
 # 配色
 GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; RED=$'\033[0;31m'; NC=$'\033[0m'
 
-# ---------- 读取当前生效版本 ----------
+# ---------- 部署前预检 ----------
+# 1) 磁盘空间：可用 < 20% 时强制中止，避免构建中磁盘写满
+AVAIL_PCT="$(df -P / | awk 'NR==2{print $5}' | tr -d '%')"
+if [ "$AVAIL_PCT" -gt 80 ] 2>/dev/null; then
+  echo -e "${RED}✗ 磁盘已用 ${AVAIL_PCT}%（>80%），发布可能因磁盘写满失败。${NC}"
+  echo -e "${YELLOW}  请先清理后再发布： docker builder prune -f && docker image prune -f${NC}"
+  exit 1
+fi
+echo -e "${GREEN}✓ 磁盘检查通过（已用 ${AVAIL_PCT}%）${NC}"
+
+# 2) Git 工作区干净：未提交改动会导致 tag 错乱/回滚失效
+if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+  echo -e "${YELLOW}⚠️  存在未提交改动(${NC}git status${YELLOW})。${NC}"
+  echo -e "${YELLOW}   release 使用 git 短哈希打 tag，未提交会致镜像 tag 漂移。${NC}"
+  read -r -p "  仍要强制继续发布?(y/N) " -n 1 CONFIRM || true; echo
+  if [ "${CONFIRM:-n}" != "y" ] && [ "${CONFIRM:-n}" != "Y" ]; then
+    echo -e "${RED}✗ 已取消。请先 commit 代码。${NC}"
+    exit 1
+  fi
+fi
+
+# 3) 数据迁移脚本风险提示（只提示不阻断）
+if [ -f scripts/migrate_data.sql ]; then
+  echo -e "⚠️  检测到 scripts/migrate_data.sql（含 DELETE，一次性迁移遗留）。"
+  echo -e "   本脚本不会自动执行；结构变更请优先用 alembic。"
+fi
+
+# 读取当前生效版本 ----------
 CURRENT_FILE="$PROJECT_DIR/.release.current"
 CURRENT_TAG=""
 [ -f "$CURRENT_FILE" ] && CURRENT_TAG="$(cat "$CURRENT_FILE")"
