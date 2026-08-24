@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PriceTag } from "@/components/common/price-tag";
 import { PageHeader } from "@/components/common/page-header";
+import { WechatPayQrModal } from "@/components/payment/wechat-pay-modal";
 import { PRICING, SIMULATED_WATERMARK } from "@/lib/constants";
 import { usePurchasePlan, useSubscription } from "@/lib/hooks/use-payment";
+import { useWechatPayQr } from "@/lib/hooks/use-wechat-pay";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
 export default function PricingPage() {
@@ -15,6 +17,7 @@ export default function PricingPage() {
   const { isAuthenticated } = useAuthStore();
   const { data: subscription } = useSubscription();
   const purchase = usePurchasePlan();
+  const wxPay = useWechatPayQr();
 
   const handlePurchase = async (planType: "single" | "subscription") => {
     if (!isAuthenticated) {
@@ -22,10 +25,21 @@ export default function PricingPage() {
       return;
     }
     try {
-      await purchase.mutateAsync(planType);
-      router.push("/settings");
+      // 优先走微信 Native 扫码支付；若未配置 WXPAY 则回落为模拟支付（联调用）
+      await wxPay.startPay(planType);
+      // 成功发起支付后，二维码弹窗由 useWechatPayQr 内部状态驱动；支付成功自动关闭并刷新
     } catch (err) {
-      alert(err instanceof Error ? err.message : "购买失败，请重试");
+      // 微信未配置/下单失败 → 回落到模拟支付（快速验证链路）
+      try {
+        await purchase.mutateAsync(planType);
+        router.push("/settings");
+      } catch (fallbackErr) {
+        alert(
+          fallbackErr instanceof Error
+            ? fallbackErr.message
+            : "购买失败，请重试"
+        );
+      }
     }
   };
 
@@ -114,6 +128,11 @@ export default function PricingPage() {
             </div>
           </div>
         </section>
+        <WechatPayQrModal
+          open={wxPay.qrState.open}
+          codeUrl={wxPay.qrState.codeUrl}
+          onClose={wxPay.closeQr}
+        />
       </main>
     </div>
   );

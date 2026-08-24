@@ -86,7 +86,7 @@ export const paymentApi = {
   /** 模拟支付回调（开发验证） */
   notifyPayment: (
     orderId: string,
-    data: { channel: PaymentChannel; transactionId: string; status: "success" | "failed" }
+    data: { channel: PaymentChannel; transactionId: string; status?: "success" | "failed" }
   ): Promise<{ success: boolean; message: string }> =>
     request<{ success: boolean; message: string }>(
       `/api/payment/orders/${orderId}/notify`,
@@ -95,6 +95,17 @@ export const paymentApi = {
         body: JSON.stringify(data),
       }
     ),
+
+  /** 微信 Native 下单：返回支付二维码 code_url */
+  createWxPayQr: (orderId: string): Promise<{ code_url: string; order_id: string }> =>
+    request<{ code_url: string; order_id: string }>(
+      `/api/payment/wxpay/${orderId}/qr`,
+      { method: "POST" }
+    ),
+
+  /** 查询订单状态（支付结果轮询） */
+  queryOrder: (orderId: string): Promise<Order> =>
+    request<Order>(`/api/payment/orders/${orderId}`),
 
   /** 获取当前用户本周用量额度 */
   getQuota: (): Promise<QuotaStatus> =>

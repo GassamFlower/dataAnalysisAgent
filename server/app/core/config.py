@@ -79,6 +79,22 @@ class Settings(BaseSettings):
     # 留空表示不启用 IP 白名单（仅靠签名校验）
     PAYMENT_ALLOWED_IPS: str = ""
 
+    # ── 微信支付 Native（扫码）──
+    # 开通微信支付后从商户平台获取（pay.weixin.qq.com → 账户中心 → API安全）
+    WXPAY_APP_ID: str = ""          # 关联的公众号/小程序 AppID（收款需要用，Native 支付需公众号）
+    WXPAY_MCH_ID: str = ""          # 商户号 mchid（10位数字）
+    WXPAY_API_V3_KEY: str = ""      # APIv3 密钥（32位）
+    WXPAY_MCH_CERT_SERIAL: str = "" # 商户 API 证书序列号（十六进制字符串）
+    # 商户 API 私钥文件路径（apiclient_key.pem）；生产环境放入 Docker 目录或 env 注入内容
+    WXPAY_MCH_PRIVATE_KEY_PATH: str = ""
+    # APIv3 平台证书序列号 + 文件路径（回调验签用；建议配置，未配则仅本地测试）
+    WXPAY_PLATFORM_CERT_SERIAL: str = ""
+    WXPAY_PLATFORM_CERT_PATH: str = ""
+    # 支付结果回调 URL（HTTPS 必填，如 https://你的域名/api/v1/payment/wxpay/notify）
+    WXPAY_NOTIFY_URL: str = ""
+    # 前端支付成功后的回跳地址（可选）
+    WXPAY_REDIRECT_URL: str = ""
+
     # 套餐限制
     FREE_PLAN_PROJECT_LIMIT: int = 3
     FREE_PLAN_SIMULATION_LIMIT_PER_WEEK: int = 3
