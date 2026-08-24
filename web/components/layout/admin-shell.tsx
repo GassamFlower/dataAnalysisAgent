@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   BarChart3,
   ScrollText,
+  Cpu,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const adminNavItems = [
   { href: "/admin/users", label: "用户与项目", icon: Users },
   { href: "/admin/orders", label: "订单与支付", icon: Receipt },
   { href: "/admin/configs", label: "配置与配额", icon: SlidersHorizontal },
+  { href: "/admin/llm-configs", label: "LLM 配置", icon: Cpu },
   { href: "/admin/tutorials", label: "内容管理", icon: ScrollText },
   { href: "/admin/audit-logs", label: "审计日志", icon: ShieldCheck },
 ];
