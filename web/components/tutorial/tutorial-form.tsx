@@ -25,6 +25,13 @@ const CATEGORY_OPTIONS = [
   { value: "writing", label: "论文写作" },
 ] as const;
 
+/** 难度选项 */
+const DIFFICULTY_OPTIONS = [
+  { value: "beginner", label: "入门" },
+  { value: "intermediate", label: "进阶" },
+  { value: "advanced", label: "高级" },
+] as const;
+
 /** 表单内部值 */
 export interface TutorialFormValues {
   title: string;
@@ -35,6 +42,8 @@ export interface TutorialFormValues {
   order_index: number;
   is_published: boolean;
   cover_image: string;
+  tags: string;
+  difficulty: string;
 }
 
 /** 提交时回调的载荷类型（与创建接口一致，更新接口兼容） */
@@ -63,6 +72,8 @@ const DEFAULT_VALUES: TutorialFormValues = {
   order_index: 100,
   is_published: false,
   cover_image: "",
+  tags: "",
+  difficulty: "beginner",
 };
 
 /**
@@ -145,6 +156,11 @@ export function TutorialForm({
       cover_image: values.cover_image.trim() || undefined,
       order_index: Number.isNaN(values.order_index) ? 100 : values.order_index,
       is_published: values.is_published,
+      tags: values.tags
+        .split(/[,，]/)
+        .map((t) => t.trim())
+        .filter(Boolean),
+      difficulty: values.difficulty || undefined,
     };
     await onSubmit(payload);
   }
@@ -226,6 +242,43 @@ export function TutorialForm({
               onChange={(e) => update("order_index", Number(e.target.value))}
               disabled={submitting}
             />
+          </div>
+        </div>
+
+        {/* 难度 + 标签 */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="tutorial-difficulty">难度</Label>
+            <Select
+              value={values.difficulty}
+              onValueChange={(v) => update("difficulty", v)}
+              disabled={submitting}
+            >
+              <SelectTrigger id="tutorial-difficulty">
+                <SelectValue placeholder="选择难度" />
+              </SelectTrigger>
+              <SelectContent>
+                {DIFFICULTY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tutorial-tags">标签（逗号分隔）</Label>
+            <Input
+              id="tutorial-tags"
+              value={values.tags}
+              onChange={(e) => update("tags", e.target.value)}
+              placeholder="信度, 效度, 入门"
+              disabled={submitting}
+            />
+            <p className="text-caption text-ink-400">
+              用于列表页标签筛选，多个用逗号分隔
+            </p>
           </div>
         </div>
 

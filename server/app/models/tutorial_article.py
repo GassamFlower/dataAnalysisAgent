@@ -47,6 +47,12 @@ class TutorialArticle(Base):
     order_index: Mapped[int] = mapped_column(
         Integer, default=0, nullable=False, comment="排序索引"
     )
+    tags: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True, comment="标签列表（JSON 数组字符串，如 [\"信度\",\"效度\"]）"
+    )
+    difficulty: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, comment="难度：beginner / intermediate / advanced"
+    )
     is_published: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False, comment="是否发布"
     )

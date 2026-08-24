@@ -66,6 +66,11 @@ class TutorialArticleBase(BaseModel):
     cover_image: Optional[str] = Field(None, max_length=500, description="封面图 URL")
     order_index: int = Field(default=0, description="排序索引")
     is_published: bool = Field(default=False, description="是否发布")
+    tags: Optional[List[str]] = Field(None, description="标签列表（如 [\"信度\",\"效度\"]）")
+    difficulty: Optional[str] = Field(
+        None, max_length=20,
+        description="难度：beginner / intermediate / advanced",
+    )
 
 
 class TutorialArticleCreateRequest(TutorialArticleBase):
@@ -83,6 +88,8 @@ class TutorialArticleUpdateRequest(BaseModel):
     cover_image: Optional[str] = Field(None, max_length=500)
     order_index: Optional[int] = Field(None)
     is_published: Optional[bool] = Field(None)
+    tags: Optional[List[str]] = Field(None, description="标签列表")
+    difficulty: Optional[str] = Field(None, max_length=20, description="难度")
 
 
 class TutorialArticleResponse(TutorialArticleBase):
@@ -106,6 +113,8 @@ class TutorialArticleListItem(BaseModel):
     cover_image: Optional[str]
     order_index: int
     is_published: bool
+    tags: Optional[List[str]] = None
+    difficulty: Optional[str] = None
     created_at: str
 
     class Config:
@@ -123,6 +132,8 @@ class TutorialArticleListResponse(BaseModel):
 class TutorialArticleQueryParams(BaseModel):
     """教程列表查询参数。"""
     category: Optional[str] = Field(None, description="分类筛选")
+    tag: Optional[str] = Field(None, description="标签筛选（单个标签）")
+    difficulty: Optional[str] = Field(None, description="难度筛选")
     keyword: Optional[str] = Field(None, description="搜索关键词（标题/摘要）")
     page: int = Field(default=1, ge=1, description="页码")
     page_size: int = Field(default=12, ge=1, le=50, description="每页数量")

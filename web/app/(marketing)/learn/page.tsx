@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BookOpen, Clock, Search } from "lucide-react";
+import { BookOpen, Calculator, Clock, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,22 +34,50 @@ const CATEGORY_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
   writing: "outline",
 };
 
+const DIFFICULTY_OPTIONS = [
+  { value: "", label: "全部难度" },
+  { value: "beginner", label: "入门" },
+  { value: "intermediate", label: "进阶" },
+  { value: "advanced", label: "高级" },
+];
+
+const DIFFICULTY_LABELS: Record<string, string> = {
+  beginner: "入门",
+  intermediate: "进阶",
+  advanced: "高级",
+};
+
+const DIFFICULTY_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
+  beginner: "secondary",
+  intermediate: "outline",
+  advanced: "default",
+};
+
 /**
  * 统计知识小课堂列表页（公开访问，无需登录）。
  *
- * 展示所有已发布的教程文章，支持分类筛选和关键词搜索。
+ * 展示所有已发布的教程文章，支持分类筛选、标签筛选、难度筛选和关键词搜索。
  * 未登录用户可直接浏览，登录后可通过顶部导航进入项目功能。
  */
 export default function LearnPage() {
   const [category, setCategory] = useState("all");
   const [keyword, setKeyword] = useState("");
+  const [tag, setTag] = useState("");
+  const [difficulty, setDifficulty] = useState("");
 
   const { data, isLoading, isError, error } = useTutorialArticles({
     category: category === "all" ? undefined : category,
+    tag: tag || undefined,
+    difficulty: difficulty || undefined,
     keyword: keyword || undefined,
     page: 1,
     page_size: 24,
   });
+
+  // 从当前加载的文章聚合出现的标签，供快速筛选
+  const allTags = Array.from(
+    new Set((data?.items ?? []).flatMap((a) => a.tags ?? [])),
+  ).slice(0, 12);
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,6 +88,17 @@ export default function LearnPage() {
           title="统计知识小课堂"
           description="从统计基础到论文写作，系统学习问卷研究必备知识"
         />
+
+        {/* 工具入口 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/learn/tools/sample-size"
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm text-primary transition-colors hover:bg-primary/10"
+          >
+            <Calculator className="h-4 w-4" />
+            样本量计算器（免费工具）
+          </Link>
+        </div>
 
         {/* 筛选与搜索 */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -85,6 +124,43 @@ export default function LearnPage() {
               onChange={(e) => setKeyword(e.target.value)}
               className="pl-9"
             />
+          </div>
+        </div>
+
+        {/* 标签 + 难度筛选 */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {allTags.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTag(tag === t ? "" : t)}
+                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                  tag === t
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-cream-surface/50 text-ink-600 hover:border-primary/40"
+                }`}
+              >
+                #{t}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-ink-500">
+            <span>难度：</span>
+            {DIFFICULTY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setDifficulty(opt.value)}
+                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                  difficulty === opt.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-ink-600 hover:bg-muted-foreground/10"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -127,6 +203,17 @@ export default function LearnPage() {
 
                   <CardContent className="p-5">
                     <div className="mb-3 flex items-center gap-2">
+                      {article.difficulty &&
+                        DIFFICULTY_LABELS[article.difficulty] && (
+                          <Badge
+                            variant={
+                              DIFFICULTY_VARIANTS[article.difficulty] ??
+                              "secondary"
+                            }
+                          >
+                            {DIFFICULTY_LABELS[article.difficulty]}
+                          </Badge>
+                        )}
                       <Badge variant={CATEGORY_VARIANTS[article.category] ?? "secondary"}>
                         {CATEGORY_LABELS[article.category] ?? article.category}
                       </Badge>
@@ -143,6 +230,19 @@ export default function LearnPage() {
                     <p className="line-clamp-3 text-sm text-muted-foreground">
                       {article.summary || "暂无摘要"}
                     </p>
+
+                    {article.tags && article.tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {article.tags.slice(0, 3).map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-ink-500"
+                          >
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </Link>

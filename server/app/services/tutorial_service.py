@@ -1,7 +1,8 @@
 """教程业务逻辑服务。"""
+import json
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -264,6 +265,27 @@ class TutorialService:
     # ========== 教程文章（统计知识小课堂）==========
 
     @staticmethod
+    def _decode_tags(raw: Optional[str]) -> Optional[List[str]]:
+        """将数据库中的 tags JSON 字符串还原为列表。"""
+        if raw is None or raw == "":
+            return None
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, list) else None
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    @staticmethod
+    def _encode_tags(tags: Optional[List[str]]) -> Optional[str]:
+        """将标签列表编码为数据库中的 JSON 字符串。"""
+        if tags is None:
+            return None
+        cleaned = [str(t).strip() for t in tags if str(t).strip()]
+        if not cleaned:
+            return None
+        return json.dumps(cleaned, ensure_ascii=False)
+
+    @staticmethod
     def _article_to_response(article: TutorialArticle) -> TutorialArticleResponse:
         """将 ORM 模型转换为响应 schema。"""
         return TutorialArticleResponse(
@@ -276,6 +298,8 @@ class TutorialService:
             cover_image=article.cover_image,
             order_index=article.order_index,
             is_published=article.is_published,
+            tags=TutorialService._decode_tags(article.tags),
+            difficulty=article.difficulty,
             created_at=article.created_at.isoformat() if article.created_at else "",
             updated_at=article.updated_at.isoformat() if article.updated_at else "",
         )
@@ -293,6 +317,8 @@ class TutorialService:
             cover_image=article.cover_image,
             order_index=article.order_index,
             is_published=article.is_published,
+            tags=TutorialService._decode_tags(article.tags),
+            difficulty=article.difficulty,
             created_at=article.created_at.isoformat() if article.created_at else "",
         )
 
@@ -324,6 +350,8 @@ class TutorialService:
             cover_image=request.cover_image,
             order_index=request.order_index,
             is_published=request.is_published,
+            tags=TutorialService._encode_tags(request.tags),
+            difficulty=request.difficulty,
         )
         db.add(article)
         await db.flush()
@@ -372,11 +400,18 @@ class TutorialService:
             "cover_image",
             "order_index",
             "is_published",
+            "difficulty",
         ]
         for field in update_fields:
             value = getattr(request, field)
             if value is not None:
                 setattr(article, field, value)
+
+        if request.tags is not None:
+            if request.tags:
+                article.tags = TutorialService._encode_tags(request.tags)
+            else:
+                article.tags = None
 
         await db.flush()
         await db.refresh(article)
@@ -426,6 +461,8 @@ class TutorialService:
     async def list_articles(
         db: AsyncSession,
         category: Optional[str] = None,
+        tag: Optional[str] = None,
+        difficulty: Optional[str] = None,
         keyword: Optional[str] = None,
         page: int = 1,
         page_size: int = 12,
@@ -441,6 +478,14 @@ class TutorialService:
 
         if category:
             stmt = stmt.where(TutorialArticle.category == category)
+
+        if tag:
+            # tags 存为 JSON 数组字符串，如 ["信度","效度"]；按包含该标签子串过滤
+            like = f"%{tag}%"
+            stmt = stmt.where(TutorialArticle.tags.ilike(like))
+
+        if difficulty:
+            stmt = stmt.where(TutorialArticle.difficulty == difficulty)
 
         if keyword:
             like_pattern = f"%{keyword}%"

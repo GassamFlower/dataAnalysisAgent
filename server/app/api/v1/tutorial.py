@@ -137,6 +137,8 @@ async def reset_progress(
 )
 async def list_articles(
     category: Optional[str] = Query(None, description="分类筛选"),
+    tag: Optional[str] = Query(None, description="标签筛选"),
+    difficulty: Optional[str] = Query(None, description="难度筛选（beginner/intermediate/advanced）"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(12, ge=1, le=50, description="每页数量"),
@@ -151,6 +153,8 @@ async def list_articles(
     result = await TutorialService.list_articles(
         db=db,
         category=category,
+        tag=tag,
+        difficulty=difficulty,
         keyword=keyword,
         page=page,
         page_size=page_size,

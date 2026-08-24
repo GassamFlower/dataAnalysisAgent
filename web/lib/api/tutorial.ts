@@ -67,6 +67,8 @@ export interface TutorialArticle {
   cover_image: string | null;
   order_index: number;
   is_published: boolean;
+  tags?: string[] | null;
+  difficulty?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -82,6 +84,8 @@ export interface TutorialArticleListItem {
   cover_image: string | null;
   order_index: number;
   is_published: boolean;
+  tags?: string[] | null;
+  difficulty?: string | null;
   created_at: string;
 }
 
@@ -96,9 +100,12 @@ export interface TutorialArticleListResponse {
 /** 教程列表查询参数 */
 export interface TutorialArticleQueryParams {
   category?: string;
+  tag?: string;
+  difficulty?: string;
   keyword?: string;
   page?: number;
   page_size?: number;
+  include_unpublished?: boolean;
 }
 
 /** 创建/更新教程请求 */
@@ -111,6 +118,8 @@ export interface TutorialArticleCreateRequest {
   cover_image?: string;
   order_index?: number;
   is_published?: boolean;
+  tags?: string[];
+  difficulty?: string;
 }
 
 export type TutorialArticleUpdateRequest = Partial<TutorialArticleCreateRequest>;

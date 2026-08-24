@@ -1,6 +1,7 @@
 "use client";
 
-import { HelpCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, HelpCircle, Loader2 } from "lucide-react";
 
 import {
   Tooltip,
@@ -22,11 +23,24 @@ interface MetricTooltipProps {
   contentClassName?: string;
 }
 
+/** 指标类型 → 统计小课堂对应教程 slug（F-TUT-001 与 F-TUT-002 打通） */
+const METRIC_TUTORIAL_SLUG: Record<string, string> = {
+  alpha: "cronbach-alpha",
+  kmo: "kmo-bartlett",
+  bartlett: "kmo-bartlett",
+  correlation: "correlation-analysis",
+  mean: "descriptive-statistics",
+  std: "descriptive-statistics",
+  frequency: "descriptive-statistics",
+  diagnosis: "writing-results",
+  sample_size: "sample-size",
+};
+
 /**
  * 指标解读提示组件。
  *
  * 在报告页各指标旁显示一个可 hover 的问号图标，
- * 弹出通俗易懂的指标解读卡片。
+ * 弹出通俗易懂的指标解读卡片，并提供跳转到「统计小课堂」对应教程的链接。
  */
 export function MetricTooltip({
   metricType,
@@ -35,6 +49,7 @@ export function MetricTooltip({
   contentClassName,
 }: MetricTooltipProps) {
   const { data: tooltip, isLoading } = useMetricTooltip(metricType);
+  const tutorialSlug = METRIC_TUTORIAL_SLUG[metricType];
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -75,6 +90,15 @@ export function MetricTooltip({
                   <span className="font-medium text-foreground">示例：</span>
                   {tooltip.example}
                 </div>
+              )}
+              {tutorialSlug && (
+                <Link
+                  href={`/learn/${tutorialSlug}`}
+                  className="flex items-center gap-1 pt-1 text-xs font-medium text-primary hover:underline"
+                >
+                  去小课堂学原理
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
               )}
             </>
           ) : (

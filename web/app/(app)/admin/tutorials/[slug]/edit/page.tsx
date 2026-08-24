@@ -74,6 +74,8 @@ export default function EditTutorialPage({
             order_index: article.order_index,
             is_published: article.is_published,
             cover_image: article.cover_image ?? "",
+            tags: Array.isArray(article.tags) ? article.tags.join(", ") : "",
+            difficulty: article.difficulty ?? "beginner",
           }}
           onSubmit={handleSubmit}
           submitting={updateArticle.isPending}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpen, Clock, Type } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Calculator, Clock, Type } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,6 +27,18 @@ const CATEGORY_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
   basics: "default",
   methods: "secondary",
   writing: "outline",
+};
+
+const DIFFICULTY_LABELS: Record<string, string> = {
+  beginner: "入门",
+  intermediate: "进阶",
+  advanced: "高级",
+};
+
+const DIFFICULTY_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
+  beginner: "secondary",
+  intermediate: "outline",
+  advanced: "default",
 };
 
 const FONT_SIZES = [
@@ -145,6 +157,11 @@ export default function TutorialDetailPage({
             {/* 文章头部 */}
             <div className="mb-8">
               <div className="mb-4 flex flex-wrap items-center gap-3">
+                {article.difficulty && DIFFICULTY_LABELS[article.difficulty] && (
+                  <Badge variant={DIFFICULTY_VARIANTS[article.difficulty] ?? "secondary"}>
+                    {DIFFICULTY_LABELS[article.difficulty]}
+                  </Badge>
+                )}
                 <Badge variant={CATEGORY_VARIANTS[article.category] ?? "secondary"}>
                   {CATEGORY_LABELS[article.category] ?? article.category}
                 </Badge>
@@ -152,6 +169,19 @@ export default function TutorialDetailPage({
                   <Clock className="mr-1 h-4 w-4" />
                   {estimateReadTime(article.content_markdown)}
                 </span>
+
+                {article.tags && article.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {article.tags.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-ink-500"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* 字体大小调节 */}
                 <div className="ml-auto flex items-center gap-1">
@@ -176,6 +206,17 @@ export default function TutorialDetailPage({
 
               {article.summary && (
                 <p className="mt-4 text-lg text-muted-foreground">{article.summary}</p>
+              )}
+
+              {article.slug === "sample-size-power" && (
+                <div className="mt-4">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/learn/tools/sample-size">
+                      <Calculator className="mr-1.5 h-4 w-4" />
+                      用样本量计算器快速估算
+                    </Link>
+                  </Button>
+                </div>
               )}
             </div>
 
