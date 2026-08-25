@@ -18,9 +18,16 @@ from app.core.dependencies import require_admin
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.responses import success_response
 from app.models.audit_logs import AuditLog
+from app.models.message import Message, STATUS_CHOICES
 from app.models.order import Order
 from app.models.project import Project
 from app.models.user import User
+from app.schemas.message import (
+    MessageStatusUpdate,
+    TAG_LABELS,
+    DATA_SOURCE_LABELS,
+    STATUS_LABELS,
+)
 from app.services.admin_service import VALID_PLANS, get_user_project_counts, user_admin_dict
 from app.services.audit_service import AuditService
 
@@ -289,3 +296,113 @@ async def admin_audit_logs(
         for a in res.scalars().all()
     ]
     return success_response(data=_paged(items, total, page, page_size))
+
+
+# ── 留言管理（Task 2.4）──────────────────────────────────────────────
+
+
+def _msg_serialize(m: Message, user_email: str = "", user_nickname: str = "") -> dict:
+    return {
+        "id": str(m.id),
+        "user_id": str(m.user_id),
+        "user_email": user_email,
+        "user_nickname": user_nickname,
+        "project_id": str(m.project_id) if m.project_id else None,
+        "tag": m.tag,
+        "tag_label": TAG_LABELS.get(m.tag, m.tag),
+        "data_source": m.data_source,
+        "data_source_label": DATA_SOURCE_LABELS.get(m.data_source) if m.data_source else None,
+        "entry_point": m.entry_point,
+        "contact": m.contact,
+        "content": m.content,
+        "status": m.status,
+        "status_label": STATUS_LABELS.get(m.status, m.status),
+        "handled_by": str(m.handled_by) if m.handled_by else None,
+        "handled_at": m.handled_at.isoformat() if m.handled_at else None,
+        "handle_remark": m.handle_remark,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+        "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+    }
+
+
+@router.get("/messages")
+async def admin_messages(
+    tag: str = Query("", description="按分类筛选（presale/rescue/service/incident/feedback）"),
+    status: str = Query("", description="按状态筛选（pending/processing/done）"),
+    data_source: str = Query("", description="按数据源筛选"),
+    keyword: str = Query("", description="按内容/联系方式/用户邮箱关键词搜索"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    """管理员：全量留言分页列表（含用户联系方式，便于一键复制跟进）。"""
+    stmt = (
+        select(Message, User.email, User.nickname)
+        .join(User, User.id == Message.user_id)
+        .where(Message.deleted_at.is_(None))
+    )
+    if tag:
+        stmt = stmt.where(Message.tag == tag)
+    if status:
+        stmt = stmt.where(Message.status == status)
+    if data_source:
+        stmt = stmt.where(Message.data_source == data_source)
+    kw = (keyword or "").strip()
+    if kw:
+        like = f"%{kw}%"
+        stmt = stmt.where(
+            (Message.content.ilike(like))
+            | (Message.contact.ilike(like))
+            | (User.email.ilike(like))
+        )
+
+    total = (
+        await db.execute(select(func.count()).select_from(stmt.subquery()))
+    ).scalar_one()
+    res = await db.execute(
+        stmt.order_by(Message.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    items = [
+        _msg_serialize(m, user_email or "", user_nickname or "")
+        for m, user_email, user_nickname in res.all()
+    ]
+    return success_response(data=_paged(items, total, page, page_size))
+
+
+@router.patch("/messages/{message_id}/status")
+async def admin_update_message_status(
+    message_id: str,
+    req: MessageStatusUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_admin: dict = Depends(require_admin),
+):
+    """管理员：切换任意留言状态并写备注（写审计日志留痕）。"""
+    if req.status not in STATUS_CHOICES:
+        raise ValidationException(f"status 必须是 {' / '.join(STATUS_CHOICES)} 之一")
+    oid = _uuid(message_id)
+    if not oid or oid is None:
+        raise NotFoundException("留言不存在")
+    m = await db.get(Message, oid)
+    if not m or m.deleted_at is not None:
+        raise NotFoundException("留言不存在")
+
+    m.status = req.status
+    if req.handle_remark is not None:
+        m.handle_remark = req.handle_remark
+    m.handled_by = current_admin["id"]
+    m.handled_at = datetime.now(timezone.utc)
+    await _audit(
+        request, db, current_admin["id"], "admin_mark_message",
+        {
+            "message_id": str(m.id),
+            "status": req.status,
+            "remark": req.handle_remark,
+        },
+    )
+    await db.commit()
+    await db.refresh(m)
+    return success_response(data=_msg_serialize(m))

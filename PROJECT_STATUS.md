@@ -14,7 +14,6 @@
 - **定位版本**：v2.0（2026-08-04 定位锚点收敛为"预演+诊断深井"）
 
 ---
-
 ## 当前门禁
 
 > 从以下 4 个门禁中选一个：立项门 / 架构门 / 业务门 / 上线门
@@ -24,6 +23,29 @@
 **进入时间**：2026-07-29
 
 **阶段说明**：正式上线运营中，产品定位已更新为"预演+诊断差异化深井"，当前以差异化壁垒加固为主方向。
+
+---
+
+## V2 第一轮进度（进行中）
+
+> 关联：`docs/z-v2立项方案.md` + `v2-first-round-plan.md`。逐阶段推进，每任务必带验收证据与提交点。
+
+| 阶段 / 任务 | 状态 | 验收证据 |
+|------|------|----------|
+| Stage1 · 1.1 预演命中率（Fisher z 功效 + 假设命中率） | ✅ 完成 | 后端命中率单测通过；前端 hit-rate-card 展示并提示提样本量；修复命中率实时显示（snake→camel 归一）；全量 pytest 193+ 通过 |
+| Stage1 · 1.2 模拟答辩摘要（仅述统计范式，合规红线） | ✅ 完成 | defense-summary BFF + 面板 + 一键复制；后端 203 passed，前端 tsc --noEmit 通过 |
+| Stage1 · 1.3 预演→报告传导 | ⏳ 未开始 | — |
+| Stage2 · 2.1 留言表后端（5 tag + project_id + 数据源 + 审计） | ✅ 完成 | models/schemas/api + migration；修复 FK 歧义/重定向/审计排序；tests/test_message.py 通过 |
+| Stage2 · 2.2 留言模板库表单（5 类填空式 + 三入口） | ✅ 完成 | contact-form + use-message + 定价页/报告救急区/页脚接入，自动关联项目ID与数据源；tsc 全绿；message tests 8 passed |
+| Stage2 · 2.3 客服微信占位 + 双入口 | ⏳ 未开始 | — |
+| Stage2 · 2.4 admin 留言管理页 | ⏳ 未开始 | — |
+| Stage2 · 2.5 服务闭环 + 财务下单 | ⏳ 未开始 | — |
+| Stage3 · 3.1 论文段落生成（APA，仅结果规范化） | ⏳ 未开始 | — |
+| Stage4 · 4.1~4.3 学科量表库（管理/教育/心理 3~5 条 + 联动） | ⏳ 未开始 | — |
+| Stage5 · 5.1~5.3 前端优化（图表交互/色板修复/可交互 demo） | ⏳ 未开始 | — |
+| Stage6 · 6.1~6.3 数据分析小知识（解释层/微课/语义搜索） | ⏳ 未开始 | — |
+| Stage7 · 7.1~7.2 三主题一致性 + 移动端 | ⏳ 未开始 | — |
+| Stage8 · 8.1 上线前验收（产出 s-上线前验收报告） | ⏳ 未开始 | — |
 
 ---
 
@@ -42,7 +64,7 @@
 | 真实数据导入（CSV/Excel） | ✅ R3 验收 | 支持真实/模拟双模式 Tab 切换 |
 | 模拟预演（假设路径/相关矩阵编辑/数据生成） | ✅ R3 验收 | 免费层前端引导，真实套餐校验 |
 | 统计分析（信效度/差异检验/相关矩阵） | ✅ R3 验收 | 真实统计计算，无 fallback 示例数据 |
-| R4 智能诊断（规则 + LLM 双重诊断） | ✅ R3 验收 | 规则优先，LLM 补充自然语言原因 |
+| 智能诊断（规则 + LLM 双重诊断） | ✅ R3 验收 | 规则优先，LLM 补充自然语言原因 |
 | 样本代表性诊断（F-RPT-007） | ✅ v1.3 验收 | 免费、纯诊断不卖样本，阈值唯一来源；v1.4 起进入导出一致性 |
 | 样本量规划器（F-RPT-008） | ✅ v1.3.1 验收 | 预演闭环：预演效应量→回收目标，公式引擎无 LLM；v1.4 起报告页联动已收 N |
 | 报告导出（Word/Excel/PDF/PPT + SIMULATED 水印） | ✅ R3 验收 | 四格式全部通过烟雾测试；v1.4 起含代表性/规划章节 + 一句话结论 |
@@ -72,7 +94,7 @@
 | v1.0 | 2026-07-18 | 首轮上线，核心模块（认证/项目/问卷/模拟/分析/报告/导出/支付）全部通过 R3 验收 |
 | v1.1 | 2026-08-06 | 四扩展功能（问卷星解析/SPSS导入/PPT导出/报告润色）收尾 + 撤销V2电商转型 |
 | v1.2 | 2026-08-06 | 问卷质量体检引擎 v2（纯规则7项检查 + 前端体检报告卡片） |
-| v1.3 | 2026-08-10 | 样本代表性诊断 F-RPT-007（免费） + 首页叙事重写 + R4 一句话结论 + v1.2 遗留 BFF 缺路修复 |
+| v1.3 | 2026-08-10 | 样本代表性诊断 F-RPT-007（免费） + 首页叙事重写 + 一句话结论 + v1.2 遗留 BFF 缺路修复 |
 | v1.3.1 | 2026-08-10 | 样本量规划器 F-RPT-008（预演闭环：效应量→回收目标→代表性回看，公式引擎无 LLM） |
 | v1.4 | 2026-08-10 | 导出物一致性（Word/Excel/PDF/PPT 含代表性+规划+一句话结论）+ 报告页 Tabs 化（5 页签）+ 规划已收 N 联动对照 + 教程扩篇 2 篇 |
 | v2.1（前端） | 2026-08-11 | 前端样式分层升级：theme 三态化（light/sepia/dark）+ 暗色改暖褐；品牌记忆点（纸质纹理/水印字）；控件手感（按钮/输入/表格）；动效层级；可读性收敛；新增设计系统真源文档 |
@@ -103,6 +125,12 @@
 
 > 当前要做的具体任务（不超过 3 项）
 
+**V2 第一轮（当前）**
+1. **Task 2.3 客服微信占位 + 双入口** —— 后端 `CUSTOMER_SERVICE_WECHAT_ID` 占位 + `wechat-entry` 组件（占位弹"敬请期待"，只改 env 即切真实号）。
+2. **Task 2.4 admin 留言管理页** —— 按 5 类 tag 筛选 + 标记处理 + 一键复制联系方式。
+3. **Task 2.5 服务闭环 + 财务** —— 报告/救急区"人工分析服务"→下单入 order→店铺接单。
+
+（已完成的上轮收尾项，保留存档）
 1. ~~**规划器增强**~~ ✅ 已完成（2026-08-11：新增 ANOVA/配对/分层设计 + 检验类型与模拟页联动）
 2. ~~**导出代表性接入 LLM 说人话结论**~~ ✅ 已完成（2026-08-11：可选开关，默认规则结果保证确定性）
 3. ~~**教程 SEO/学习路径增强**~~ ✅ 已完成（2026-08-11：学习路径导航 + 相关文章推荐）
@@ -136,7 +164,7 @@
 | 2026-08-06 | 撤销 V2 电商转型，回归问卷分析核心定位 | 错误方向纠正 |
 | 2026-08-06 | 四扩展功能收尾：问卷星导入/报告润色/PPT导出 + PG 端口收紧 + dev-login 审计 | 与定位对齐 |
 | 2026-08-06 | 问卷质量体检引擎 v2：纯规则 7 项检查 + 前端体检报告卡片 | 题量/维度均衡/反向题/人口学/量表一致性/置信度/文本质量 |
-| 2026-08-10 | v1.3：样本代表性诊断 F-RPT-007（规则+LLM+免费端点）+ 首页叙事重写 + R4 一句话结论 | 全量 151 passed；修复 v1.2 遗留「体检 BFF 路由缺失」隐患；线上冒烟（真实 LLM 调用）通过 |
+| 2026-08-10 | v1.3：样本代表性诊断 F-RPT-007（规则+LLM+免费端点）+ 首页叙事重写 + 一句话结论 | 全量 151 passed；修复 v1.2 遗留「体检 BFF 路由缺失」隐患；线上冒烟（真实 LLM 调用）通过 |
 | 2026-08-10 | v1.3.1：样本量规划器 F-RPT-008（公式引擎+预演矩阵自动效应量+达标判定），模拟预演页步骤 4 内嵌 | 全量 176 passed；线上冒烟 4 场景通过；冒烟脚本曾因 CWD 写错 SQLite 库，已修正并清理误建文件 |
 | 2026-08-10 | v1.4：导出物一致性（代表性/规划/一句话结论入 Word/Excel/PDF/PPT）+ 报告页 Tabs 化 5 页签 + 规划已收 N 联动对照 + 教程扩篇《样本量怎么算》《样本代表性怎么看》 | 全量 181 passed；tsc/lint/build 通过；教程种子脚本二次踩 CWD 相对路径库坑（见踩坑记录），已修正并清理 |
 | 2026-08-11 | 教程 SEO/学习路径增强：详情页新增「学习路径」导航（分类内进度条 + 当前篇高亮 + 已完成勾选，桌面端侧边栏/移动端头部）+「相关文章」推荐区（同分类 3 篇） | 收费边界复核：项目内操作（模拟/导出/分析/导入/润色/AI解读）收费、教程/体检/规划器免费，当前体系已符合，无需改动 |
@@ -157,6 +185,11 @@
 | 2026-08-24 | `docs/管理后台-立项文档.md` 立项 + **统一管理后台基建** 前后端落地：后端 `api/v1/admin.py`（users/订单/审计全量 require_admin + 看板复用 analytics）、`admin_service.emails` bootstrap、启动时 `ADMIN_EMAILS` 自动晋升、`promote_admin.py` CLI、`users.disabled_at` 禁用列（迁移 `abf2c1011234` 接 `f3c6d7e8a9b0`）+ 登录/鉴权禁用拦截 + `is_admin` 下发进 token；前端 `is_admin` 注入 auth-store + middleware 保护 `/admin` + `AdminShell` 布局（登录+管理员双重守卫）+ users/orders/audit/configs 五页 + **LLM 配置并入统一后台**（`/admin/llm-configs` 复用既有 `llm-configs` API 的增删改查/白名单） + AppShell 管理员入口 | 管理门禁统一用 `require_admin`（收敛散落 `_check_admin`/内联判断）；禁用用户 JWT 与 email-login 双路拦截；admin 改套餐/禁用均写审计且同事务提交；前端 `tsc --noEmit` 0 错；管理员入口 bootstrap 需在生产 `ADMIN_EMAILS` 或在 `server/` 跑 `python -m scripts.promote_admin <email>` 指定首个管理员 |
 
 | 2026-08-24 | 管理后台**生产启用**：在 Liekkas 生产库用容器内 `python -m scripts.promote_admin 1462882928@qq.com` 晋升首管（`is_admin=true` 已核验）；修复 `admin/tutorials` 页 `page_size:100` 超出后端 `/tutorial/articles` `le=50` 导致的 `42200`（改 50，commit `a43b77f`） | **生产事故处置**：上线重建时后端 `daa-backend`循环 `Restarting`、compose `dependency failed to start`——新上线的生产密钥门禁（`_validate_production_settings`）拦截 `RESET_JWT_SECRET_KEY` 仍为占位符；生成 96 位随机 hex 替换 `server/.env.production`（已备份 `.bak`）并重建后端→四容器(backend/frontend/nginx/db)全部 healthy，端到端 `/health` 200；⚠️ 密钥值一次出现在对话，建议再轮换一次 |
+| 2026-08-25 | **V2 第一轮启动**：Stage1.1 预演命中率——后端 `sample_size_planner.py` 新增 Fisher z 功效计算 + `simulation.py` 假设命中率分析，schemas 增 `hit_rate`；前端新增 `components/simulation/hit-rate-card.tsx` 展示命中率并提示提样本量；命中率实时 bug 修复（generate/route.ts 归一 snake→camel `hitRate`） | 新增 Python 3.12 venv（`.venv312`，旧 3.8 venv 跑不动新语法）；命中率单测通过、193 total pytest 2 项既有失败（security/export） |
+| 2026-08-25 | **修复两处既有测试失败**：`test_security.py` `_setup_production_valid` 补 `PAYMENT_CALLBACK_TOKEN/PAYMENT_ALLOWED_IPS/DATABASE_URL` 并同步 `_save/_restore_settings`；`stats.py` 无 Bartlett 时 `effective_bartlett_p` 默认 1.0 防 NOT NULL 报错 | test_security + test_export 21 passed（前端命中率显示联调通过） |
+| 2026-08-25 | **Stage1.2 模拟答辩摘要**：`types/index.ts` 增 `DefenseQAItem/DefenseSummary`；BFF `defense-summary/route.ts` 转发归一；hook 扩展 `useDefenseSummary`；新 `defense-summary-panel.tsx`（Q&A 展示 + 一键复制）；simulate 页加"生成答辩摘要"按钮 | 后端 203 passed（自 193）；前端 tsc --noEmit 0 错 |
+| 2026-08-25 | **Stage2.1 留言表后端**：新 `models/message.py`+迁移、`schemas/message.py`、`api/v1/message.py`（建/查/删/处理 + 审计留痕），5 类 tag + project_id + 数据源落库 | 修复 SQLAlchemy FK 歧义（user/handled_admin 显式 foreign_keys）、尾斜杠 307 重定向、审计查询排序；tests/test_message.py 通过 |
+| 2026-08-25 | **Stage2.2 留言模板库表单**：新 `components/contact/contact-form.tsx`（5 类模板填空式，dialog/sheet，必填校验+登录守卫+提交态）、`lib/api/message.ts`、`lib/hooks/use-message.ts`、`types/message.ts`；三入口接入（定价页售前咨询 / 报告页救急区自动带项目ID+数据源 / 页脚抽屉） | 前端 tsc --noEmit 0 错；后端 message tests 8 passed（三入口可提交且数据可查） |
 
 ---
 

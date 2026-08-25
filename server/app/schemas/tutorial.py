@@ -35,6 +35,22 @@ class MetricTooltipResponse(BaseModel):
     example: str = Field(..., description="示例说明")
 
 
+class TermCardResponse(BaseModel):
+    """术语卡片（语义搜索命中术语时返回）。"""
+    title: str = Field(..., description="术语名称")
+    content: str = Field(..., description="术语解释")
+    example: str = Field(..., description="示例说明")
+    learn_more_slug: Optional[str] = Field(
+        None, description="关联的小课堂教程 slug（可去学）"
+    )
+
+
+class TutorialSearchResponse(BaseModel):
+    """语义搜索结果。"""
+    keyword: str = Field(..., description="搜索关键词")
+    term: Optional[TermCardResponse] = Field(None, description="命中的术语卡片（未命中为 null）")
+
+
 class OnboardingStartRequest(BaseModel):
     """启动引导请求。"""
     project_id: UUID = Field(..., description="项目 ID")

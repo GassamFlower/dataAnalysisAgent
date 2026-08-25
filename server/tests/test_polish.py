@@ -11,7 +11,9 @@ import pytest
 
 from app.services.report_polisher import (
     polish_section,
+    polish_paper_section,
     _build_polish_prompt,
+    _build_paper_excerpt,
     _post_process,
     _fallback_template,
     DISCLAIMER,
@@ -47,10 +49,10 @@ def _build_full_report_data():
 
 def test_polish_section_reliability_with_llm(monkeypatch):
     """正常：信效度章节润色，LLM 返回有效文本。"""
-    def mock_chat_r1(prompt):
+    def mock_chat_pro(prompt):
         return "信效度检验结果显示，总量表 α = 0.856，具有良好的内部一致性。"
 
-    monkeypatch.setattr("app.services.report_polisher.chat_r1", mock_chat_r1)
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
 
     result = polish_section(_build_full_report_data(), "reliability")
 
@@ -62,10 +64,10 @@ def test_polish_section_reliability_with_llm(monkeypatch):
 
 def test_polish_section_correlation_with_llm(monkeypatch):
     """正常：相关分析章节润色。"""
-    def mock_chat_r1(prompt):
+    def mock_chat_pro(prompt):
         return "相关分析显示学习动机与学业成绩呈显著正相关。以上为统计描述参考。"
 
-    monkeypatch.setattr("app.services.report_polisher.chat_r1", mock_chat_r1)
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
 
     result = polish_section(_build_full_report_data(), "correlation")
 
@@ -76,10 +78,10 @@ def test_polish_section_correlation_with_llm(monkeypatch):
 
 def test_polish_section_diff_test_with_llm(monkeypatch):
     """正常：差异检验章节润色。"""
-    def mock_chat_r1(prompt):
+    def mock_chat_pro(prompt):
         return "差异检验结果显示，学习动机对学业成绩有显著影响。以上为统计描述参考。"
 
-    monkeypatch.setattr("app.services.report_polisher.chat_r1", mock_chat_r1)
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
 
     result = polish_section(_build_full_report_data(), "diff_test")
 
@@ -89,10 +91,10 @@ def test_polish_section_diff_test_with_llm(monkeypatch):
 
 def test_polish_section_diagnosis_with_llm(monkeypatch):
     """正常：诊断章节润色。"""
-    def mock_chat_r1(prompt):
+    def mock_chat_pro(prompt):
         return "量表诊断发现自我效能维度 α 偏低，建议增加题项。以上为统计描述参考。"
 
-    monkeypatch.setattr("app.services.report_polisher.chat_r1", mock_chat_r1)
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
 
     result = polish_section(_build_full_report_data(), "diagnosis")
 
@@ -104,11 +106,11 @@ def test_polish_section_llm_called_with_guard(monkeypatch):
     """正常：LLM 调用时 prompt 包含注入防护和用户输入包裹。"""
     captured_prompt = []
 
-    def mock_chat_r1(prompt):
+    def mock_chat_pro(prompt):
         captured_prompt.append(prompt)
         return "测试输出。以上为统计描述参考。"
 
-    monkeypatch.setattr("app.services.report_polisher.chat_r1", mock_chat_r1)
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
 
     polish_section(_build_full_report_data(), "reliability")
 
@@ -147,10 +149,10 @@ def test_post_process_preserves_existing_disclaimer():
 
 def test_polish_section_fallback_on_llm_exception(monkeypatch):
     """边界：LLM 抛异常时降级为静态模板。"""
-    def mock_chat_r1(prompt):
+    def mock_chat_pro(prompt):
         raise Exception("LLM 服务不可用")
 
-    monkeypatch.setattr("app.services.report_polisher.chat_r1", mock_chat_r1)
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
 
     result = polish_section(_build_full_report_data(), "reliability")
 
@@ -227,3 +229,88 @@ def test_polish_section_unsupported_section():
     """异常：不支持的章节类型抛出 ValueError。"""
     with pytest.raises(ValueError, match="不支持的章节类型"):
         polish_section({}, "unknown_section")
+
+
+# ============================
+# 论文段落（Task 3.1）：方法/结果/讨论
+# ============================
+
+def _build_full_report_data_with_hitrate():
+    """构造带预演命中率的完整报告数据。"""
+    data = _build_full_report_data()
+    data["hit_rate"] = {
+        "overall": 0.667,
+        "passed_count": 2,
+        "total_count": 3,
+        "paths": [
+            {"predictor": "学习动机", "outcome": "学业成绩",
+             "hit_rate": 0.9, "passed": True},
+            {"predictor": "焦虑", "outcome": "学业成绩",
+             "hit_rate": 0.45, "passed": False},
+        ],
+    }
+    return data
+
+
+def test_paper_excerpt_result_aligns_actual_numbers():
+    """正常：结果段摘录数字全部取自 report_data（α / P 值 / 命中率）。"""
+    excerpt = _build_paper_excerpt(_build_full_report_data_with_hitrate(), "result")
+    assert excerpt["总量表Cronbach_alpha"] == 0.856
+    assert excerpt["达标维度计数"] == {"passed": 4, "total": 5}
+    assert excerpt["差异检验"][0]["p值"] == 0.00012
+    assert excerpt["差异检验"][0]["是否显著"] is True
+    hit = excerpt["预演命中率"]
+    assert hit["整体命中率"] == 0.667
+    assert hit["达标路径数"] == "2/3"
+    assert hit["路径"][0]["命中率"] == 0.9
+
+
+def test_paper_excerpt_method_omits_hit_paths():
+    """正常：方法段只描述维度/检验/规模，不含命中率明细。"""
+    excerpt = _build_paper_excerpt(_build_full_report_data_with_hitrate(), "method")
+    assert excerpt["量表维度"] == ["学习动机"]
+    assert "Pearson 相关" in excerpt["使用的统计检验"]
+    assert excerpt["是否有预演"] is True
+    assert "预演命中率" not in excerpt
+
+
+def test_paper_result_with_llm(monkeypatch):
+    """正常：结果段 LLM 生成，数字取自本报告并带红线自检。"""
+    def mock_chat_pro(prompt):
+        return "总量表 Cronbach's α = 0.856，p = .001。以上为统计描述参考。"
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
+
+    result = polish_paper_section(_build_full_report_data(), "result")
+    assert result["section"] == "result"
+    assert "0.856" in result["text"]
+    assert result["disclaimer"] == DISCLAIMER
+    assert result["redline"]["passed"] is True
+
+
+def test_paper_redline_flags_conclusive_words(monkeypatch):
+    """红线：LLM 输出含结论性措辞时自检告警（不代写研究结论的兜底）。"""
+    def mock_chat_pro(prompt):
+        return "结果表明干预显著提升了学业成绩。以上为统计描述参考。"
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
+
+    result = polish_paper_section(_build_full_report_data(), "result")
+    assert result["redline"]["passed"] is False
+    assert any("显著提升" in w or "显著影响" in w for w in result["redline"]["warnings"])
+
+
+def test_paper_fallback_on_llm_exception(monkeypatch):
+    """降级：LLM 抛异常时用静态模板，仍只报实际数字。"""
+    def mock_chat_pro(prompt):
+        raise RuntimeError("llm down")
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
+
+    result = polish_paper_section(_build_full_report_data(), "result")
+    assert result["section"] == "result"
+    assert DISCLAIMER in result["text"]
+    assert "0.856" in result["text"]  # 降级模板引用了实际 α
+
+
+def test_paper_section_unsupported():
+    """异常：不支持的论文段落章节类型抛 ValueError。"""
+    with pytest.raises(ValueError, match="不支持的论文段落章节类型"):
+        polish_paper_section({}, "abstract")

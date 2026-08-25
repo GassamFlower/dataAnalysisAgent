@@ -34,6 +34,7 @@ const METRIC_TUTORIAL_SLUG: Record<string, string> = {
   frequency: "descriptive-statistics",
   diagnosis: "writing-results",
   sample_size: "sample-size",
+  hit_rate: "sample-size-power",
 };
 
 /**

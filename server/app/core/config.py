@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # 初始管理员（逗号分隔的邮箱）——应用启动时会自动将这些邮箱对应的账号晋升为 is_admin（bootstrap）
     ADMIN_EMAILS: str = ""
 
+    # 客服微信号（售后占位，Task 2.3）
+    # 留空 = 前端显示"敬请期待"占位态；填入真实微信号后只改这一处配置，前端入口即切换为可复制真实号的形态
+    CUSTOMER_SERVICE_WECHAT_ID: str = ""
+
     # 微信公众号网页授权
     WECHAT_APP_ID: str = ""
     WECHAT_APP_SECRET: str = ""

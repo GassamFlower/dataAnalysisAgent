@@ -19,8 +19,8 @@ class LlmConfig(Base):
 
     预设配置键：
     - llm.preferred_provider: 优先使用的 provider（deepseek/kimi/qwen）
-    - llm.flash_model: R1-R3 使用的模型名称
-    - llm.pro_model: R4 使用的模型名称
+    - llm.flash_model: Flash 级别（理解/推断/解析）使用的模型名称
+    - llm.pro_model: Pro 级别（复杂诊断推理）使用的模型名称
     """
 
     __tablename__ = "llm_configs"

@@ -8,6 +8,31 @@ import { BACKEND_URL } from "@/lib/api/backend-url";
  * 后端按 project_id 自动取最新 hypothesis 与 matrix，生成成功后返回 matrix。
  */
 
+/** 将后端 snake_case 命中率归一化为前端 camelCase（HitRateSummary） */
+function normalizeHitRate(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const paths = Array.isArray(r.paths)
+    ? (r.paths as Record<string, unknown>[]).map((p) => ({
+        predictor: p.predictor,
+        outcome: p.outcome,
+        direction: p.direction,
+        strength: p.strength,
+        effectSizeR: p.effect_size_r,
+        sampleSize: p.sample_size,
+        hitRate: p.hit_rate,
+        target: p.target,
+        passed: p.passed,
+      }))
+    : [];
+  return {
+    overall: r.overall,
+    passedCount: r.passed_count,
+    totalCount: r.total_count,
+    paths,
+  };
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -40,6 +65,15 @@ export async function POST(
     );
   }
 
+  // 透传后端返回的预演命中率（无则保持 null）并归一化为前端 camelCase
+  let hitRate: Record<string, unknown> | null = null;
+  try {
+    const genJson = await genRes.json();
+    hitRate = normalizeHitRate(genJson?.data?.hit_rate);
+  } catch {
+    hitRate = null;
+  }
+
   // 刷新矩阵
   const matrixRes = await fetch(
     `${BACKEND_URL}/api/v1/simulation/${params.id}`,
@@ -62,5 +96,12 @@ export async function POST(
     };
   }
 
-  return NextResponse.json({ code: 0, message: "success", data: { matrix: matrixData } });
+  return NextResponse.json({
+    code: 0,
+    message: "success",
+    data: {
+      matrix: matrixData,
+      ...(hitRate ? { hitRate } : {}),
+    },
+  });
 }

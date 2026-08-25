@@ -37,6 +37,20 @@ export interface MetricTooltipResponse {
   example: string;
 }
 
+/** 术语卡片（语义搜索命中术语时返回） */
+export interface TermCardResponse {
+  title: string;
+  content: string;
+  example: string;
+  learn_more_slug: string | null;
+}
+
+/** 语义搜索结果 */
+export interface TutorialSearchResponse {
+  keyword: string;
+  term: TermCardResponse | null;
+}
+
 /** 引导步骤 */
 export interface OnboardingStep {
   step: number;
@@ -168,6 +182,12 @@ export const tutorialApi = {
   /** 获取所有指标类型 */
   getMetricTypes: (): Promise<string[]> =>
     apiClient.get<string[]>("/api/v1/tutorial/metric-types"),
+
+  /** 语义搜索术语：命中统计术语时返回术语卡片 */
+  searchTutorial: (keyword: string): Promise<TutorialSearchResponse> =>
+    apiClient.get<TutorialSearchResponse>("/api/v1/tutorial/search", {
+      params: { keyword },
+    }),
 
   /** 启动新手引导 */
   startOnboarding: (

@@ -40,6 +40,10 @@ export async function GET(
     direction: p.direction as "positive" | "negative",
     strength: p.strength as "weak" | "medium" | "strong",
   }));
+
+  // 把后端返回的命中率归一化为前端 camelCase（已生成过预演才返回）
+  const hitRate = normalizeHitRate(data.hit_rate);
+
   return NextResponse.json({
     code: 0,
     message: "success",
@@ -47,6 +51,32 @@ export async function GET(
       matrix,
       hypothesisText: data.hypothesis_text ?? null,
       paths,
+      ...(hitRate ? { hitRate } : {}),
     },
   });
+}
+
+/** 将后端 snake_case 命中率归一化为前端 camelCase（HitRateSummary） */
+function normalizeHitRate(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const paths = Array.isArray(r.paths)
+    ? (r.paths as Record<string, unknown>[]).map((p) => ({
+        predictor: p.predictor,
+        outcome: p.outcome,
+        direction: p.direction,
+        strength: p.strength,
+        effectSizeR: p.effect_size_r,
+        sampleSize: p.sample_size,
+        hitRate: p.hit_rate,
+        target: p.target,
+        passed: p.passed,
+      }))
+    : [];
+  return {
+    overall: r.overall,
+    passedCount: r.passed_count,
+    totalCount: r.total_count,
+    paths,
+  };
 }

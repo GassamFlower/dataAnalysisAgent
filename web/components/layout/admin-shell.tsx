@@ -12,6 +12,7 @@ import {
   BarChart3,
   ScrollText,
   Cpu,
+  MessageSquare,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const adminNavItems = [
   { href: "/admin/configs", label: "配置与配额", icon: SlidersHorizontal },
   { href: "/admin/llm-configs", label: "LLM 配置", icon: Cpu },
   { href: "/admin/tutorials", label: "内容管理", icon: ScrollText },
+  { href: "/admin/messages", label: "留言管理", icon: MessageSquare },
   { href: "/admin/audit-logs", label: "审计日志", icon: ShieldCheck },
 ];
 

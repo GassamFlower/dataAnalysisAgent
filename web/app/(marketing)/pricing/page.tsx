@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { PriceTag } from "@/components/common/price-tag";
 import { PageHeader } from "@/components/common/page-header";
 import { WechatPayQrModal } from "@/components/payment/wechat-pay-modal";
+import { ContactForm } from "@/components/contact/contact-form";
+import { WechatEntry } from "@/components/contact/wechat-entry";
 import { PRICING, SIMULATED_WATERMARK } from "@/lib/constants";
 import { usePurchasePlan, useSubscription } from "@/lib/hooks/use-payment";
 import { useWechatPayQr } from "@/lib/hooks/use-wechat-pay";
@@ -123,11 +125,28 @@ export default function PricingPage() {
             <div className="rounded-lg border border-border bg-card p-5">
               <h4 className="font-medium text-ink-900">不达标怎么办？</h4>
               <p className="mt-2 text-body text-ink-500">
-                R4 诊断会给出逐项修改建议，调整题目或假设后可重新预演（订阅不限次）。
+                智能诊断会给出逐项修改建议，调整题目或假设后可重新预演（订阅不限次）。
               </p>
             </div>
           </div>
         </section>
+        <section className="mt-16 rounded-lg border border-border bg-card p-8 text-center">
+          <h2 className="text-h2 font-semibold text-ink-900">仍有疑问？</h2>
+          <p className="mx-auto mt-2 max-w-xl text-body text-ink-500">
+            不确定该选免费体检还是付费预演？让顾问帮你判断方案是否适合你的开题课题。
+          </p>
+          <div className="mt-5 inline-flex items-center gap-3">
+            <ContactForm
+              defaultTag="presale"
+              entryPoint="pricing"
+              trigger={<Button size="lg">留言咨询</Button>}
+            />
+            <WechatEntry
+              trigger={<Button variant="outline" size="lg">一键加客服微信</Button>}
+            />
+          </div>
+        </section>
+
         <WechatPayQrModal
           open={wxPay.qrState.open}
           codeUrl={wxPay.qrState.codeUrl}

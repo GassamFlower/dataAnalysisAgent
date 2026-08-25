@@ -10,6 +10,9 @@ class ProjectCreate(BaseModel):
     """创建项目。"""
 
     name: str = Field(..., min_length=1, max_length=200, description="项目名称")
+    scale_id: Optional[UUID] = Field(
+        None, description="学科量表 ID（选择后一键建问卷项目，题目来自该量表）"
+    )
 
 
 class ProjectUpdate(BaseModel):

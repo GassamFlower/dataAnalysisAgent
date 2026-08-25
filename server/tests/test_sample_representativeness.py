@@ -156,7 +156,7 @@ def test_llm_enrich_failure_fallback(monkeypatch):
         raise RuntimeError("provider down")
 
     monkeypatch.setattr(
-        "app.services.sample_representativeness.chat_v3", _raise
+        "app.services.sample_representativeness.chat_flash", _raise
     )
     df = pd.DataFrame({"q1": ["男"] * 120 + ["女"] * 80})
     report = _demo_report(df, 200, _build_questions(uuid.uuid4()))
@@ -171,7 +171,7 @@ def test_llm_enrich_success(monkeypatch):
         return '{"conclusion": "样本量偏小且以女性为主", "suggestions": ["补充男性样本"]}'
 
     monkeypatch.setattr(
-        "app.services.sample_representativeness.chat_v3", _fake
+        "app.services.sample_representativeness.chat_flash", _fake
     )
     df = pd.DataFrame({"q1": ["男"] * 120 + ["女"] * 80})
     report = _demo_report(df, 200, _build_questions(uuid.uuid4()))
@@ -272,7 +272,7 @@ async def test_sample_rep_success(
         raise RuntimeError("no provider")
 
     monkeypatch.setattr(
-        "app.services.sample_representativeness.chat_v3", _no_llm
+        "app.services.sample_representativeness.chat_flash", _no_llm
     )
 
     project_id = await _seed_real_project(client, auth_headers)
@@ -307,7 +307,7 @@ async def test_sample_rep_with_llm(
         return '{"conclusion": "样本以男性为主，代表性一般", "suggestions": ["建议补充女性样本"]}'
 
     monkeypatch.setattr(
-        "app.services.sample_representativeness.chat_v3", _fake
+        "app.services.sample_representativeness.chat_flash", _fake
     )
 
     project_id = await _seed_real_project(client, auth_headers)
@@ -333,7 +333,7 @@ async def test_sample_rep_no_demographic(
         raise RuntimeError("no provider")
 
     monkeypatch.setattr(
-        "app.services.sample_representativeness.chat_v3", _no_llm
+        "app.services.sample_representativeness.chat_flash", _no_llm
     )
 
     project_id = await _seed_real_project(

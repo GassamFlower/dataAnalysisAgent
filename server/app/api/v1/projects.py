@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.responses import ResponseModel
 from app.core.exceptions import NotFoundException, ValidationException, ForbiddenException
-from app.core.error_messages import ERR_PROJECT_NOT_FOUND
+from app.core.error_messages import ERR_PROJECT_NOT_FOUND, ERR_SCALE_NOT_FOUND
 from app.models.project import Project
 from app.schemas.project import (
     ProjectCreate,
@@ -21,6 +21,8 @@ from app.schemas.project import (
 )
 from app.schemas.common import PaginatedData
 from app.services.project_overview_service import get_project_list_stats, get_project_overview
+from app.services.project_service import build_questions_from_scale
+from app.services.scale_service import ScaleService
 from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -120,9 +122,25 @@ async def create_project(
         name=request.name,
         status="draft"
     )
+
+    # 量表联动：选择学科量表后一键建问卷项目，题目来自量表，可直接进入预演
+    scale = None
+    if request.scale_id:
+        scale = await ScaleService.get_scale_detail_by_id(db, request.scale_id)
+        if not scale:
+            raise NotFoundException(ERR_SCALE_NOT_FOUND)
+        project.mode = "simulation"
+        project.status = "inspected"  # 题目已就绪，跳过体检，可直接进入假设/预演
+
     db.add(project)
     await db.flush()
     await db.refresh(project)
+
+    # 由量表条目生成题目
+    if scale:
+        for q in build_questions_from_scale(project.id, scale):
+            db.add(q)
+        await db.flush()
 
     # 记录项目创建审计日志
     await AuditService.log_action(
@@ -130,19 +148,30 @@ async def create_project(
         user_id=current_user["id"],
         action_type=ACTION_TYPES["PROJECT_CREATE"],
         project_id=project.id,
-        action_detail={"name": request.name},
+        action_detail={"name": request.name, "from_scale": bool(scale)},
         ip_address=http_request.client.host if http_request.client else None,
         user_agent=http_request.headers.get("user-agent"),
     )
 
-    # 注入空概览（新建项目无题目/数据集/报告）
-    project.overview = {
-        "question_count": 0,
-        "dimension_count": 0,
-        "reverse_count": 0,
-        "dataset": {"source": None, "sample_size": None, "imported_at": None},
-        "report": {"has_report": False, "overall_alpha": None, "passed_count": None, "total_count": None, "generated_at": None},
-    }
+    if scale:
+        # 量表项目：注入真实题目/维度/反向题统计
+        all_items = [item for dim in scale.dimensions for item in dim.items]
+        project.overview = {
+            "question_count": len(all_items),
+            "dimension_count": len(scale.dimensions),
+            "reverse_count": sum(1 for it in all_items if it.is_reverse),
+            "dataset": {"source": "scale", "sample_size": None, "imported_at": None},
+            "report": {"has_report": False, "overall_alpha": None, "passed_count": None, "total_count": None, "generated_at": None},
+        }
+    else:
+        # 注入空概览（新建项目无题目/数据集/报告）
+        project.overview = {
+            "question_count": 0,
+            "dimension_count": 0,
+            "reverse_count": 0,
+            "dataset": {"source": None, "sample_size": None, "imported_at": None},
+            "report": {"has_report": False, "overall_alpha": None, "passed_count": None, "total_count": None, "generated_at": None},
+        }
     return ResponseModel(data=project)
 
 

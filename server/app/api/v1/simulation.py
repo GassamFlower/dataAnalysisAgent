@@ -1,4 +1,5 @@
 """数据生成路由（A 体验 + C 底层）。"""
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
@@ -20,21 +21,27 @@ from app.schemas.simulation import (
     HypothesisCreateRequest,
     HypothesisResponse,
     SimulationGenerateRequest,
-    SimulationConfigResponse,
     MatrixCellResponse,
     SimulationMatrixResponse,
     HypothesisPathItem,
     MatrixSaveRequest,
     MatrixSaveResponse,
     DatasetExportRequest,
+    SimulationGenerateResponse,
+    HitRateSummary,
+    DefenseSummaryResponse,
+    DefenseQAItem,
 )
 from app.services.hypothesis_parser import parse_hypothesis
 from app.services.project_service import get_owned_project, update_project_status
 from app.services.quota_service import check_and_consume_quota
+from app.services.sample_size_planner import analyze_hypothesis_power
 from app.services.audit_service import AuditService, ACTION_TYPES
 from app.core.statistics_constants import STRENGTH_TO_R
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -155,11 +162,38 @@ async def get_simulation_matrix(
         for p in paths
     ]
 
+    # 6. 复算预演命中率（仅当已生成过数据，读取最新配置的样本量）
+    from app.models.simulation_config import SimulationConfig
+    hit_rate_summary: dict | None = None
+    result = await db.execute(
+        select(SimulationConfig)
+        .where(SimulationConfig.project_id == project_id)
+        .order_by(SimulationConfig.created_at.desc())
+        .limit(1)
+    )
+    config = result.scalar_one_or_none()
+    if config and paths:
+        from app.schemas.simulation import HypothesisPath as SchemaPath
+        schema_paths = [
+            SchemaPath(
+                predictor=p.predictor,
+                outcome=p.outcome,
+                direction=p.direction,
+                strength=p.strength,
+            )
+            for p in paths
+        ]
+        custom_cells = saved_matrix.cells if saved_matrix else None
+        hit_rate_summary = analyze_hypothesis_power(
+            schema_paths, config.sample_size, custom_cells=custom_cells
+        )
+
     return ResponseModel(data=SimulationMatrixResponse(
         dimensions=dimensions,
         cells=cells,
         hypothesis_text=hypothesis.raw_text if hypothesis else None,
         paths=path_items,
+        hit_rate=HitRateSummary(**hit_rate_summary) if hit_rate_summary else None,
     ))
 
 
@@ -310,9 +344,9 @@ async def create_hypothesis(
 
 @router.post(
     "/{project_id}/generate",
-    response_model=ResponseModel[SimulationConfigResponse],
+    response_model=ResponseModel[SimulationGenerateResponse],
     summary="数据生成",
-    description="按份数 + 期望趋势生成模拟数据。付费能力。约束反向生成，α 达标率目标 ≥70%。"
+    description="按份数 + 期望趋势生成模拟数据，并返回预演命中率（每条假设路径的检验功效）。付费能力。约束反向生成，α 达标率目标 ≥70%。"
 )
 async def generate(
     project_id: UUID,
@@ -441,7 +475,140 @@ async def generate(
 
     await db.flush()
 
-    return ResponseModel(data=config)
+    # 预演命中率：按「假设→效应量→样本量」计算每条路径的检验功效
+    hit_rate_summary = analyze_hypothesis_power(
+        schema_paths,
+        request.sample_size,
+        custom_cells=custom_cells,
+    )
+
+    return ResponseModel(data=SimulationGenerateResponse(
+        id=config.id,
+        project_id=config.project_id,
+        sample_size=config.sample_size,
+        hypothesis_id=config.hypothesis_id,
+        matrix_id=config.matrix_id,
+        hit_rate=HitRateSummary(**hit_rate_summary),
+    ))
+
+
+@router.post(
+    "/{project_id}/defense-summary",
+    response_model=ResponseModel[DefenseSummaryResponse],
+    summary="模拟答辩摘要",
+    description="基于预演命中率，逐条假设路径生成答辩问答（评审提问 + 统计范式回答，不代写结论）。"
+    "输出经过合规自检（禁止语义结论断言）。确定性生成，不消耗 LLM 配额。"
+)
+async def defense_summary(
+    project_id: UUID,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """答辩模拟：把预演命中率变成可向评审说明的答辩问答。"""
+    # 1. 验证项目存在且属于当前用户（含软删除过滤）
+    project = await get_owned_project(db, project_id, current_user["id"])
+
+    # 2. 需要先生成过预演（读取最新配置的样本量）
+    from app.models.simulation_config import SimulationConfig
+    result = await db.execute(
+        select(SimulationConfig)
+        .where(SimulationConfig.project_id == project_id)
+        .order_by(SimulationConfig.created_at.desc())
+        .limit(1)
+    )
+    config = result.scalar_one_or_none()
+    if not config:
+        raise ValidationException("请先生成预演数据，再生成答辩模拟摘要")
+
+    # 3. 读取最新假设 + 路径
+    result = await db.execute(
+        select(Hypothesis)
+        .where(Hypothesis.project_id == project_id)
+        .order_by(Hypothesis.created_at.desc())
+        .limit(1)
+    )
+    hypothesis = result.scalar_one_or_none()
+    if not hypothesis:
+        raise ValidationException("尚未创建研究假设，请先解析假设")
+
+    result = await db.execute(
+        select(HypothesisPath).where(HypothesisPath.hypothesis_id == hypothesis.id)
+    )
+    paths = result.scalars().all()
+    if not paths:
+        raise ValidationException("当前假设下没有可用的路径")
+
+    # 4. 最新相关矩阵（用户编辑后的权威版本，作用户价值覆盖）
+    result = await db.execute(
+        select(CorrelationMatrix)
+        .where(CorrelationMatrix.project_id == project_id)
+        .order_by(CorrelationMatrix.updated_at.desc())
+        .limit(1)
+    )
+    matrix = result.scalar_one_or_none()
+    custom_cells = matrix.cells if matrix else None
+
+    # 5. 复算命中率（与 generate 同源，保证一致）
+    from app.schemas.simulation import HypothesisPath as SchemaPath
+    schema_paths = [
+        SchemaPath(
+            predictor=p.predictor,
+            outcome=p.outcome,
+            direction=p.direction,
+            strength=p.strength,
+        )
+        for p in paths
+    ]
+    hit_rate = analyze_hypothesis_power(
+        schema_paths, config.sample_size, custom_cells=custom_cells
+    )
+
+    # 6. 生成答辩模拟（确定性，逐路径问答）
+    from app.services.report_polisher import (
+        assemble_defense_summary,
+        self_check_defense,
+    )
+    summary = assemble_defense_summary(hit_rate["paths"], hit_rate["overall"])
+
+    # 7. 合规自检：仅统计范式描述，不得含语义结论断言
+    check = self_check_defense(summary["text"])
+    if not check["passed"]:
+        logger.warning(
+            "答辩摘要合规自检未通过 | project_id=%s | words=%s",
+            project_id,
+            check["words"],
+        )
+
+    # 8. 审计
+    await AuditService.log_action(
+        db=db,
+        user_id=current_user["id"],
+        action_type=ACTION_TYPES.get("SIMULATION_DEFENSE", "SIMULATION_GENERATE"),
+        project_id=project_id,
+        action_detail={
+            "sample_size": config.sample_size,
+            "hypothesis_id": str(hypothesis.id),
+            "passed_count": summary["passed_count"],
+            "total_count": summary["total_count"],
+        },
+        ip_address=http_request.client.host if http_request.client else None,
+        user_agent=http_request.headers.get("user-agent"),
+    )
+
+    return ResponseModel(data=DefenseSummaryResponse(
+        project_id=project_id,
+        sample_size=config.sample_size,
+        overall=summary["overall"],
+        passed_count=summary["passed_count"],
+        total_count=summary["total_count"],
+        text=summary["text"],
+        disclaimer=summary["disclaimer"],
+        items=[
+            DefenseQAItem(**item)
+            for item in summary["items"]
+        ],
+    ))
 
 
 @router.post(

@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 *.pyo
 .venv/
+.venv*/
 venv/
 env/
 
@@ -54,6 +55,10 @@ server/tmp/
 # 临时脚本（验证/测试用，不入库）
 /test_*.py
 /verify_*.py
+_diag*.py
+_probe*.py
+_tmp_*.py
+_verify_*.py
 
 # 一次性数据迁移遗留产物（含 DELETE，勿跟踪/勿生产自动执行；结构变更走 Alembic）
 scripts/migrate_data.sql

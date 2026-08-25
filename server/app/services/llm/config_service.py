@@ -50,12 +50,12 @@ def get_preferred_provider() -> str:
 
 
 def get_flash_model() -> str:
-    """获取 R1-R3 使用的模型名称。"""
+    """获取 Flash 级别（理解/推断/解析）使用的模型名称。"""
     return get_config("llm.flash_model", settings.DEEPSEEK_V4_FLASH_MODEL)
 
 
 def get_pro_model() -> str:
-    """获取 R4 使用的模型名称。"""
+    """获取 Pro 级别（复杂诊断推理）使用的模型名称。"""
     return get_config("llm.pro_model", settings.DEEPSEEK_V4_PRO_MODEL)
 
 

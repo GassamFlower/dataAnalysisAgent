@@ -47,6 +47,8 @@ from app.models.audit_logs import AuditLog
 from app.models.user_tutorial_progress import UserTutorialProgress
 from app.models.tutorial_article import TutorialArticle
 from app.models.analytics_event import AnalyticsEvent
+from app.models.message import Message
+from app.models.research_scale import ResearchScale, ScaleDimension, ScaleItem
 
 __all__ = [
     "Base",
@@ -70,4 +72,8 @@ __all__ = [
     "UserTutorialProgress",
     "TutorialArticle",
     "AnalyticsEvent",
+    "Message",
+    "ResearchScale",
+    "ScaleDimension",
+    "ScaleItem",
 ]

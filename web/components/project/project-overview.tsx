@@ -193,7 +193,7 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
           ) : (
             <div className="space-y-4">
               <p className="text-body text-ink-500">
-                完成数据准备后，即可生成统计报告与 R4 诊断。
+                完成数据准备后，即可生成统计报告与智能诊断。
               </p>
               <Button size="sm" variant="outline" asChild className="w-full">
                 <Link href={`/projects/${project.id}/simulate`}>

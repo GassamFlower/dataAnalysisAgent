@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Play, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Play, Download, Loader2, MessageSquareText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,8 @@ import { StepNav } from "@/components/layout/step-nav";
 import { HypothesisInput } from "@/components/simulation/hypothesis-input";
 import { HypothesisPathList } from "@/components/simulation/hypothesis-path-list";
 import { CorrelationMatrix } from "@/components/simulation/correlation-matrix";
+import { HitRateCard } from "@/components/simulation/hit-rate-card";
+import { DefenseSummaryPanel } from "@/components/simulation/defense-summary-panel";
 import { SampleSizeInput } from "@/components/simulation/sample-size-input";
 import { SampleSizePlanner } from "@/components/report/sample-size-planner";
 import { LoadingState } from "@/components/common/loading-state";
@@ -32,6 +34,7 @@ import {
   useGenerateSimulation,
   useSaveMatrix,
   useExportDataset,
+  useDefenseSummary,
 } from "@/lib/hooks/use-simulation";
 import { useProject } from "@/lib/hooks/use-project";
 import { useDataset } from "@/lib/hooks/use-dataset";
@@ -45,7 +48,12 @@ import {
   nextStrength,
   rToStrength,
 } from "@/lib/constants";
-import type { CorrelationMatrix as Matrix, HypothesisPath } from "@/types";
+import type {
+  CorrelationMatrix as Matrix,
+  HypothesisPath,
+  HitRateSummary,
+  DefenseSummary,
+} from "@/types";
 
 export default function SimulatePage({
   params,
@@ -63,6 +71,10 @@ export default function SimulatePage({
   const [showDataSourceDialog, setShowDataSourceDialog] = useState(false);
   const [activeMode, setActiveMode] = useState<"real" | "simulation">("simulation");
   const [importedDataset, setImportedDataset] = useState<DatasetInfo | null>(null);
+  /** 最近一次生成返回的预演命中率（生成成功后设置） */
+  const [hitRate, setHitRate] = useState<HitRateSummary | null>(null);
+  /** 答辩摘要（生成成功后设置） */
+  const [defenseSummary, setDefenseSummary] = useState<DefenseSummary | null>(null);
 
   // 查询项目、已生成的矩阵 + 已保存假设
   const { data: project } = useProject(params.id);
@@ -72,6 +84,7 @@ export default function SimulatePage({
   const generateMutation = useGenerateSimulation();
   const saveMatrixMutation = useSaveMatrix();
   const exportDatasetMutation = useExportDataset();
+  const defenseMutation = useDefenseSummary();
   const { data: disclaimerCheck } = useSimulationDisclaimerCheck();
   const confirmDisclaimerMutation = useConfirmSimulationDisclaimer();
 
@@ -202,6 +215,10 @@ export default function SimulatePage({
         sampleSize,
       });
 
+      // 保存本次生成返回的预演命中率用于展示
+      const lastGen = generateMutation.data;
+      setHitRate(lastGen?.hitRate ?? null);
+
       toast.success("数据生成成功");
     } catch (err) {
       console.error("生成失败:", err);
@@ -272,6 +289,17 @@ export default function SimulatePage({
         },
       }
     );
+  };
+
+  /** 生成模拟答辩摘要（需已有命中率结果） */
+  const handleGenerateDefense = () => {
+    defenseMutation.mutate(params.id, {
+      onSuccess: (data) => setDefenseSummary(data),
+      onError: (err) => {
+        console.error("答辩摘要生成失败:", err);
+        toast.error(err instanceof Error ? err.message : "答辩摘要生成失败，请重试");
+      },
+    });
   };
 
   // Loading 状态
@@ -456,6 +484,36 @@ export default function SimulatePage({
               </p>
             )}
           </Card>
+
+          {/* 预演命中率（生成后展示，标出未达标假设路径） */}
+          {hitRate && (
+            <div className="flex flex-col gap-4">
+              <HitRateCard hitRate={hitRate} />
+
+              {/* 答辩模拟：基于命中率逐路径生成答辩问答 */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleGenerateDefense}
+                  disabled={defenseMutation.isPending}
+                >
+                  {defenseMutation.isPending ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <MessageSquareText className="mr-1.5 h-4 w-4" />
+                  )}
+                  {defenseMutation.isPending ? "生成中..." : "生成答辩摘要"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {defenseSummary && (
+            <DefenseSummaryPanel
+              summary={defenseSummary}
+              isLoading={defenseMutation.isPending}
+            />
+          )}
 
           {/* 步骤 4：样本量规划（F-RPT-008，回收目标建议） */}
           <SampleSizePlanner

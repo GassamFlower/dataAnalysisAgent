@@ -7,6 +7,8 @@ import type {
   SimulationData,
   CorrelationMatrix,
   HypothesisPath,
+  HitRateSummary,
+  DefenseSummary,
 } from "@/types";
 
 const simulationKeys = {
@@ -47,7 +49,10 @@ export function useGenerateSimulation() {
 
   return useMutation({
     mutationFn: (params: { projectId: string; sampleSize: number }) =>
-      apiClient.post<{ matrix: SimulationData["matrix"] }>(
+      apiClient.post<{
+        matrix: SimulationData["matrix"];
+        hitRate?: HitRateSummary;
+      }>(
         `/api/simulation/${params.projectId}/generate`,
         { sample_size: params.sampleSize }
       ),
@@ -77,6 +82,14 @@ export function useSaveMatrix() {
         queryKey: simulationKeys.simulation(variables.projectId),
       });
     },
+  });
+}
+
+/** 生成模拟答辩摘要（逐路径答辩问答） */
+export function useDefenseSummary() {
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      apiClient.post<DefenseSummary>(`/api/simulation/${projectId}/defense-summary`),
   });
 }
 

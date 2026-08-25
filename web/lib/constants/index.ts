@@ -70,14 +70,14 @@ export const PRICING = {
     price: 0,
     unit: "",
     features: ["题目上传解析", "维度归属推断", "题型 / 反向题识别"],
-    locked: ["R4 诊断结论", "数据生成", "报告导出"],
+    locked: ["智能诊断结论", "数据生成", "报告导出"],
   },
   single: {
     name: "单次报告",
     price: 9.9,
     unit: "元 / 次",
     badge: "早鸟套餐含 1 次免费重跑",
-    features: ["完整数据预演", "标准统计套餐", "R4 诊断结论", "Word / Excel 导出"],
+    features: ["完整数据预演", "标准统计套餐", "智能诊断结论", "Word / Excel 导出"],
     locked: [],
   },
   subscription: {

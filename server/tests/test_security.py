@@ -210,6 +210,9 @@ def _save_settings():
         "ALLOW_DEV_TOKEN": settings.ALLOW_DEV_TOKEN,
         "JWT_SECRET_KEY": settings.JWT_SECRET_KEY,
         "RESET_JWT_SECRET_KEY": settings.RESET_JWT_SECRET_KEY,
+        "PAYMENT_CALLBACK_TOKEN": settings.PAYMENT_CALLBACK_TOKEN,
+        "PAYMENT_ALLOWED_IPS": settings.PAYMENT_ALLOWED_IPS,
+        "DATABASE_URL": settings.DATABASE_URL,
     }
 
 
@@ -220,6 +223,9 @@ def _restore_settings(saved: dict):
     settings.ALLOW_DEV_TOKEN = saved["ALLOW_DEV_TOKEN"]
     settings.JWT_SECRET_KEY = saved["JWT_SECRET_KEY"]
     settings.RESET_JWT_SECRET_KEY = saved["RESET_JWT_SECRET_KEY"]
+    settings.PAYMENT_CALLBACK_TOKEN = saved["PAYMENT_CALLBACK_TOKEN"]
+    settings.PAYMENT_ALLOWED_IPS = saved["PAYMENT_ALLOWED_IPS"]
+    settings.DATABASE_URL = saved["DATABASE_URL"]
 
 
 def _setup_production_valid():
@@ -229,6 +235,10 @@ def _setup_production_valid():
     settings.ALLOW_DEV_TOKEN = False
     settings.JWT_SECRET_KEY = "strong_secret_key_at_least_32_chars_long"
     settings.RESET_JWT_SECRET_KEY = "another_strong_secret_key_for_reset_only"
+    # 支付回调与数据库：生产必须同时具备（原 helper 遗漏导致 accept 测试误判失败）
+    settings.PAYMENT_CALLBACK_TOKEN = "test_payment_callback_token_strong_rand"
+    settings.PAYMENT_ALLOWED_IPS = "127.0.0.1"
+    settings.DATABASE_URL = "postgresql://test:test@localhost:5432/testdb"
 
 
 def test_production_rejects_debug():

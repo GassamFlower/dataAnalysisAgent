@@ -1,4 +1,5 @@
-"""报告路由：统计分析 + R4 诊断 + 差异检验 + 导出。"""
+"""报告路由：统计分析 + 智能诊断 + 差异检验 + 导出。"""
+import logging
 import time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -26,6 +27,8 @@ from app.services.quota_service import check_and_consume_quota
 from app.services.audit_service import AuditService, ACTION_TYPES
 
 router = APIRouter(prefix="/report", tags=["report"])
+
+logger = logging.getLogger(__name__)
 
 
 async def _load_dataset_df(
@@ -120,10 +123,62 @@ async def _get_sample_size(db: AsyncSession, project_id: UUID) -> Optional[int]:
     return result.scalar_one_or_none()
 
 
+async def _inject_hit_rate(
+    db: AsyncSession, project_id: UUID, report_data: Dict[str, Any]
+) -> None:
+    """尽力注入预演命中率摘要到 report_data["hit_rate"]（用于论文段落对齐功效预演）。
+
+    无假设路径时静默跳过；相关矩阵取用户编辑后的权威版本；失败不阻断润色。
+    """
+    try:
+        from app.models.hypothesis import Hypothesis
+        from app.models.hypothesis_path import HypothesisPath
+        from app.models.simulation_config import CorrelationMatrix
+        from app.schemas.simulation import HypothesisPath as SchemaPath
+        from app.services.sample_size_planner import analyze_hypothesis_power
+
+        result = await db.execute(
+            select(HypothesisPath)
+            .join(Hypothesis, HypothesisPath.hypothesis_id == Hypothesis.id)
+            .where(Hypothesis.project_id == project_id)
+        )
+        paths = result.scalars().all()
+        if not paths:
+            return
+
+        matrix = (
+            await db.execute(
+                select(CorrelationMatrix)
+                .where(CorrelationMatrix.project_id == project_id)
+                .order_by(CorrelationMatrix.updated_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+        sample_size = await _get_sample_size(db, project_id)
+        schema_paths = [
+            SchemaPath(
+                predictor=p.predictor,
+                outcome=p.outcome,
+                direction=p.direction,
+                strength=p.strength,
+            )
+            for p in paths
+        ]
+        report_data["hit_rate"] = analyze_hypothesis_power(
+            schema_paths,
+            sample_size or 0,
+            custom_cells=matrix.cells if matrix else None,
+        )
+    except Exception:
+        logger.warning("注入预演命中率失败，论文段落将不带命中率 | project=%s", project_id)
+        return
+
+
 async def _load_report_with_relations(
     db: AsyncSession, report_id: UUID
 ) -> Optional[Report]:
-    """加载报告及其关联数据（信效度结果、R4 诊断、诊断明细）。"""
+    """加载报告及其关联数据（信效度结果、智能诊断、诊断明细）。"""
     from sqlalchemy.orm import selectinload
     result = await db.execute(
         select(Report)
@@ -345,7 +400,7 @@ async def get_report(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """按项目 ID 查询最新已存报告（含信效度结果、R4 诊断、差异检验）。"""
+    """按项目 ID 查询最新已存报告（含信效度结果、智能诊断、差异检验）。"""
     # 1. 验证项目归属（含软删除过滤）
     await get_owned_project(db, project_id, current_user["id"])
 
@@ -381,7 +436,7 @@ async def get_report(
     "/analyze/{project_id}",
     response_model=ResponseModel[ReportResponse],
     summary="生成报告",
-    description="跑标准统计套餐 + R4 诊断结论。付费能力。"
+    description="跑标准统计套餐 + 智能诊断结论。付费能力。"
 )
 async def analyze(
     project_id: UUID,
@@ -389,7 +444,7 @@ async def analyze(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """跑标准统计套餐 + R4 诊断结论。"""
+    """跑标准统计套餐 + 智能诊断结论。"""
     # 0. 先验证项目存在且属于当前用户（含软删除过滤），再扣额度——避免为用户之外的项目白扣
     project = await get_owned_project(db, project_id, current_user["id"])
 
@@ -741,9 +796,18 @@ async def polish_report(
     )
 
     # 5. 调用润色服务
-    from app.services.report_polisher import polish_section
+    from app.services.report_polisher import (
+        polish_section,
+        polish_paper_section,
+        PAPER_SECTIONS,
+    )
     try:
-        polish_result = polish_section(report_data, request.section)
+        if request.section in PAPER_SECTIONS:
+            # 论文段落（方法/结果/讨论）：尽力注入预演命中率摘要，让「结果」能对齐功效预演
+            await _inject_hit_rate(db, report.project_id, report_data)
+            polish_result = polish_paper_section(report_data, request.section)
+        else:
+            polish_result = polish_section(report_data, request.section)
     except ValueError as e:
         raise ValidationException(str(e))
     except Exception as e:

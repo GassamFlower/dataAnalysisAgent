@@ -23,7 +23,7 @@ from app.core.statistics_constants import (
     GENDER_MIN_RATIO,
     CONCENTRATION_RATIO,
 )
-from app.services.llm.client import chat_v3
+from app.services.llm.client import chat_flash
 from app.services.llm.utils import (
     build_prompt_injection_guard,
     parse_llm_json_response,
@@ -379,7 +379,7 @@ def llm_enrich(report: SampleRepReport) -> str:
         return ""
 
     try:
-        response = chat_v3(_build_llm_prompt(report), system=_LLM_SYSTEM)
+        response = chat_flash(_build_llm_prompt(report), system=_LLM_SYSTEM)
         data = parse_llm_json_response(response)
         conclusion = str(data.get("conclusion", "")).strip()
         suggestions = data.get("suggestions") or []

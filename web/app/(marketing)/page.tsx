@@ -18,6 +18,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { ReportPreview } from "@/components/marketing/report-preview";
+import { DemoSimulation } from "@/components/marketing/demo-simulation";
+import { ContactForm } from "@/components/contact/contact-form";
+import { WechatEntry } from "@/components/contact/wechat-entry";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
 import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
 
@@ -118,12 +121,12 @@ const features = [
   {
     icon: FileBarChart,
     title: "统计报告",
-    desc: "信效度检验、差异分析、R4 智能诊断，一键导出 Word / Excel。",
+    desc: "信效度检验、差异分析、智能诊断，一键导出 Word / Excel。",
   },
   {
     icon: Lightbulb,
-    title: "R4 智能诊断",
-    desc: "DeepSeek-R1 推理诊断不达标项，每个问题配一句话告诉你怎么办。",
+    title: "智能诊断",
+    desc: "AI 推理诊断不达标项，每个问题配一句话告诉你怎么办。",
   },
   {
     icon: Download,
@@ -138,7 +141,7 @@ const trustItems = [
   "Cronbach's α 信度分析",
   "KMO + Bartlett 效度检验",
   "t检验 / ANOVA / 卡方 / 回归",
-  "DeepSeek-R1 智能诊断",
+  "智能诊断",
   "Word / Excel / PPT 一键导出",
   "论文信效度段落自动生成",
 ];
@@ -204,6 +207,9 @@ export default function HomePage() {
 
       {/* 报告预览：首次印象让外行看得懂成品 */}
       <ReportPreview />
+
+      {/* 可交互预演 demo：拖动效应量/样本量 → 命中率实时变化 */}
+      <DemoSimulation />
 
       {/* 痛点区 */}
       <section className="mx-auto max-w-5xl px-6 py-8">
@@ -322,6 +328,24 @@ export default function HomePage() {
           <Link href="/pricing" className="hover:text-ink-700">定价</Link>
           <span>·</span>
           <Link href="/about" className="hover:text-ink-700">关于</Link>
+          <span>·</span>
+          <WechatEntry
+            trigger={
+              <span className="cursor-pointer select-none hover:text-ink-700">
+                客服微信
+              </span>
+            }
+          />
+          <span>·</span>
+          <ContactForm
+            variant="sheet"
+            entryPoint="footer"
+            trigger={
+              <span className="cursor-pointer select-none hover:text-ink-700">
+                留言反馈
+              </span>
+            }
+          />
         </div>
         <p className="mt-4 text-center text-caption text-ink-400">
           数据分析智能体 · 本科毕设研究预演工具

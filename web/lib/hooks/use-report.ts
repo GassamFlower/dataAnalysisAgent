@@ -56,17 +56,24 @@ export function useExportReport() {
   });
 }
 
+/** 润色/论文段落章节 */
+export type PolishSection =
+  | "reliability"
+  | "correlation"
+  | "diff_test"
+  | "diagnosis"
+  | "method"
+  | "result"
+  | "discussion";
+
 /**
- * 报告文字润色（R6）。
+ * 报告文字润色 / 论文段落（R6，Task 3.1）。
  * 调用 LLM 将指定章节的统计结果转化为论文段落。
  * 对应后端：POST /api/report/:reportId/polish
  */
 export function usePolishReport() {
   return useMutation({
-    mutationFn: (params: {
-      reportId: string;
-      section: "reliability" | "correlation" | "diff_test" | "diagnosis";
-    }) =>
+    mutationFn: (params: { reportId: string; section: PolishSection }) =>
       apiClient.post<{
         section: string;
         text: string;

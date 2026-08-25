@@ -41,7 +41,7 @@ export function PolishButton({
     reliability: "信效度分析",
     correlation: "相关分析",
     diff_test: "差异检验",
-    diagnosis: "R4 诊断",
+    diagnosis: "智能诊断",
   };
 
   const handlePolish = async () => {

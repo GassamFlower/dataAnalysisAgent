@@ -1,4 +1,4 @@
-"""题目体检路由（R1~R3：题型识别 / 维度归属 / 反向题标记）。"""
+"""题目体检路由（题型识别 / 维度归属 / 反向题标记）。"""
 import io
 import os
 from typing import Dict, List, Optional, Set
@@ -182,7 +182,7 @@ def _read_pdf_file(content: bytes) -> str:
     "/inspect",
     response_model=ResponseModel[QuestionnaireStructure],
     summary="题目体检",
-    description="识别题型、维度归属、反向题，输出归属表。免费层能力，不含 R4 诊断。"
+    description="识别题型、维度归属、反向题，输出归属表。免费层能力，不含智能诊断。"
 )
 async def inspect(
     project_id: UUID,
@@ -192,12 +192,12 @@ async def inspect(
 ):
     """题目体检：识别题型、维度归属、反向题，输出归属表。
 
-    免费层能力，不含 R4 诊断。
+    免费层能力，不含智能诊断。
     """
     # 1. 验证项目存在且属于当前用户（含软删除过滤）
     project = await get_owned_project(db, project_id, current_user["id"])
 
-    # 2. 调用体检服务（LLM R1~R3）
+    # 2. 调用体检服务（LLM 题型识别 / 维度归属 / 反向题）
     try:
         questionnaire_structure = inspect_service(request.text)
     except Exception as e:

@@ -1,8 +1,8 @@
-"""诊断服务（R4）。
+"""智能诊断服务。
 
 职责：
 - 规则匹配（确定性，必出）：调用 diagnosis_rules 翻车点 TOP10 + 回归翻车点检测
-- LLM 补充（自然语言原因）：DeepSeek R1 针对未达标指标生成 reason/suggestion
+- LLM 补充（自然语言原因）：推理模型针对未达标指标生成 reason/suggestion
 - 合并去重：规则优先，LLM 补充未覆盖的指标级问题
 
 设计依据：docs/后端架构设计文档.md 第 9.3 节
@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.statistics_constants import GRADE_TABLE_TEXT, THRESHOLDS, is_passed
 from app.services.diagnosis_rules import match_pitfalls, match_regression_pitfalls
-from app.services.llm.client import chat_r1
+from app.services.llm.client import chat_pro
 from app.services.llm.utils import (
     build_prompt_injection_guard,
     parse_llm_json_response,
@@ -173,7 +173,7 @@ def diagnose(
     if reliability_results:
         prompt = _build_prompt(reliability_results, rule_hits)
         try:
-            response = chat_r1(prompt)
+            response = chat_pro(prompt)
             llm_result = _parse_llm_response(response)
             llm_issues = llm_result.get("issues", [])
         except Exception as e:

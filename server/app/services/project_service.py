@@ -5,7 +5,7 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.error_messages import ERR_PROJECT_NOT_FOUND
 from app.models.project import Project
+from app.models.question import Question
 
 
 # 项目状态单向流转表：当前状态 → 允许的下一个状态
@@ -103,3 +104,32 @@ def update_project_status(
     project.status = target_status
     project.updated_at = datetime.now(timezone.utc)
     return project
+
+
+def build_questions_from_scale(project_id: uuid.UUID, scale) -> List[Question]:
+    """将量表条目转换为项目的题目（Task 4.2 量表→预演联动）。
+
+    Args:
+        project_id: 目标项目 ID
+        scale: 已加载维度与条目的 ResearchScale ORM 对象
+
+    Returns:
+        已构造但未入库的 Question 列表（由调用方 add + flush）。
+    """
+    questions: List[Question] = []
+    index = 1
+    for dim in scale.dimensions:
+        for item in dim.items:
+            questions.append(
+                Question(
+                    project_id=project_id,
+                    index=index,
+                    text=item.text,
+                    question_type="likert5",
+                    dimension=dim.name,
+                    is_reverse=item.is_reverse,
+                    confidence="high",
+                )
+            )
+            index += 1
+    return questions

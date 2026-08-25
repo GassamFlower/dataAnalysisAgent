@@ -16,7 +16,7 @@ export interface Question {
   confidence: "high" | "low";
 }
 
-/** 题目结构 + 维度归属表（R1~R3 体检输出） */
+/** 题目结构 + 维度归属表（体检输出） */
 export interface QuestionnaireStructure {
   questions: Question[];
   dimensions: string[];
@@ -38,6 +38,45 @@ export interface SimulationConfig {
   paths: HypothesisPath[];
 }
 
+/** 预演命中率 - 单条假设路径（统计功效分析，F-SIM-xxx） */
+export interface HypothesisHitRate {
+  predictor: string;
+  outcome: string;
+  direction: "positive" | "negative";
+  strength: "weak" | "medium" | "strong";
+  effectSizeR: number;
+  sampleSize: number;
+  hitRate: number;
+  target: number;
+  passed: boolean;
+}
+
+/** 预演命中率汇总 */
+export interface HitRateSummary {
+  overall: number;
+  passedCount: number;
+  totalCount: number;
+  paths: HypothesisHitRate[];
+}
+
+/** 答辩模拟 - 单条路径的答辩问答（仅统计范式，不代写结论） */
+export interface DefenseQAItem extends HypothesisHitRate {
+  question: string;
+  answer: string;
+}
+
+/** 答辩模拟摘要（预演 · 逐路径答辩问答） */
+export interface DefenseSummary {
+  projectId: string;
+  sampleSize: number;
+  overall: number;
+  passedCount: number;
+  totalCount: number;
+  text: string;
+  disclaimer: string;
+  items: DefenseQAItem[];
+}
+
 /** 相关矩阵单元（透明展示：用户假设 vs 系统补全） */
 export interface MatrixCell {
   row: string;
@@ -52,11 +91,13 @@ export interface CorrelationMatrix {
   cells: MatrixCell[][];
 }
 
-/** 模拟数据响应（GET /simulation/{id}）：矩阵 + 已保存假设 */
+/** 模拟数据响应（GET /simulation/{id}）：矩阵 + 已保存假设 + 复算命中率 */
 export interface SimulationData {
   matrix: CorrelationMatrix;
   hypothesisText?: string | null;
   paths?: HypothesisPath[];
+  /** 已生成过预演时返回复算的命中率（与 generate 同源） */
+  hitRate?: HitRateSummary | null;
 }
 
 /** 统计结果 - 信效度 */
@@ -75,7 +116,7 @@ export interface ReliabilityResult {
   bartlettWording?: string;
 }
 
-/** 诊断结论（R4 输出） */
+/** 诊断结论（智能诊断输出） */
 export interface Diagnosis {
   passed: boolean;
   /** 不达标项；规则级翻车点 value/threshold 为 0（不绑定具体数值） */
@@ -243,3 +284,30 @@ export interface Report {
   sampleSize?: number;
   createdAt: string;
 }
+
+/** 学科量表：列表项（对应 server/app/schemas/scale.py ScaleListItem） */
+export interface ScaleListItem {
+  id: string;
+  slug: string;
+  name: string;
+  discipline: "management" | "education" | "psychology";
+  description?: string;
+  source?: string;
+  reliabilityRef?: string;
+  validityRef?: string;
+}
+
+/** 学科量表：列表响应（对应 ScaleListResponse） */
+export interface ScaleListResponse {
+  items: ScaleListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** 学科：中文标签 */
+export const SCALE_DISCIPLINES = [
+  { value: "management", label: "管理学" },
+  { value: "education", label: "教育学" },
+  { value: "psychology", label: "心理学" },
+] as const;

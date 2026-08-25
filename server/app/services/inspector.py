@@ -1,16 +1,16 @@
-"""题目体检服务（R1~R3）。
+"""题目体检服务。
 
 职责：
-- R1 题型识别（李克特5/7级、人口学、反向题）
-- R2 维度归属推断（80% 用户上传纯题干，需 LLM 聚类到维度）
-- R3 输出题目×维度归属表，标注【明确归属】vs【存疑待确认】
+- 题型识别（李克特5/7点、人口学、反向题）
+- 维度归属推断（80% 用户上传纯题干，需 LLM 聚类到维度）
+- 输出题目×维度对照表，标注【明确归属】vs【存疑待确认】
 
-注：不含 R4 诊断（诊断在 stats 之后由 diagnoser 触发）。
+注：不含智能诊断（诊断在 stats 之后由 diagnoser 触发）。
 """
 import re
 from typing import List, Dict, Any
 
-from app.services.llm.client import chat_v3
+from app.services.llm.client import chat_flash
 from app.services.llm.utils import (
     build_prompt_injection_guard,
     parse_llm_json_response,
@@ -148,7 +148,7 @@ def inspect(raw_text: str) -> QuestionnaireStructure:
     prompt = _build_prompt(questions)
     
     # 3. 调用 LLM
-    response = chat_v3(prompt)
+    response = chat_flash(prompt)
     
     # 4. 解析响应
     result = _parse_llm_response(response)

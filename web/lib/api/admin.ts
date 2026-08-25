@@ -50,6 +50,32 @@ export interface AdminAuditLog {
   created_at?: string | null;
 }
 
+/** 留言处理状态 */
+export type AdminMessageStatus = "pending" | "processing" | "done";
+
+/** 管理员视角留言项（对应后端 admin._msg_serialize） */
+export interface AdminMessage {
+  id: string;
+  user_id: string;
+  user_email?: string | null;
+  user_nickname?: string | null;
+  project_id?: string | null;
+  tag: string;
+  tag_label: string;
+  data_source?: string | null;
+  data_source_label?: string | null;
+  entry_point?: string | null;
+  contact?: string | null;
+  content: string;
+  status: AdminMessageStatus;
+  status_label: string;
+  handled_by?: string | null;
+  handled_at?: string | null;
+  handle_remark?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface Paginated<T> {
   items: T[];
   total: number;
@@ -105,4 +131,24 @@ export const adminApi = {
     apiClient.get<Paginated<AdminAuditLog>>("/api/v1/admin/audit-logs", {
       params,
     }),
+
+  /** 留言分页列表（支持分类/状态/数据源/关键词筛选） */
+  listMessages: (params: {
+    tag?: string;
+    status?: string;
+    data_source?: string;
+    keyword?: string;
+    page?: number;
+    page_size?: number;
+  }) => apiClient.get<Paginated<AdminMessage>>("/api/v1/admin/messages", { params }),
+
+  /** 更新留言处理状态 + 处理备注 */
+  updateMessageStatus: (
+    messageId: string,
+    body: { status: AdminMessageStatus; handle_remark?: string | null }
+  ) =>
+    apiClient.patch<AdminMessage>(
+      `/api/v1/admin/messages/${messageId}/status`,
+      body
+    ),
 };

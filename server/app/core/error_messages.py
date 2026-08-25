@@ -12,6 +12,7 @@
 - ERR_TUTORIAL_NOT_FOUND: 教程资源不存在
 - ERR_REPORT_NOT_FOUND: 报告资源不存在
 - ERR_DATASET_NOT_FOUND: 数据集资源不存在
+- ERR_SCALE_NOT_FOUND: 量表资源不存在
 - ERR_PLAN_EXPIRED: 套餐已过期（与配额服务、支付服务、订阅校验共用）
 - ERR_PLAN_REQUIRED: 需付费套餐
 - ERR_PASSWORD_LENGTH: 密码长度（6~32）
@@ -35,6 +36,7 @@ ERR_ORDER_NOT_FOUND = "订单不存在"
 ERR_TUTORIAL_NOT_FOUND = "教程不存在"
 ERR_REPORT_NOT_FOUND = "报告不存在"
 ERR_DATASET_NOT_FOUND = "未找到模拟数据集，请先生成数据"
+ERR_SCALE_NOT_FOUND = "量表不存在"
 
 # ---------------------------------------------------------------------------
 # 格式校验类

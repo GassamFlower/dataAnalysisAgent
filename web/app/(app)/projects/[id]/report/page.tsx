@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText, Loader2, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Sparkles, Target, LifeBuoy, MessageCircle as WechatIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,11 +20,14 @@ import { SampleRepresentativeness } from "@/components/report/sample-representat
 import { SampleSizePlanner } from "@/components/report/sample-size-planner";
 import { ExportButton } from "@/components/report/export-button";
 import { PolishButton } from "@/components/report/polish-button";
+import { PaperSections } from "@/components/report/paper-sections";
 import { PaidActionGuard } from "@/components/common/paid-action-guard";
 import { ErrorState } from "@/components/common/error-state";
 import { LoadingState } from "@/components/common/loading-state";
 import { Watermark } from "@/components/common/watermark";
 import { SimulationReportBanner } from "@/components/compliance/simulation-report-banner";
+import { ContactForm } from "@/components/contact/contact-form";
+import { WechatEntry } from "@/components/contact/wechat-entry";
 import { Disclaimer } from "@/components/compliance/disclaimer";
 import { DataSourceConfirmDialog } from "@/components/compliance/data-source-confirm-dialog";
 import { MetricTooltip } from "@/components/tutorial/MetricTooltip";
@@ -156,7 +159,7 @@ export default function ReportPage({
     return (
       <div>
         <StepNav projectId={params.id} current="report" />
-        <LoadingState label="正在生成报告，运行统计套餐 + R4 诊断，预计 10-30 秒" />
+        <LoadingState label="正在生成报告，运行统计套餐 + 智能诊断，预计 10-30 秒" />
       </div>
     );
   }
@@ -244,7 +247,7 @@ export default function ReportPage({
 
       <PageHeader
         title="预演报告"
-        description="统计结果、R4 诊断与导出。仅用于研究预演。"
+        description="统计结果、智能诊断与导出。仅用于研究预演。"
         actions={
           <ExportButton
             onExport={handleExportClick}
@@ -258,8 +261,50 @@ export default function ReportPage({
 
       <Watermark className="mb-4" />
 
-      {/* 模拟数据报告 Banner（不可关闭） */}
-      <SimulationReportBanner projectMode={project?.mode} />
+      {/* 模拟数据报告 Banner（不可关闭）；传入预演命中率以标注达标情况与失效假设 */}
+      <SimulationReportBanner
+        projectMode={project?.mode}
+        hitRate={simulationData?.hitRate ?? null}
+      />
+
+      {/* 数据分析救急区：自动关联当前项目与数据源（真实/模拟），可转人工分析 */}
+      <section className="mt-4">
+        <Card className="flex flex-col items-start justify-between gap-4 border-primary/30 bg-primary/5 p-5 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <LifeBuoy className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-h3 font-semibold text-ink-900">数据分析救急</h3>
+              <p className="mt-1 text-body text-ink-600">
+                结果不达标、不知道用什么方法？留言求助，我们会帮你定位问题，
+                命中"愿意转人工分析"将转交人工顾问跟进。
+              </p>
+              <p className="mt-1 text-caption text-ink-400">
+                已自动关联当前项目与数据源
+                {project?.mode === "real" ? "（真实数据）" : "（模拟预演）"}。
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <ContactForm
+              defaultTag="rescue"
+              projectId={params.id}
+              dataSource={project?.mode ?? null}
+              entryPoint="report-rescue"
+              trigger={<Button>留言求助</Button>}
+            />
+            <WechatEntry
+              trigger={
+                <Button variant="outline">
+                  <WechatIcon className="mr-1.5 h-4 w-4" />
+                  一键加客服微信
+                </Button>
+              }
+            />
+          </div>
+        </Card>
+      </section>
 
       {isLoading && (
         <div className="flex items-center gap-2 rounded-md border border-border bg-card p-4 text-ink-500">
@@ -274,7 +319,8 @@ export default function ReportPage({
           <TabsTrigger value="stats">统计结果</TabsTrigger>
           <TabsTrigger value="hypothesis">假设检验</TabsTrigger>
           <TabsTrigger value="sample">样本质量</TabsTrigger>
-          <TabsTrigger value="diagnosis">R4 诊断</TabsTrigger>
+          <TabsTrigger value="diagnosis">智能诊断</TabsTrigger>
+          <TabsTrigger value="paper">论文段落</TabsTrigger>
           <TabsTrigger value="export">导出</TabsTrigger>
         </TabsList>
 
@@ -429,12 +475,12 @@ export default function ReportPage({
           </section>
         </TabsContent>
 
-        {/* Tab 4：R4 诊断 + AI 解读 */}
+        {/* Tab 4：智能诊断 + AI 解读 */}
         <TabsContent value="diagnosis" className="space-y-8">
           <section>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-h2 font-semibold text-ink-900">
-                R4 智能诊断
+                智能诊断
                 <MetricTooltip metricType="diagnosis" />
               </h2>
               {report?.id && (
@@ -487,6 +533,25 @@ export default function ReportPage({
 
           {/* 免责声明 */}
           <Disclaimer variant="full" />
+        </TabsContent>
+
+        <TabsContent value="paper" className="space-y-8">
+          <Card className="p-6">
+            <h3 className="text-h3 font-semibold text-ink-900">论文段落</h3>
+            <p className="mt-1 text-body text-ink-500">
+              按「方法 / 结果 / 讨论」单选，一键生成对齐实际统计输出（Cronbach α、差异检验
+              P 值、效应量、预演命中率）的 APA 段落。仅结果规范化描述，不代写研究结论。
+            </p>
+            {report?.id ? (
+              <div className="mt-4">
+                <PaperSections reportId={String(report.id)} />
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                生成报告后可生成论文段落。
+              </p>
+            )}
+          </Card>
         </TabsContent>
       </Tabs>
       </Reveal>

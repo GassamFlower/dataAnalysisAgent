@@ -28,13 +28,16 @@ export function useProject(projectId: string) {
   });
 }
 
-/** 创建项目 */
+/** 创建项目（支持从学科量表一键建项目：传 scale_id 时由后端自动生成题目） */
 export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: { name: string }) =>
-      apiClient.post<Project>("/api/projects", { name: params.name }),
+    mutationFn: (params: { name: string; scale_id?: string }) =>
+      apiClient.post<Project>("/api/projects", {
+        name: params.name,
+        scale_id: params.scale_id,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },

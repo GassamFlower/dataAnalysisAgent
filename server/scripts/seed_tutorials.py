@@ -309,6 +309,17 @@ TUTORIALS = [
         "tags": ["论文写作", "描述统计"],
         "difficulty": "beginner",
     },
+    # ===== 2026-08 新增：预演微课（Task 6.2） =====
+    {
+        "slug": "pre-simulation-why",
+        "category": "basics",
+        "title": "发问卷前为何先预演",
+        "summary": "用题目结构 + 假设方向 + 假定样本量提前跑一遍统计流程，在发问卷前就知道方向对不对、要收多少人。",
+        "filename": "29-pre-simulation-why.md",
+        "order_index": 18,
+        "tags": ["预演", "样本量", "功效", "流程"],
+        "difficulty": "beginner",
+    },
 ]
 
 

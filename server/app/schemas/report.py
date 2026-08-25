@@ -114,7 +114,7 @@ class ExportRequest(BaseModel):
 class PolishRequest(BaseModel):
     """报告润色请求。"""
 
-    section: str = Field(..., description="章节类型: reliability / correlation / diff_test / diagnosis")
+    section: str = Field(..., description="章节类型: reliability / correlation / diff_test / diagnosis / method / result / discussion")
 
 
 class PolishResponse(BaseModel):

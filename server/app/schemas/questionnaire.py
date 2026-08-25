@@ -39,7 +39,7 @@ class Question(BaseModel):
 
 
 class QuestionnaireStructure(BaseModel):
-    """题目结构 + 维度归属表（R1~R3 体检输出）。"""
+    """题目结构 + 维度归属表（体检输出）。"""
 
     questions: List[Question]
     dimensions: List[str]

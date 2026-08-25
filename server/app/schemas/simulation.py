@@ -92,6 +92,7 @@ class SimulationMatrixResponse(BaseModel):
     cells: List[List[MatrixCellResponse]]
     hypothesis_text: Optional[str] = None
     paths: List[HypothesisPathItem] = []
+    hit_rate: Optional["HitRateSummary"] = None
 
 
 class MatrixSaveCell(BaseModel):
@@ -150,6 +151,69 @@ class SimulationConfig(BaseModel):
 
     sample_size: int
     paths: List[HypothesisPath]
+
+
+class HypothesisHitRate(BaseModel):
+    """单条假设路径的命中率（预演 · 统计功效）。"""
+
+    predictor: str
+    outcome: str
+    direction: str
+    strength: str
+    effect_size_r: float
+    sample_size: int
+    hit_rate: float
+    target: float
+    passed: bool
+
+
+class HitRateSummary(BaseModel):
+    """命中率汇总（预演）。"""
+
+    overall: float
+    passed_count: int
+    total_count: int
+    paths: List[HypothesisHitRate]
+
+
+class SimulationGenerateResponse(BaseModel):
+    """数据生成响应（配置 + 预演命中率）。"""
+
+    id: UUID
+    project_id: UUID
+    sample_size: int
+    hypothesis_id: Optional[UUID]
+    matrix_id: Optional[UUID]
+    hit_rate: HitRateSummary
+
+
+class DefenseQAItem(BaseModel):
+    """答辩模拟 - 单条路径的答辩问答（仅统计范式，不代写结论）。"""
+
+    predictor: str
+    outcome: str
+    direction: str
+    strength: str
+    effect_size_r: float
+    sample_size: int
+    hit_rate: float
+    target: float
+    passed: bool
+    question: str
+    answer: str
+
+
+class DefenseSummaryResponse(BaseModel):
+    """答辩模拟摘要（预演 · 逐路径答辩问答）。"""
+
+    project_id: UUID
+    sample_size: int
+    overall: float
+    passed_count: int
+    total_count: int
+    text: str
+    disclaimer: str
+    items: List[DefenseQAItem]
 
 
 class DatasetExportRequest(BaseModel):

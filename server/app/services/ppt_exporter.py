@@ -52,7 +52,7 @@ def export_ppt(report_data: Dict[str, Any]) -> bytes:
     # 5. 差异检验页
     _add_diff_test_slide(prs, report_data)
 
-    # 6. R4诊断页
+    # 6. 智能诊断页
     _add_diagnosis_slide(prs, report_data)
 
     # 7. 样本代表性页（真实数据项目）
@@ -338,7 +338,7 @@ def _add_diff_test_slide(prs: Presentation, report_data: Dict[str, Any]):
 
 
 def _add_diagnosis_slide(prs: Presentation, report_data: Dict[str, Any]):
-    """添加R4诊断页"""
+    """添加智能诊断页"""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
 
     # 水印
@@ -352,7 +352,7 @@ def _add_diagnosis_slide(prs: Presentation, report_data: Dict[str, Any]):
     textbox = slide.shapes.add_textbox(left, top, width, height)
     text_frame = textbox.text_frame
     p = text_frame.paragraphs[0]
-    p.text = "R4 诊断结论"
+    p.text = "智能诊断结论"
     p.font.size = Pt(32)
     p.font.bold = True
     p.font.color.rgb = COLOR_PRIMARY

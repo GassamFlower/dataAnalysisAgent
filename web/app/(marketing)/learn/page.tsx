@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Calculator, Clock, Search } from "lucide-react";
+import { BookOpen, Calculator, Clock, FlaskConical, Lightbulb, Library, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,10 @@ import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { TermCard } from "@/components/tutorial/TermCard";
+import { tutorialApi, type TermCardResponse } from "@/lib/api/tutorial";
 import { useTutorialArticles } from "@/lib/hooks/use-tutorial";
+import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
   { value: "all", label: "全部" },
@@ -74,6 +77,30 @@ export default function LearnPage() {
     page_size: 24,
   });
 
+  // 语义搜索：命中统计术语时，在结果上方给出术语卡片
+  const [searchTerm, setSearchTerm] = useState<TermCardResponse | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  useEffect(() => {
+    const kw = keyword.trim();
+    if (!kw) {
+      setSearchTerm(null);
+      return;
+    }
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await tutorialApi.searchTutorial(kw);
+        setSearchTerm(res.term);
+      } catch {
+        setSearchTerm(null);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [keyword]);
+
   // 从当前加载的文章聚合出现的标签，供快速筛选
   const allTags = Array.from(
     new Set((data?.items ?? []).flatMap((a) => a.tags ?? [])),
@@ -89,25 +116,88 @@ export default function LearnPage() {
           description="从统计基础到论文写作，系统学习问卷研究必备知识"
         />
 
-        {/* 工具入口 */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/learn/tools/sample-size"
-            className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm text-primary transition-colors hover:bg-primary/10"
-          >
-            <Calculator className="h-4 w-4" />
-            样本量计算器（免费工具）
-          </Link>
+        {/* 预演微课 · 引导卡片 */}
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.07] via-cream-surface/60 to-cream-surface px-5 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-center gap-3">
+              <div className="rounded-xl bg-primary/10 p-2.5">
+                <Lightbulb className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-semibold text-ink-900">
+                  预演微课 · 发问卷前，先模拟一遍
+                </h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  回收后再改已太晚——先用"预演"验证量表与假设，发布前发现问题。
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Button size="sm" variant="default" asChild>
+                <Link href="/learn/pre-simulation-why">
+                  <BookOpen className="mr-1.5 h-4 w-4" />
+                  开始学习 · 为何先预演
+                </Link>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/projects/new">
+                  <FlaskConical className="mr-1.5 h-4 w-4" />
+                  直接进入预演
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
 
-        {/* 筛选与搜索 */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Tabs
-            value={category}
-            onValueChange={setCategory}
-            className="w-full sm:w-auto"
-          >
-            <TabsList className="grid w-full grid-cols-4 sm:w-auto">
+        {/* 学科量表库 · 入口 */}
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.07] via-cream-surface/60 to-cream-surface px-5 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-center gap-3">
+              <div className="rounded-xl bg-primary/10 p-2.5">
+                <Library className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-semibold text-ink-900">学科量表库</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  管理学 / 教育学 / 心理学常用量表，一键建项目并进入预演，免去手工录题。
+                </p>
+              </div>
+            </div>
+            <Button size="sm" variant="default" className="shrink-0" asChild>
+              <Link href="/learn/scales">
+                <Library className="mr-1.5 h-4 w-4" />
+                浏览量表库
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* 免费工具入口 + 搜索（一行） */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Calculator className="h-4 w-4" />
+              免费工具：样本量计算器
+            </span>
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              · 共 {data?.total ?? 0} 篇
+            </span>
+          </div>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="搜教程或术语，如「信度」「效应量」..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+
+        {/* 分类 + 难度（一行） */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs value={category} onValueChange={setCategory}>
+            <TabsList className="grid w-auto grid-cols-4">
               {CATEGORIES.map((c) => (
                 <TabsTrigger key={c.value} value={c.value}>
                   {c.label}
@@ -116,53 +206,62 @@ export default function LearnPage() {
             </TabsList>
           </Tabs>
 
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="搜索教程标题或摘要..."
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
-
-        {/* 标签 + 难度筛选 */}
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {allTags.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTag(tag === t ? "" : t)}
-                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                  tag === t
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-cream-surface/50 text-ink-600 hover:border-primary/40"
-                }`}
-              >
-                #{t}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 text-sm text-ink-500">
-            <span>难度：</span>
+          <span className="text-xs text-muted-foreground">难度</span>
+          <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
             {DIFFICULTY_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setDifficulty(opt.value)}
-                className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs transition-colors",
                   difficulty === opt.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-ink-600 hover:bg-muted-foreground/10"
-                }`}
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
               >
                 {opt.label}
               </button>
             ))}
           </div>
         </div>
+
+        {/* 标签（横向滑动） */}
+        {allTags.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="shrink-0 text-xs text-muted-foreground">标签</span>
+            <div className="flex gap-1.5">
+              {allTags.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTag(tag === t ? "" : t)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 text-xs transition-colors",
+                    tag === t
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-ink-600 hover:border-primary/40 hover:bg-primary/5",
+                  )}
+                >
+                  #{t}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 语义搜索：术语卡片（命中术语时显示在结果上方） */}
+        {searchLoading ? (
+          <div className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">
+            正在解析关键词…
+          </div>
+        ) : searchTerm ? (
+          <TermCard term={searchTerm} />
+        ) : keyword.trim() ? (
+          <div className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">
+            未匹配到术语，以下为标题/摘要命中「{keyword.trim()}」的教程
+          </div>
+        ) : null}
 
         {/* 内容区 */}
         {isLoading ? (

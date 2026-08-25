@@ -1,8 +1,8 @@
 """多供应商 LLM 客户端。
 
 双模型架构：
-- Flash：R1~R3 理解 / 推断 / 解析 / 轻量诊断，高频低成本
-- Pro：R4 复杂因果诊断推理
+- Flash：理解 / 推断 / 解析 / 轻量诊断，高频低成本
+- Pro：复杂因果诊断推理
 
 模型选择策略：
 - 优先从数据库 llm_configs 表读取配置（通过 config_service 缓存）
@@ -119,18 +119,18 @@ def _build_provider_list(model_type: str) -> List[Tuple[str, str, str, str]]:
     return providers
 
 
-def chat_v3(prompt: str, system: str = "") -> str:
-    """R1~R3 调用：题目理解 / 维度推断 / 假设解析。使用 Flash 级别模型。"""
+def chat_flash(prompt: str, system: str = "") -> str:
+    """理解 / 推断 / 解析类调用。使用 Flash 级别模型。"""
     messages = _build_messages(prompt, system)
     providers = _build_provider_list("flash")
-    return _try_providers(providers, messages, "chat_v3")
+    return _try_providers(providers, messages, "chat_flash")
 
 
-def chat_r1(prompt: str, system: str = "") -> str:
-    """R4 调用：硬伤诊断推理。使用 Pro 级别模型。"""
+def chat_pro(prompt: str, system: str = "") -> str:
+    """诊断调用：硬伤诊断推理。使用 Pro 级别模型。"""
     messages = _build_messages(prompt, system)
     providers = _build_provider_list("pro")
-    return _try_providers(providers, messages, "chat_r1")
+    return _try_providers(providers, messages, "chat_pro")
 
 
 def _try_providers(

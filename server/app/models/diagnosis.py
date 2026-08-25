@@ -11,7 +11,7 @@ from app.models import Base, UTCDateTime
 
 
 class Diagnosis(Base):
-    """R4 诊断结论。"""
+    """智能诊断结论。"""
 
     __tablename__ = "diagnoses"
     __table_args__ = (

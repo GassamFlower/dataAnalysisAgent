@@ -220,7 +220,7 @@ def _reliability_paragraph(report_data: Dict[str, Any]) -> str:
 def export_word(report_data: Dict[str, Any]) -> bytes:
     """导出 Word 报告。
 
-    含 simulated 水印、免责声明、统计结果、R4 诊断结论。
+    含 simulated 水印、免责声明、统计结果、智能诊断结论。
     """
     doc = Document()
 
@@ -293,8 +293,8 @@ def export_word(report_data: Dict[str, Any]) -> bytes:
     _diff_test_table_to_doc(doc, report_data.get("diff_tests", []) or [])
     doc.add_paragraph()
 
-    # R4 诊断结论
-    doc.add_heading("五、R4 诊断结论", level=1)
+    # 智能诊断结论
+    doc.add_heading("五、智能诊断结论", level=1)
     diagnosis = report_data.get("diagnosis")
 
     if diagnosis:
@@ -905,7 +905,7 @@ def _diff_test_table_to_pdf(diff_tests: List[Dict[str, Any]], styles) -> List:
 def export_pdf(report_data: Dict[str, Any]) -> bytes:
     """导出 PDF 报告。
 
-    含 simulated 水印（每页）、免责声明、统计结果、R4 诊断结论。
+    含 simulated 水印（每页）、免责声明、统计结果、智能诊断结论。
     与 export_word 章节结构保持一致，便于用户对照。
 
     设计文档：docs/j-功能-PDF报告导出.md
@@ -982,8 +982,8 @@ def export_pdf(report_data: Dict[str, Any]) -> bytes:
     story.extend(_diff_test_table_to_pdf(report_data.get("diff_tests", []) or [], styles))
     story.append(Spacer(1, 6 * mm))
 
-    # 五、R4 诊断结论
-    story.append(Paragraph("五、R4 诊断结论", styles["h1"]))
+    # 五、智能诊断结论
+    story.append(Paragraph("五、智能诊断结论", styles["h1"]))
     diagnosis = report_data.get("diagnosis")
     if diagnosis:
         passed = diagnosis.get("passed", False)

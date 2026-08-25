@@ -110,7 +110,7 @@ def analyze_reliability(
             "kmo": float(round(kmo, 3)),
             "kmo_grade": kmo_grade,
             "kmo_wording": kmo_wording,
-            "bartlett_p_value": None if not bartlett_ok else float(round(effective_bartlett_p, 5)),
+            "bartlett_p_value": float(round(effective_bartlett_p, 5)),
             "bartlett_grade": bartlett_grade,
             "bartlett_wording": bartlett_wording,
             "passed": bool(passed),

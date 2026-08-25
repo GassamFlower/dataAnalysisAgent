@@ -7,7 +7,7 @@
 """
 from typing import List, Dict, Any
 
-from app.services.llm.client import chat_v3
+from app.services.llm.client import chat_flash
 from app.services.llm.utils import (
     build_prompt_injection_guard,
     parse_llm_json_response,
@@ -99,7 +99,7 @@ def parse_hypothesis(raw_text: str, dimensions: List[str]) -> List[HypothesisPat
     prompt = _build_prompt(raw_text, dimensions)
     
     # 2. 调用 LLM
-    response = chat_v3(prompt)
+    response = chat_flash(prompt)
     
     # 3. 解析响应
     paths = _parse_llm_response(response)

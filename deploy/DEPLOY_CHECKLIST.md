@@ -69,7 +69,7 @@
 
 - [ ] 主 provider 确认：后端实际走 `deepseek`（标准白名单 `deepseek/kimi/qwen`）
 - [ ] ✅ LLM 主模型确认：`deepseek-v4-flash`/`deepseek-v4-pro` 经 `api.deepseek.com` **实测可调用**
-      （该环境有模型名映射/网关，勿随意改成官方 `deepseek-chat`）
+      （该环境有模型名映射/网关，勿随意改成官方 `deepseek-chat`/`deepseek-reasoner` 等旧模型名）
 - [ ] **`AGNES_*` 残留清理（生产手动加，代码不读）**：
       本地与代码均不使用；清理命令（在服务器上）：
       ```bash

@@ -7,7 +7,7 @@
 - 主流程（happy path）：覆盖创建→体检→假设→生成→分析→获取报告→导出 Word/Excel→清理
 - 异常分支（anomalies）：认证 / 状态守卫 / 404 / 参数校验，不依赖 LLM
 
-注意：主流程会真实调用 DeepSeek LLM（R1~R4），耗时较长（约 30~60s）。
+注意：主流程会真实调用 DeepSeek LLM（体检 / 诊断），耗时较长（约 30~60s）。
 异常分支不创建假设、不调用 LLM，可独立快速运行。
 """
 import io
@@ -136,7 +136,7 @@ def test_create_project() -> str:
 
 
 def test_inspect_questions(project_id: str) -> None:
-    """3. 题目体检（调用 LLM R1~R3）。"""
+    """3. 题目体检（调用 LLM 题型识别 / 维度归属 / 反向题）。"""
     _print_section("3. 题目体检")
     print("  调用 LLM，预计 5~15s...")
     t0 = time.time()
@@ -192,9 +192,9 @@ def test_generate_data(project_id: str) -> None:
 
 
 def test_analyze_report(project_id: str) -> str:
-    """6. 生成报告（调用 LLM R4 诊断）。"""
+    """6. 生成报告（调用 LLM 智能诊断）。"""
     _print_section("6. 生成报告")
-    print("  调用 LLM R4，预计 10~30s...")
+    print("  调用 LLM 智能诊断，预计 10~30s...")
     t0 = time.time()
     resp = requests.post(
         f"{BASE_URL}/report/analyze/{project_id}",

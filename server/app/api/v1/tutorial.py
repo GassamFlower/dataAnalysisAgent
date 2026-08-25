@@ -20,6 +20,7 @@ from app.schemas.tutorial import (
     TutorialArticleUpdateRequest,
     TutorialArticleResponse,
     TutorialArticleListResponse,
+    TutorialSearchResponse,
     AIInterpretRequest,
     AIInterpretResponse,
 )
@@ -252,6 +253,23 @@ async def get_ai_interpret_quota(
     status = await get_quota_status(db, current_user["id"], current_user["plan"])
     ai_quota = status["quotas"].get("ai_interpret", {})
     return ResponseModel(data=ai_quota)
+
+
+@router.get(
+    "/search",
+    response_model=ResponseModel[TutorialSearchResponse],
+    summary="语义搜索术语",
+    description="输入关键词，命中统计术语时返回术语卡片（含解读与去学链接）。公开端点。",
+)
+async def search_tutorial(
+    keyword: str = Query(..., min_length=1, description="搜索关键词"),
+):
+    """语义搜索：解析关键词，命中术语返回术语卡片。
+
+    仅返回术语卡片；配套的教程列表仍走 /articles?keyword= 现有检索。
+    """
+    term = TutorialService.search_terms(keyword)
+    return ResponseModel(data=TutorialSearchResponse(keyword=keyword, term=term))
 
 
 @router.post(

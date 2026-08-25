@@ -136,10 +136,10 @@ export function ReportPreview() {
           </Card>
         </StaggerItem>
 
-        {/* R4 诊断：抓出问题并给一句话建议 */}
+        {/* 智能诊断：抓出问题并给一句话建议 */}
         <StaggerItem>
           <div className="rounded-xl border border-border bg-cream-surface p-5">
-            <h3 className="mb-3 text-h3 font-semibold text-ink-900">R4 智能诊断</h3>
+            <h3 className="mb-3 text-h3 font-semibold text-ink-900">智能诊断</h3>
             <DiagnosisAlert diagnosis={SAMPLE_DIAGNOSIS} />
             <p className="mt-3 text-caption text-ink-500">
               这里特意展示了一个不达标维度（α 0.624）——正是因为回收前就发现、并给出一句话修法，

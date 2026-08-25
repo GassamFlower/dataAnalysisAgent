@@ -97,8 +97,8 @@ METRIC_TOOLTIPS: Dict[str, Dict[str, str]] = {
         "example": "例如：选项 5 的频率为 45%，选项 4 为 30%，说明大多数受访者持积极态度。",
     },
     "diagnosis": {
-        "title": "R4 诊断结论",
-        "content": "R4 诊断是系统对分析结果的全面体检，检查信度、效度、样本量、反向题等是否达标。诊断通过表示分析结果可信，诊断不通过会给出具体改进建议。",
+        "title": "智能诊断结论",
+        "content": "智能诊断是系统对分析结果的全面体检，检查信度、效度、样本量、反向题等是否达标。诊断通过表示分析结果可信，诊断不通过会给出具体改进建议。",
         "example": "例如：诊断不通过，原因'维度 A 的 α 系数仅 0.58'，建议检查该维度题目表述或重新划分维度。",
     },
     "sample_size": {
@@ -111,6 +111,50 @@ METRIC_TOOLTIPS: Dict[str, Dict[str, str]] = {
         "content": "差异检验用于判断两组或多组数据是否存在显著差异。常用方法包括 t 检验（两组）和方差分析（多组）。p 值 < 0.05 表示差异显著，即不太可能是随机波动造成的。",
         "example": "例如：男女生在焦虑得分上的 t 检验 p = 0.03，说明性别差异显著，女生焦虑得分显著高于男生。",
     },
+    "hit_rate": {
+        "title": "预演命中率（统计功效 Power）",
+        "content": "预演命中率指在给定效应量（如 r、d）与样本量下，这套研究有把握检出显著结果的概率（α=0.05 双侧）。它回答「发问卷前先预演：方向对不对、要收多少人」。命中率 ≥ 80% 为理想，低于 60% 通常说明效应偏弱或样本不足。",
+        "example": "例如：某假设 r=0.35、每组 60 人时预演命中率 63%，建议把样本量提到约每组 90 人，或将预期相关上调后再预演校准。",
+    },
+    "effect_size": {
+        "title": "效应量（Effect Size）",
+        "content": "效应量衡量变量间关系或组间差异的实际强弱，不受样本量影响。常用指标：相关 r、Cohen's d、η²。|r| 0.10~0.30 为小，0.30~0.50 为中等，>0.50 为大。效应量小、样本又少时，就算有真实关系也容易检不出来。",
+        "example": "例如：某相关 r=0.22 属于小到中等效应，若每组样本不足 100，预演命中率会明显偏低，需加大样本量。",
+    },
+}
+
+# 搜索关键词 → 指标类型（语义搜索术语解析，未命中返回 None）
+TERM_ALIASES: Dict[str, str] = {
+    "信度": "alpha", "cronbach": "alpha", "alpha": "alpha", "α": "alpha",
+    "效度": "kmo", "kmo": "kmo", "结构效度": "kmo",
+    "bartlett": "bartlett", "球形检验": "bartlett", "球型检验": "bartlett",
+    "相关": "correlation", "相关性": "correlation", "相关系数": "correlation",
+    "correlation": "correlation", "r值": "correlation", "相关分析": "correlation",
+    "均值": "mean", "平均": "mean", "mean": "mean", "平均数": "mean",
+    "标准差": "std", "方差": "std", "std": "std", "离散": "std",
+    "频率": "frequency", "分布": "frequency", "frequency": "frequency", "频数": "frequency",
+    "诊断": "diagnosis", "诊断结论": "diagnosis", "diagnosis": "diagnosis",
+    "样本量": "sample_size", "样本": "sample_size", "sample": "sample_size", "sample size": "sample_size",
+    "差异检验": "diff_test", "t检验": "diff_test",
+    "方差分析": "diff_test", "anova": "diff_test", "差异": "diff_test", "假设检验": "diff_test",
+    "命中率": "hit_rate", "功效": "hit_rate", "power": "hit_rate", "预演": "hit_rate",
+    "效应量": "effect_size", "effect size": "effect_size", "effectsize": "effect_size", "cohen": "effect_size",
+}
+
+# 指标类型 → 小课堂教程 slug（已在 seed 中发布，用于术语卡片「去学」跳转）
+TERM_LEARN_MORE: Dict[str, str] = {
+    "alpha": "cronbach-alpha",
+    "kmo": "kmo-bartlett",
+    "bartlett": "kmo-bartlett",
+    "correlation": "correlation-analysis",
+    "diff_test": "hypothesis-testing",
+    "sample_size": "sample-size",
+    "hit_rate": "sample-size-power",
+    "effect_size": "effect-size",
+    "diagnosis": "writing-results",
+    "mean": "descriptive-statistics",
+    "std": "descriptive-statistics",
+    "frequency": "descriptive-statistics",
 }
 
 
@@ -246,6 +290,39 @@ class TutorialService:
     def get_all_metric_types() -> list:
         """获取所有支持的指标类型。"""
         return list(METRIC_TOOLTIPS.keys())
+
+    @staticmethod
+    def search_terms(keyword: str) -> Optional["TermCardResponse"]:
+        """语义搜索术语解析：把自然语言关键词解析为术语卡片。
+
+        命中 TERM_ALIASES 则返回对应术语卡片（含去学跳转 slug），否则返回 None。
+        """
+        text = (keyword or "").strip().lower()
+        if not text:
+            return None
+
+        metric_type = TERM_ALIASES.get(text)
+        if not metric_type:
+            # 中文前后缀很常见，做一次简短包含匹配兜底（如「信度低怎么办」→ alpha）
+            for alias, mt in TERM_ALIASES.items():
+                if len(alias) >= 2 and alias in text:
+                    metric_type = mt
+                    break
+
+        if not metric_type:
+            return None
+
+        data = METRIC_TOOLTIPS.get(metric_type)
+        if not data:
+            return None
+
+        from app.schemas.tutorial import TermCardResponse
+        return TermCardResponse(
+            title=data["title"],
+            content=data["content"],
+            example=data["example"],
+            learn_more_slug=TERM_LEARN_MORE.get(metric_type),
+        )
 
     @staticmethod
     async def start_onboarding(
@@ -579,7 +656,7 @@ class TutorialService:
 
         if report.diagnosis:
             stats_lines.append(
-                f"R4 诊断：{'通过' if report.diagnosis.passed else '未通过'}"
+                f"智能诊断：{'通过' if report.diagnosis.passed else '未通过'}"
             )
             for issue in report.diagnosis.issues[:10]:
                 stats_lines.append(
@@ -619,9 +696,9 @@ class TutorialService:
         user_prompt += "请按上述要求输出解读与写作建议。"
 
         # 4. 调用 LLM（Flash 级，成本低、响应快）
-        from app.services.llm.client import chat_v3
+        from app.services.llm.client import chat_flash
 
-        content = chat_v3(user_prompt, system=system_prompt)
+        content = chat_flash(user_prompt, system=system_prompt)
 
         return {
             "project_id": str(project_id),

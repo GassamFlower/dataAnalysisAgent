@@ -10,6 +10,7 @@
 """
 
 import uuid
+from types import SimpleNamespace
 
 import pytest
 from httpx import AsyncClient
@@ -19,7 +20,10 @@ from app.core.database import get_db
 from app.core.statistics_constants import PLANNER_MIN_TARGET
 from app.models.correlation_matrix import CorrelationMatrix
 from app.services.sample_size_planner import (
+    HIT_RATE_TARGET,
+    analyze_hypothesis_power,
     build_plan,
+    correlation_power,
     required_n_correlation,
     required_n_regression,
     required_n_t_test,
@@ -319,3 +323,73 @@ async def test_planner_validation_error(
     )
     assert resp.status_code == 400
     assert resp.json()["message"]
+
+
+# ─────────────────────────────────────────────────────────────
+# 预演命中率：correlation_power / analyze_hypothesis_power
+# ─────────────────────────────────────────────────────────────
+
+
+def _path(predictor, outcome, direction="positive", strength="medium"):
+    return SimpleNamespace(
+        predictor=predictor,
+        outcome=outcome,
+        direction=direction,
+        strength=strength,
+    )
+
+
+def test_correlation_power_equals_required_n_inverse():
+    # 逆运算：r=0.3 在 required_n=85 下功效应回到 ≈0.8（与规划器同一闭式解）
+    for r, n in [(0.3, 85), (0.5, 30), (0.1, 783)]:
+        power = correlation_power(r, n)
+        assert abs(power - 0.80) < 0.05, f"r={r}, n={n} → {power}"
+
+
+def test_correlation_power_increases_with_effect_and_n():
+    # 效应量越大、样本量越大，功效越高
+    assert correlation_power(0.4, 100) > correlation_power(0.3, 100)
+    assert correlation_power(0.4, 200) > correlation_power(0.4, 100) > 0.05
+
+
+def test_correlation_power_boundaries():
+    assert correlation_power(0.0, 200) == 0.0
+    assert correlation_power(0.3, 3) == 0.0  # 样本量过小
+    assert correlation_power(0.99, 200) == 1.0
+    assert correlation_power(-0.3, 85) == correlation_power(0.3, 85)
+
+
+def test_analyze_hypothesis_power_fallback_strength():
+    # 无矩阵时按强度档位名义 r（weak=0.2/medium=0.4/strong=0.6）
+    paths = [
+        _path("A", "B", strength="strong"),
+        _path("C", "D", strength="weak"),
+    ]
+    res = analyze_hypothesis_power(paths, sample_size=100)
+    assert res["total_count"] == 2
+    # strong(0.6) 必然命中，weak(0.2) 在 n=100 下命中率较低
+    hit = {p["predictor"]: p for p in res["paths"]}
+    assert hit["A"]["effect_size_r"] == 0.6
+    assert hit["C"]["effect_size_r"] == 0.2
+    assert hit["A"]["hit_rate"] > hit["C"]["hit_rate"]
+    assert res["overall"] == round(res["passed_count"] / 2, 3)
+
+
+def test_analyze_hypothesis_power_custom_cells_override():
+    # 用户矩阵值覆盖档位名义值（权威生效值）
+    cells = [[{"row": "A", "col": "B", "value": 0.8}]]
+    paths = [_path("A", "B", strength="weak")]  # 名义 0.2，被矩阵 0.8 覆盖
+    res = analyze_hypothesis_power(paths, sample_size=80, custom_cells=cells)
+    item = res["paths"][0]
+    assert item["effect_size_r"] == 0.8
+    assert item["passed"] is True
+    assert item["target"] == HIT_RATE_TARGET
+
+
+def test_analyze_hypothesis_power_zero_cell_fails():
+    # 矩阵值 0 → 功效为 0，视为不达标
+    cells = [[{"row": "A", "col": "B", "value": 0.0}]]
+    paths = [_path("A", "B")]
+    res = analyze_hypothesis_power(paths, sample_size=100, custom_cells=cells)
+    assert res["paths"][0]["hit_rate"] == 0.0
+    assert res["paths"][0]["passed"] is False

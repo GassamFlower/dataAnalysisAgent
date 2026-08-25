@@ -225,10 +225,10 @@ async def free_auth_headers(client: AsyncClient, auth_headers: dict):
 
 @pytest.fixture
 def mock_diagnoser(monkeypatch):
-    """Mock R4 诊断 LLM 调用，避免测试依赖外部模型。"""
+    """Mock 智能诊断 LLM 调用，避免测试依赖外部模型。"""
 
-    def _fake_chat_r1(prompt: str) -> str:
+    def _fake_chat_pro(prompt: str) -> str:
         del prompt
         return '{"passed": true, "issues": []}'
 
-    monkeypatch.setattr("app.services.diagnoser.chat_r1", _fake_chat_r1)
+    monkeypatch.setattr("app.services.diagnoser.chat_pro", _fake_chat_pro)

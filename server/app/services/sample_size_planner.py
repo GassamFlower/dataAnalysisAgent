@@ -23,9 +23,13 @@ from app.core.statistics_constants import (
     PLANNER_MIN_TARGET,
     PLANNER_POWER_DEFAULT,
     SAMPLE_PER_IV,
+    STRENGTH_TO_R,
     T_TEST_DEFAULT_D,
     grade_effect_size,
 )
+
+# 预演"命中率"达标线：达到 0.80 视为高命中（与 PLANNER_POWER_DEFAULT 一致）
+HIT_RATE_TARGET: float = PLANNER_POWER_DEFAULT
 
 ANALYSIS_LABELS: Dict[str, str] = {
     "correlation": "相关分析",
@@ -60,6 +64,103 @@ def required_n_correlation(
     zr = 0.5 * math.log((1 + abs(r)) / (1 - abs(r)))
     n = (_z_sum(alpha, power) / zr) ** 2 + 3
     return max(int(math.ceil(n)), 2)
+
+
+def correlation_power(
+    r: float,
+    sample_size: int,
+    alpha: float = PLANNER_ALPHA_DEFAULT,
+) -> float:
+    """相关分析在给定效应量 r、样本量 sample_size、显著性 alpha 下的检验功效（命中概率）。
+
+    即"假设在真实回收中大概率能被检出显著"的概率（统计功效，Fisher z 正态近似）：
+        zr = 0.5·ln((1+|r|)/(1-|r|))，标准误 se = 1/√(n-3)
+        双侧：power = 1 - Φ((z_crit - zr)/se) + Φ((-z_crit - zr)/se)
+
+    与 `required_n_correlation` 互为逆运算（同一闭式解）。
+
+    Args:
+        r: 相关效应量（取绝对值，符号不影响功效）。
+        sample_size: 计划样本量。
+        alpha: 显著性水平（默认 0.05，双侧）。
+
+    Returns:
+        命中概率（0~1）。r=0 或样本量过小时返回 0.0。
+    """
+    if sample_size <= 3:
+        return 0.0
+    r_mag = abs(r)
+    if r_mag <= 0:
+        return 0.0
+    if r_mag >= 1:
+        return 1.0
+    zr = 0.5 * math.log((1 + r_mag) / (1 - r_mag))
+    se = 1.0 / math.sqrt(sample_size - 3)
+    # 备择分布中心（Fisher z 标准化）：zr / se = zr·√(n-3)
+    mean_z = zr / se
+    z_crit = norm.ppf(1 - alpha / 2)
+    power = 1.0 - norm.cdf(z_crit - mean_z) + norm.cdf(-z_crit - mean_z)
+    return float(min(max(power, 0.0), 1.0))
+
+
+def analyze_hypothesis_power(
+    paths,
+    sample_size: int,
+    custom_cells=None,
+    alpha: float = PLANNER_ALPHA_DEFAULT,
+    target: float = HIT_RATE_TARGET,
+) -> dict:
+    """按「假设 → 效应量 → 样本量」计算每条路径的命中概率（检验功效）。
+
+    - 效应量 r：优先取用户相关矩阵（custom_cells，权威生效值）；否则取假设强度档位
+      对应的 STRENGTH_TO_R 名义值。
+    - 命中率达标线 target 默认 0.80（与功效分析推荐一致）。
+
+    Args:
+        paths: 假设路径列表（含 predictor/outcome/direction/strength 属性）。
+        sample_size: 计划样本量。
+        custom_cells: 用户相关矩阵（list[list[dict{row,col,value}]]），可为 None。
+        alpha: 显著性水平。
+        target: 命中率达标阈值。
+
+    Returns:
+        {overall, passed_count, total_count, paths: [{predictor,outcome,direction,
+         strength,effect_size_r,sample_size,hit_rate,target,passed}]}
+    """
+    cell_lookup: dict = {}
+    if custom_cells:
+        for row in custom_cells:
+            for c in row:
+                if isinstance(c, dict):
+                    cell_lookup[(c.get("row"), c.get("col"))] = float(c.get("value", 0.0))
+
+    items = []
+    for p in paths:
+        fallback = STRENGTH_TO_R.get(p.strength, 0.3)
+        raw = cell_lookup.get((p.predictor, p.outcome), fallback)
+        r_mag = abs(float(raw))
+        power = correlation_power(r_mag, sample_size, alpha) if r_mag > 0 else 0.0
+        items.append({
+            "predictor": p.predictor,
+            "outcome": p.outcome,
+            "direction": p.direction,
+            "strength": p.strength,
+            "effect_size_r": round(r_mag, 3),
+            "sample_size": int(sample_size),
+            "hit_rate": round(power, 3),
+            "target": float(target),
+            "passed": bool(power >= target),
+        })
+
+    total = len(items)
+    passed_count = sum(1 for item in items if item["passed"])
+    overall = round(passed_count / total, 3) if total else 0.0
+    return {
+        "overall": overall,
+        "passed_count": passed_count,
+        "total_count": total,
+        "paths": items,
+    }
 
 
 def required_n_t_test(

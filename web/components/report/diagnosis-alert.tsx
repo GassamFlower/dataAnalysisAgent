@@ -12,8 +12,8 @@ function isRuleIssue(value: number, threshold: number): boolean {
 }
 
 /**
- * R4 诊断结论展示（宪法第 14 条：B 路线，不达标给修改建议）。
- * 规则引擎命中翻车点 + DeepSeek-R1 补充自然语言原因，合并去重输出。
+ * 智能诊断结论展示（宪法第 14 条：B 路线，不达标给修改建议）。
+ * 规则引擎命中翻车点 + 推理模型补充自然语言原因，合并去重输出。
  */
 export function DiagnosisAlert({ diagnosis }: { diagnosis: Diagnosis }) {
   if (diagnosis.passed) {
