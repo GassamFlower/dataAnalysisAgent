@@ -3,11 +3,9 @@
  * 对应后端：/api/questionnaire/*
  */
 
-import { apiClient } from "./client";
+import { apiClient, API_BASE } from "./client";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { QuestionnaireStructure } from "@/types";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 export const questionnaireApi = {
   /** 获取项目题目结构 */

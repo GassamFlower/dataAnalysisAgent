@@ -10,7 +10,8 @@
 
 import { useAuthStore } from "@/lib/stores/auth-store";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+/** 后端 API 基础地址（唯一来源，供各业务 api/*.ts 复用） */
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 /** 后端统一响应结构 */
 export interface ApiResponse<T = unknown> {

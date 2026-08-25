@@ -454,3 +454,83 @@ CREATE TABLE IF NOT EXISTS llm_configs (
 );
 
 CREATE INDEX ix_llm_configs_config_key ON llm_configs(config_key);
+
+-- ---------------------------------------------------------------------------
+-- 21. messages（售后留言 Task 2.1，3NF）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
+    tag VARCHAR(20) NOT NULL CHECK (tag IN ('presale', 'rescue', 'service', 'incident', 'feedback')),
+    data_source VARCHAR(20) CHECK (data_source IN ('real', 'simulation') OR data_source IS NULL),
+    entry_point VARCHAR(40),
+    contact VARCHAR(120),
+    content TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'done')),
+    handled_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    handled_at TIMESTAMP WITH TIME ZONE,
+    handle_remark TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_messages_user_id ON messages(user_id);
+CREATE INDEX idx_messages_project_id ON messages(project_id);
+CREATE INDEX idx_messages_tag ON messages(tag);
+CREATE INDEX idx_messages_status ON messages(status);
+CREATE INDEX idx_messages_deleted_at ON messages(deleted_at);
+
+CREATE TRIGGER trg_messages_updated_at
+BEFORE UPDATE ON messages
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ---------------------------------------------------------------------------
+-- 22. research_scales / scale_dimensions / scale_items（学科量表库 Task 4.1，3NF）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS research_scales (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug VARCHAR(120) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    discipline VARCHAR(30) NOT NULL CHECK (discipline IN ('management', 'education', 'psychology')),
+    description TEXT NOT NULL DEFAULT '',
+    scoring_method TEXT NOT NULL DEFAULT '',
+    source TEXT,
+    reliability_ref TEXT,
+    validity_ref TEXT,
+    is_published BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_research_scales_discipline ON research_scales(discipline);
+CREATE INDEX idx_research_scales_deleted_at ON research_scales(deleted_at);
+
+CREATE TRIGGER trg_research_scales_updated_at
+BEFORE UPDATE ON research_scales
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS scale_dimensions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scale_id UUID NOT NULL REFERENCES research_scales(id) ON DELETE CASCADE,
+    index INT NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    UNIQUE (scale_id, index)
+);
+
+CREATE INDEX idx_scale_dimensions_scale_id ON scale_dimensions(scale_id);
+
+CREATE TABLE IF NOT EXISTS scale_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dimension_id UUID NOT NULL REFERENCES scale_dimensions(id) ON DELETE CASCADE,
+    index INT NOT NULL,
+    text TEXT NOT NULL,
+    is_reverse BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    UNIQUE (dimension_id, index)
+);
+
+CREATE INDEX idx_scale_items_dimension_id ON scale_items(dimension_id);

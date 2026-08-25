@@ -146,6 +146,34 @@
 
 ---
 
+## 质量审查整改登记（2026-08-25）
+
+> 本轮按整改清单分 3 批处理：第 1 批 🔴 严重（本轮必须修完）、第 2 批 🟡 风险（可上线后修，文档登记）、第 3 批 🟢 建议（暂不修，入后期优化清单）。
+
+### 第 1 批：🔴 严重项（本轮已修完 ✅）
+
+| # | 修复前 | 修复后 | 验证证据 |
+|---|--------|--------|----------|
+| 1 | 新表（messages / research_scales / scale_dimensions / scale_items）仅靠 `create_all` 隐式建表，**无 Alembic 迁移**，生产无法 `upgrade head` 干净落位 → schema 漂移风险 | 新增迁移 [c5d6e7f8a9b1_add_messages_and_research_scales.py](server/migrations/versions/c5d6e7f8a9b1_add_messages_and_research_scales.py)，链尾衔接 `abf2c1011234` | `alembic heads` 输出 `c5d6e7f8a9b1 (head)`；临时库 `_alembic_verify.db` 全量 upgrade 通过 |
+| 2 | `db/schema.sql` / `schema.sqlite.sql` 缺新表定义 → 真源文档与实际结构漂移 | 两文件追加 messages / research_scales / scale_dimensions / scale_items 定义及索引（schema.sql +80 行 / sqlite +72 行） | `grep` [schema.sql](db/schema.sql#L459-L481) 命中 `CREATE TABLE IF NOT EXISTS messages` + 3 条索引；改动均在 `git diff` 可见 |
+| 3 | server 根目录残留墓碑脚本 `_probe.py / _diag.py / _tmp_inspect.py / _verify_e2e.py`，且 `.gitignore` 未拦截下划线临时脚本 → 易误采集/入库 | 墓碑脚本全部删除；`.gitignore` 追加 `/_*.py` 防复发 | [.gitignore](.gitignore#L58) 命中 `/_*.py`；`glob _*.py` 在 server 根目录无匹配 |
+
+### 第 2 批：🟡 风险项
+
+| # | 修复前 | 修复后 | 验证证据 |
+|---|--------|--------|----------|
+| 4 | 前端 `dataset.ts` / `questionnaire.ts` 各自重复定义 API_BASE → 维护成本高、易漂移 | 统一抽取：`client.ts` 导出唯一 `API_BASE`，业务 api 复用导入 | [dataset.ts](web/lib/api/dataset.ts#L7) `import { apiClient, API_BASE } from "./client"`；[client.ts](web/lib/api/client.ts#L14) `export const API_BASE` |
+
+**🟡 风险项登记（本轮复扫后新增，可上线后修）**：本轮整改后复扫 `server/app`+`web` 无新增实质性风险——硬编码/密钥/URL 均为 dev 默认值、无 FIXME/HACK、无调试 print、阈值已集中 `core/statistics_constants.py`、越权统一走 `get_owned_project`。无新增待修风险项。
+
+### 第 3 批：🟢 建议项（暂不修，记入后期优化清单）
+
+- 「告警通知扩展」：`server/app/core/monitoring.py:88` 仅有 `# TODO: 后续可扩展告警通知` 占位，暂不实现通知链路（埋点已落 `analytics_events`）。
+- 前端 `getAuthHeader` 同名两处（`lib/api/client.ts` 客户端读 store vs `lib/server/auth.ts` BFF 转发 request）职责不同、不属真重复，但命名易误解 → 建议改名 `getClientAuthHeader` / `getBffAuthHeader`（可读性优化）。
+- 生产 HTTPS 落地（`FRONTEND_URL`→`https://`、nginx 443 + 证书 + HSTS）为部署流程项，属上线操作，非代码整改。
+
+---
+
 ## 工作日志
 
 > 每次工作简要记录：日期 + 做了什么 + 遇到什么问题
@@ -190,6 +218,7 @@
 | 2026-08-25 | **Stage1.2 模拟答辩摘要**：`types/index.ts` 增 `DefenseQAItem/DefenseSummary`；BFF `defense-summary/route.ts` 转发归一；hook 扩展 `useDefenseSummary`；新 `defense-summary-panel.tsx`（Q&A 展示 + 一键复制）；simulate 页加"生成答辩摘要"按钮 | 后端 203 passed（自 193）；前端 tsc --noEmit 0 错 |
 | 2026-08-25 | **Stage2.1 留言表后端**：新 `models/message.py`+迁移、`schemas/message.py`、`api/v1/message.py`（建/查/删/处理 + 审计留痕），5 类 tag + project_id + 数据源落库 | 修复 SQLAlchemy FK 歧义（user/handled_admin 显式 foreign_keys）、尾斜杠 307 重定向、审计查询排序；tests/test_message.py 通过 |
 | 2026-08-25 | **Stage2.2 留言模板库表单**：新 `components/contact/contact-form.tsx`（5 类模板填空式，dialog/sheet，必填校验+登录守卫+提交态）、`lib/api/message.ts`、`lib/hooks/use-message.ts`、`types/message.ts`；三入口接入（定价页售前咨询 / 报告页救急区自动带项目ID+数据源 / 页脚抽屉） | 前端 tsc --noEmit 0 错；后端 message tests 8 passed（三入口可提交且数据可查） |
+| 2026-08-25 | **质量审查整改（分 3 批）**：生成 messages/research_scales 三表 Alembic 迁移并同步 schema.sql 双文件；清理墓碑脚本 + `.gitignore` 加固；抽取前端唯一 API_BASE；PROJECT_STATUS 登记整改证据与 🟢 后期优化清单 | `alembic heads`=c5d6e7f8a9b1 链头正确；schema.sql 命中 messages 定义；dataset.ts 复用 API_BASE；复扫 server/web 无残留严重项（无密钥/无 FIXME/无调试 print） |
 
 ---
 

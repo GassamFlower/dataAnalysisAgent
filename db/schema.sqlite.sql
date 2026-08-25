@@ -403,4 +403,76 @@ CREATE TABLE llm_configs (
 
 CREATE INDEX ix_llm_configs_config_key ON llm_configs(config_key);
 
+-- ---------------------------------------------------------------------------
+-- 21. messages（售后留言 Task 2.1，3NF）
+-- ---------------------------------------------------------------------------
+CREATE TABLE messages (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+    tag TEXT NOT NULL CHECK (tag IN ('presale', 'rescue', 'service', 'incident', 'feedback')),
+    data_source TEXT CHECK (data_source IN ('real', 'simulation') OR data_source IS NULL),
+    entry_point TEXT,
+    contact TEXT,
+    content TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'done')),
+    handled_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    handled_at DATETIME,
+    handle_remark TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME
+);
+
+CREATE INDEX idx_messages_user_id ON messages(user_id);
+CREATE INDEX idx_messages_project_id ON messages(project_id);
+CREATE INDEX idx_messages_tag ON messages(tag);
+CREATE INDEX idx_messages_status ON messages(status);
+CREATE INDEX idx_messages_deleted_at ON messages(deleted_at);
+
+-- ---------------------------------------------------------------------------
+-- 22. research_scales / scale_dimensions / scale_items（学科量表库 Task 4.1，3NF）
+-- ---------------------------------------------------------------------------
+CREATE TABLE research_scales (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    discipline TEXT NOT NULL CHECK (discipline IN ('management', 'education', 'psychology')),
+    description TEXT NOT NULL DEFAULT '',
+    scoring_method TEXT NOT NULL DEFAULT '',
+    source TEXT,
+    reliability_ref TEXT,
+    validity_ref TEXT,
+    is_published INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME
+);
+
+CREATE INDEX idx_research_scales_discipline ON research_scales(discipline);
+CREATE INDEX idx_research_scales_deleted_at ON research_scales(deleted_at);
+
+CREATE TABLE scale_dimensions (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    scale_id TEXT NOT NULL REFERENCES research_scales(id) ON DELETE CASCADE,
+    index INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (scale_id, index)
+);
+
+CREATE INDEX idx_scale_dimensions_scale_id ON scale_dimensions(scale_id);
+
+CREATE TABLE scale_items (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    dimension_id TEXT NOT NULL REFERENCES scale_dimensions(id) ON DELETE CASCADE,
+    index INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    is_reverse INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (dimension_id, index)
+);
+
+CREATE INDEX idx_scale_items_dimension_id ON scale_items(dimension_id);
+
 COMMIT;

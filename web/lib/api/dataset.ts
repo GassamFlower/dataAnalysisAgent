@@ -4,9 +4,7 @@
  */
 
 import { useAuthStore } from "@/lib/stores/auth-store";
-import { apiClient } from "./client";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+import { apiClient, API_BASE } from "./client";
 
 export type DatasetSource = "real" | "simulation";
 

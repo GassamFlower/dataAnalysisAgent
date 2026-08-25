@@ -55,6 +55,7 @@ server/tmp/
 # 临时脚本（验证/测试用，不入库）
 /test_*.py
 /verify_*.py
+/_*.py
 _diag*.py
 _probe*.py
 _tmp_*.py
