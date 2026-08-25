@@ -128,7 +128,7 @@ export default function LearnPage() {
                   预演微课 · 发问卷前，先模拟一遍
                 </h2>
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  回收后再改已太晚——先用"预演"验证量表与假设，发布前发现问题。
+                  回收后再改已太晚——先用“预演”验证量表与假设，发布前发现问题。
                 </p>
               </div>
             </div>

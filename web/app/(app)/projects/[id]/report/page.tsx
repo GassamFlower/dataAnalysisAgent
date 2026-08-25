@@ -278,7 +278,7 @@ export default function ReportPage({
               <h3 className="text-h3 font-semibold text-ink-900">数据分析救急</h3>
               <p className="mt-1 text-body text-ink-600">
                 结果不达标、不知道用什么方法？留言求助，我们会帮你定位问题，
-                命中"愿意转人工分析"将转交人工顾问跟进。
+                命中“愿意转人工分析”将转交人工顾问跟进。
               </p>
               <p className="mt-1 text-caption text-ink-400">
                 已自动关联当前项目与数据源
