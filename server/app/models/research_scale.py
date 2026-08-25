@@ -29,7 +29,7 @@ class ResearchScale(Base):
             name="ck_research_scales_discipline",
         ),
         CheckConstraint(
-            "is_published IN (0, 1)", name="ck_research_scales_is_published"
+            "is_published IN (true, false)", name="ck_research_scales_is_published"
         ),
         Index("idx_research_scales_discipline", "discipline"),
         Index("idx_research_scales_deleted_at", "deleted_at"),
@@ -96,7 +96,7 @@ class ScaleItem(Base):
     __table_args__ = (
         Index("idx_scale_items_dimension_id", "dimension_id"),
         UniqueConstraint("dimension_id", "index", name="uq_scale_items_dimension_index"),
-        CheckConstraint("is_reverse IN (0, 1)", name="ck_scale_items_is_reverse"),
+        CheckConstraint("is_reverse IN (true, false)", name="ck_scale_items_is_reverse"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)

@@ -82,7 +82,7 @@ def upgrade() -> None:
             "discipline IN ('management', 'education', 'psychology')",
             name='ck_research_scales_discipline',
         ),
-        sa.CheckConstraint('is_published IN (0, 1)', name='ck_research_scales_is_published'),
+        sa.CheckConstraint('is_published IN (true, false)', name='ck_research_scales_is_published'),
     )
     op.create_index('idx_research_scales_discipline', 'research_scales', ['discipline'])
     op.create_index('idx_research_scales_deleted_at', 'research_scales', ['deleted_at'])
@@ -113,7 +113,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['dimension_id'], ['scale_dimensions.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('dimension_id', 'index', name='uq_scale_items_dimension_index'),
-        sa.CheckConstraint('is_reverse IN (0, 1)', name='ck_scale_items_is_reverse'),
+        sa.CheckConstraint('is_reverse IN (true, false)', name='ck_scale_items_is_reverse'),
     )
     op.create_index('idx_scale_items_dimension_id', 'scale_items', ['dimension_id'])
 
