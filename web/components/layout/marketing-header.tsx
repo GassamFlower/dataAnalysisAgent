@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserCircle, SignOut, SquaresFour, List, GraduationCap } from "@phosphor-icons/react";
+import { User, LogOut, LayoutDashboard, Menu, GraduationCap } from "lucide-react";
 
 function Brand() {
   return (
@@ -105,14 +105,14 @@ export function MarketingHeader() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                <User className="mr-1.5 h-3.5 w-3.5" />
                 {user?.nickname ?? "用户"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem asChild>
                 <Link href="/projects" className="flex items-center gap-2 cursor-pointer">
-                  <SquaresFour className="h-4 w-4" />
+                  <LayoutDashboard className="h-4 w-4" />
                   我的项目
                 </Link>
               </DropdownMenuItem>
@@ -120,7 +120,7 @@ export function MarketingHeader() {
                 onClick={handleLogout}
                 className="flex items-center gap-2 cursor-pointer text-destructive"
               >
-                <SignOut className="h-4 w-4" />
+                <LogOut className="h-4 w-4" />
                 退出登录
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -147,7 +147,7 @@ export function MarketingHeader() {
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="打开菜单">
-              <List className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-72 sm:max-w-sm">
@@ -185,7 +185,7 @@ export function MarketingHeader() {
                   className="justify-start text-destructive"
                   onClick={handleLogout}
                 >
-                  <SignOut className="mr-2 h-4 w-4" />
+                  <LogOut className="mr-2 h-4 w-4" />
                   退出登录
                 </Button>
               ) : null}

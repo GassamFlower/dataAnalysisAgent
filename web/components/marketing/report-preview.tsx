@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SealCheck, ArrowRight, ShieldCheck } from "@phosphor-icons/react";
+import { BadgeCheck, ArrowRight, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -164,15 +164,15 @@ export function ReportPreview() {
           </div>
           <p className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-caption text-ink-400">
             <span className="flex items-center gap-1.5">
-              <SealCheck className="h-3.5 w-3.5 text-success" />
+              <BadgeCheck className="h-3.5 w-3.5 text-success" />
               体检永久免费
             </span>
             <span className="flex items-center gap-1.5">
-              <SealCheck className="h-3.5 w-3.5 text-success" />
+              <BadgeCheck className="h-3.5 w-3.5 text-success" />
               示例数据仅作结构展示
             </span>
             <span className="flex items-center gap-1.5">
-              <SealCheck className="h-3.5 w-3.5 text-success" />
+              <BadgeCheck className="h-3.5 w-3.5 text-success" />
               合规路线 · 仅用于研究预演
             </span>
           </p>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Code, GraduationCap } from "@phosphor-icons/react";
+import { ArrowRight, ShieldCheck, Code2, GraduationCap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,7 +26,7 @@ const values = [
     desc: "专为本科毕设场景设计，降低统计软件使用门槛，不需要精通 SPSS 也能完成预演。",
   },
   {
-    icon: Code,
+    icon: Code2,
     title: "技术透明",
     desc: "统计阈值公开对齐学术标准，效应量档位与 Cohen 国际标准一致，不做黑箱。",
   },

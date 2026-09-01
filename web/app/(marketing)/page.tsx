@@ -2,16 +2,16 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import {
   ArrowRight,
-  FileMagnifyingGlass,
-  Flask,
+  FileSearch,
+  FlaskConical,
   Users,
-  ChartBar,
+  FileBarChart,
   Download,
   ShieldCheck,
-  CheckCircle,
-  Warning,
+  CheckCircle2,
+  AlertTriangle,
   Lightbulb,
-} from "@phosphor-icons/react";
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -77,26 +77,26 @@ export const metadata: Metadata = {
   },
 };
 
-const stepIcons = [FileMagnifyingGlass, Flask, ChartBar, Download];
+const stepIcons = [FileSearch, FlaskConical, FileBarChart, Download];
 
 const painPoints = [
   {
-    icon: Warning,
+    icon: AlertTriangle,
     title: "收不回数据",
     desc: "问卷发出去石沉大海，好不容易收回几十份，样本量不够。",
   },
   {
-    icon: Warning,
+    icon: AlertTriangle,
     title: "信效度不达标",
     desc: "SPSS 一跑 α 系数太低，维度划分有问题，题目设计要重来。",
   },
   {
-    icon: Warning,
+    icon: AlertTriangle,
     title: "样本没代表性",
     desc: "收回来全是同学填的，男女比 8:2、年龄全在 20 岁上下，答辩一句话就被问住。",
   },
   {
-    icon: Warning,
+    icon: AlertTriangle,
     title: "相关性不显著",
     desc: "假设的关系跑不出来，论文核心结论站不住脚。",
   },
@@ -104,12 +104,12 @@ const painPoints = [
 
 const features = [
   {
-    icon: FileMagnifyingGlass,
+    icon: FileSearch,
     title: "题目体检",
     desc: "上传问卷文本，自动识别题型、维度归属与反向题。永久免费。",
   },
   {
-    icon: Flask,
+    icon: FlaskConical,
     title: "数据预演",
     desc: "一句话描述假设，自动生成相关矩阵与模拟数据，透明可编辑——回收前就知道方向对不对。",
   },
@@ -119,7 +119,7 @@ const features = [
     desc: "回收后自动体检：样本量够不够、性别分布是否失衡、结构是否集中，给出补收建议。",
   },
   {
-    icon: ChartBar,
+    icon: FileBarChart,
     title: "统计报告",
     desc: "信效度检验、差异分析、智能诊断，一键导出 Word / Excel。",
   },
@@ -283,7 +283,7 @@ export default function HomePage() {
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {trustItems.map((item) => (
                 <div key={item} className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 shrink-0 text-success" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                   <span className="text-body text-ink-700">{item}</span>
                 </div>
               ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Flask, Cursor } from "@phosphor-icons/react";
+import { FlaskConical, MousePointerClick } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 
@@ -56,7 +56,7 @@ export function DemoSimulation() {
           <div className="flex flex-col gap-6 p-7 sm:p-8">
             <div className="flex items-start gap-3">
               <div className="rounded-xl bg-primary/10 p-2.5">
-                <Cursor className="h-5 w-5 text-primary" />
+                <MousePointerClick className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <h2 className="font-display text-2xl font-semibold text-ink-900">
@@ -115,7 +115,7 @@ export function DemoSimulation() {
             </div>
 
             <p className="flex items-start gap-1.5 text-caption text-ink-400">
-              <Flask className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <FlaskConical className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               命中率 = 双独立样本 t 检验 ≤ 0.05 的功效近似；真实预演按你的题目与假设计算。
             </p>
           </div>

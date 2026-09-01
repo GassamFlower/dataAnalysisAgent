@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass, BookOpen, Spinner, Sparkle, Books } from "@phosphor-icons/react";
+import { Search, BookOpen, Loader2, Sparkles, Library } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,7 +108,7 @@ export default function ScalesLibraryPage() {
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative w-full sm:w-80">
-              <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
@@ -216,7 +216,7 @@ export default function ScalesLibraryPage() {
                       onClick={() => handleUseScale(scale)}
                       disabled={createProject.isPending}
                     >
-                      <Sparkle className="mr-1.5 h-4 w-4" />
+                      <Sparkles className="mr-1.5 h-4 w-4" />
                       用它建项目
                     </Button>
                   </div>
@@ -237,7 +237,7 @@ export default function ScalesLibraryPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Books className="h-4 w-4 text-primary" />
+              <Library className="h-4 w-4 text-primary" />
               用量表创建项目
             </DialogTitle>
             <DialogDescription>
@@ -270,7 +270,7 @@ export default function ScalesLibraryPage() {
             >
               {createProject.isPending ? (
                 <>
-                  <Spinner className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   创建中...
                 </>
               ) : (

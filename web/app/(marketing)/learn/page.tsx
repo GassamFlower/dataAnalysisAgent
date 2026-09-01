@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Calculator, Clock, Flask, Lightbulb, Books, MagnifyingGlass } from "@phosphor-icons/react";
+import { BookOpen, Calculator, Clock, FlaskConical, Lightbulb, Library, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,7 +141,7 @@ export default function LearnPage() {
               </Button>
               <Button size="sm" variant="outline" asChild>
                 <Link href="/projects/new">
-                  <Flask className="mr-1.5 h-4 w-4" />
+                  <FlaskConical className="mr-1.5 h-4 w-4" />
                   直接进入预演
                 </Link>
               </Button>
@@ -154,7 +154,7 @@ export default function LearnPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex flex-1 items-center gap-3">
               <div className="rounded-xl bg-primary/10 p-2.5">
-                <Books className="h-5 w-5 text-primary" />
+                <Library className="h-5 w-5 text-primary" />
               </div>
               <div className="min-w-0">
                 <h2 className="font-semibold text-ink-900">学科量表库</h2>
@@ -165,7 +165,7 @@ export default function LearnPage() {
             </div>
             <Button size="sm" variant="default" className="shrink-0" asChild>
               <Link href="/learn/scales">
-                <Books className="mr-1.5 h-4 w-4" />
+                <Library className="mr-1.5 h-4 w-4" />
                 浏览量表库
               </Link>
             </Button>
@@ -184,7 +184,7 @@ export default function LearnPage() {
             </span>
           </div>
           <div className="relative w-full sm:w-72">
-            <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="搜教程或术语，如「信度」「效应量」..."
               value={keyword}
