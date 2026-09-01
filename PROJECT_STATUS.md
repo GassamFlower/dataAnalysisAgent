@@ -125,7 +125,16 @@
 
 > 当前要做的具体任务（不超过 3 项）
 
-**V2 第一轮（当前）**
+**线下成交转最小可行方案（当前，关联 [docs/线下成交转最小可行方案.md](docs/线下成交转最小可行方案.md)）**
+1. ~~**Step1 前端去付费展示**~~ ✅ 已完成（2026-08-25：`/pricing` 改「服务咨询」页去价与支付 CTA，全站导航/文案去「定价/套餐/付费」，删 `price-tag.tsx` 与 `PRICING` 常量，C 端不再触发在线下单）
+2. ~~**Step2 停在线支付后端 + 后台手动开通**~~ ✅ 已完成（2026-08-25：`ENABLE_ONLINE_PAYMENT` 默认关 + 在线支付门控；`POST /admin/orders` 线下单同事务激活套餐 + 审计；admin users「开通」对话框；新增 4 条测试，全量 236 passed）
+3. **Step3 生产启客服微信真实号 + 验收报告** —— `.env.production` 填 `CUSTOMER_SERVICE_WECHAT_ID`；全链路回归产出 `docs/s-线下成交验收报告.md`。
+
+**UI 落地页打磨（2026-08-25，关联 [docs/UI设计-落地页打磨.md](docs/UI设计-落地页打磨.md)）**
+1. ~~**S1-S5 落地页/导航/页脚 精致化打磨**~~ ✅ 已完成（2026-08-25：保留 warm-cream 复古品牌；门面图标 lucide→`@phosphor-icons/react`；Hero 去叠字水印/去 mono 水印行/精简 4 层、`pt-20/pb-24` 大留白；水印入「预演数据」脚注；痛点卡弱化红底；全站 section `py-16` 编辑感留白；tsc 0 错 / lint 全绿）
+2. **UI 打磨 Step2（后续分批）**：产品工作区 / 报告 / 后台图标分批切 Phosphor；三主题（Sepia/Dark）对比度精修；落地页 Demo 交互再加工。
+
+**V2 第一轮（并行/后续）**
 1. **Task 2.3 客服微信占位 + 双入口** —— 后端 `CUSTOMER_SERVICE_WECHAT_ID` 占位 + `wechat-entry` 组件（占位弹"敬请期待"，只改 env 即切真实号）。
 2. **Task 2.4 admin 留言管理页** —— 按 5 类 tag 筛选 + 标记处理 + 一键复制联系方式。
 3. **Task 2.5 服务闭环 + 财务** —— 报告/救急区"人工分析服务"→下单入 order→店铺接单。
@@ -219,6 +228,9 @@
 | 2026-08-25 | **Stage2.1 留言表后端**：新 `models/message.py`+迁移、`schemas/message.py`、`api/v1/message.py`（建/查/删/处理 + 审计留痕），5 类 tag + project_id + 数据源落库 | 修复 SQLAlchemy FK 歧义（user/handled_admin 显式 foreign_keys）、尾斜杠 307 重定向、审计查询排序；tests/test_message.py 通过 |
 | 2026-08-25 | **Stage2.2 留言模板库表单**：新 `components/contact/contact-form.tsx`（5 类模板填空式，dialog/sheet，必填校验+登录守卫+提交态）、`lib/api/message.ts`、`lib/hooks/use-message.ts`、`types/message.ts`；三入口接入（定价页售前咨询 / 报告页救急区自动带项目ID+数据源 / 页脚抽屉） | 前端 tsc --noEmit 0 错；后端 message tests 8 passed（三入口可提交且数据可查） |
 | 2026-08-25 | **质量审查整改（分 3 批）**：生成 messages/research_scales 三表 Alembic 迁移并同步 schema.sql 双文件；清理墓碑脚本 + `.gitignore` 加固；抽取前端唯一 API_BASE；PROJECT_STATUS 登记整改证据与 🟢 后期优化清单 | `alembic heads`=c5d6e7f8a9b1 链头正确；schema.sql 命中 messages 定义；dataset.ts 复用 API_BASE；复扫 server/web 无残留严重项（无密钥/无 FIXME/无调试 print） |
+| 2026-08-25 | **线下成交转最小可行方案 Step1（前端去付费展示）**：与负责人对齐「网站不写会员、收费走线下闲鱼、客服微信+留言、后台手动开通」模式，产出 [docs/线下成交转最小可行方案.md](docs/线下成交转最小可行方案.md)；C 端去价格/套餐/支付引导——`/pricing` 改为「服务与咨询」页（去 9.9/19.9/single/subscription 与微信扫码 CTA），首页/关于/页脚/头部导航「定价」改「联系」，首页 SEO 描述去「付费」，`paid-action-guard` 引流弹窗「升级套餐」改「联系客服」，settings 续费/升级入口改「联系客服」，项目页「付费解锁/查看定价」改「开通/联系客服」，删除无用 `price-tag.tsx` 与 `PRICING` 常量（全库已无引用） | `tsc --noEmit` 0 错；eslint 目标文件全绿；grep 全站 C 端无「9.9/19.9/查看定价/升级套餐」；；grep 全站 C 端无「9.9/19.9/查看定价/升级套餐」；在线支付 CTA 已从定价页移除不再触发 C 端下单 |
+| 2026-08-25 | **线下成交转最小可行方案 Step2（停在线支付 + 后台手动开通/线下订单）**：后端新增 `ENABLE_ONLINE_PAYMENT`（默认 false）门控在线下单/支付回调全部拒绝，生产走「线下成交→后台开通」；`payment_service` 抽出 `apply_plan_extension` 复用套餐激活 + 新增 `create_offline_paid_order`（渠道+备注+开通天数）；`admin.py` 新增 `POST /admin/orders`（require_admin 线下单：套餐+天数+渠道+备注，同事务激活套餐+审计留痕 `admin_create_offline_order`）；前端 admin users 页新增「开通」对话框（咸鱼/微信/支付宝/现金/其他 + 天金额备注）；新增 `test_admin_offline_order.py` 4 条；测试 env 开启线上成交保证在线支付用例仍覆盖 | **全量 pytest 236 passed**（原 203+4 新）；tsc 0 错；eslint 目标文件绿；`.env(.test/.production.example/.example)` 补 `ENABLE_ONLINE_PAYMENT` |
+| 2026-08-25 | **UI 落地页/导航/页脚 精致化打磨（S1-S5）**：基于 design-taste/minimalist-ui anti-slop skill 结合产品定位校准（保留 warm-cream 复古品牌、保留「三主题 Light/Sepia/Dark」、范围=落地页+导航/页脚，决策记录见 `docs/UI设计-落地页打磨.md`）；**图标**：落地/导航/页脚/learn 系 lucide→`@phosphor-icons/react`（新依赖 `@phosphor-icons/react ^2.1.10`，替换 `ArrowRight`/`FileSearch→FileMagnifyingGlass`/`FlaskConical→Flask`/`FileBarChart→ChartBar`/`CheckCircle2→CheckCircle`/`AlertTriangle→Warning`/`Code2→Code`/`Search→MagnifyingGlass`/`Sparkles→Sparkle`/`Loader2→Spinner`/`Type→TextT`/`Library→Books`/`DropMenu User→UserCircle`/`LogOut→SignOut`/`LayoutDashboard→SquaresFour`/`Menu→List`/`BadgeCheck→SealCheck`/`Send→PaperPlaneTilt`/`MousePointerClick→Cursor` 等）；**Hero**：删除叠字水印（`brand-watermark` span）与 hero 底部 mono 水印行，精简为 4 层，`pt-20/pb-24` 大留白，水印移为页面「预演数据」脚注；**痛点卡**：红色 `destructive` 弱化为 `bg-card+border-border` 编辑风；**section 留白**：`py-12→py-16` 编辑感 macro-whitespace | `tsc --noEmit` 0 错；`next lint` 目标文件全绿；门面营销文件无 lucide 残留（产品/后台仍用 lucide，后续分批）；`next build` 在当前文件沙箱下因 `jest-worker` spawn EPERM 无法完成（环境限制，非代码问题，需 CI/主机 shell 跑） |
 
 ---
 
