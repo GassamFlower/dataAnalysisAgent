@@ -2,16 +2,16 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import {
   ArrowRight,
-  FileSearch,
-  FlaskConical,
+  FileMagnifyingGlass,
+  Flask,
   Users,
-  FileBarChart,
+  ChartBar,
   Download,
   ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
+  CheckCircle,
+  Warning,
   Lightbulb,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,7 +27,7 @@ import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants"
 export const metadata: Metadata = {
   title: "数据分析智能体 | 回收前预演，回收后看懂",
   description:
-    "全网唯一支持回收前预演：上传问卷题目先做信效度体检，一句话描述假设预演数据是否达标；回收后用样本代表性诊断看懂样本够不够格——在正式发问卷之前，就知道方向对不对。免费题目体检，付费生成数据与报告。",
+    "全网唯一支持回收前预演：上传问卷题目先做信效度体检，一句话描述假设预演数据是否达标；回收后用样本代表性诊断看懂样本够不够格——在正式发问卷之前，就知道方向对不对。免费题目体检，完整能力联系客服开通。",
   keywords: [
     "数据分析",
     "问卷预演",
@@ -77,26 +77,26 @@ export const metadata: Metadata = {
   },
 };
 
-const stepIcons = [FileSearch, FlaskConical, FileBarChart, Download];
+const stepIcons = [FileMagnifyingGlass, Flask, ChartBar, Download];
 
 const painPoints = [
   {
-    icon: AlertTriangle,
+    icon: Warning,
     title: "收不回数据",
     desc: "问卷发出去石沉大海，好不容易收回几十份，样本量不够。",
   },
   {
-    icon: AlertTriangle,
+    icon: Warning,
     title: "信效度不达标",
     desc: "SPSS 一跑 α 系数太低，维度划分有问题，题目设计要重来。",
   },
   {
-    icon: AlertTriangle,
+    icon: Warning,
     title: "样本没代表性",
     desc: "收回来全是同学填的，男女比 8:2、年龄全在 20 岁上下，答辩一句话就被问住。",
   },
   {
-    icon: AlertTriangle,
+    icon: Warning,
     title: "相关性不显著",
     desc: "假设的关系跑不出来，论文核心结论站不住脚。",
   },
@@ -104,12 +104,12 @@ const painPoints = [
 
 const features = [
   {
-    icon: FileSearch,
+    icon: FileMagnifyingGlass,
     title: "题目体检",
     desc: "上传问卷文本，自动识别题型、维度归属与反向题。永久免费。",
   },
   {
-    icon: FlaskConical,
+    icon: Flask,
     title: "数据预演",
     desc: "一句话描述假设，自动生成相关矩阵与模拟数据，透明可编辑——回收前就知道方向对不对。",
   },
@@ -119,7 +119,7 @@ const features = [
     desc: "回收后自动体检：样本量够不够、性别分布是否失衡、结构是否集中，给出补收建议。",
   },
   {
-    icon: FileBarChart,
+    icon: ChartBar,
     title: "统计报告",
     desc: "信效度检验、差异分析、智能诊断，一键导出 Word / Excel。",
   },
@@ -153,15 +153,7 @@ export default function HomePage() {
       <MarketingHeader />
 
       {/* Hero */}
-      <section className="relative mx-auto max-w-5xl overflow-hidden px-6 pb-16 pt-12 text-center">
-        {/* 品牌水印：超大低透明衬线字，营造"研究期刊卷首"氛围 */}
-        <span
-          aria-hidden
-          className="brand-watermark absolute left-1/2 top-0 w-full -translate-x-1/2 select-none whitespace-nowrap text-[9rem] sm:text-[12rem]"
-        >
-          预演
-        </span>
-        <div className="relative">
+      <section className="mx-auto max-w-5xl px-6 pb-24 pt-20 text-center">
         <Stagger step={0.12} amount={0.3}>
           <StaggerItem>
             <Badge variant="secondary" className="mb-6 font-normal text-ink-500">
@@ -192,17 +184,11 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="/pricing">查看定价</Link>
+                <Link href="/pricing">联系客服</Link>
               </Button>
             </div>
           </StaggerItem>
-          <StaggerItem>
-            <p className="mt-4 font-mono text-caption tracking-wider text-ink-400">
-              {SIMULATED_WATERMARK}
-            </p>
-          </StaggerItem>
         </Stagger>
-        </div>
       </section>
 
       {/* 报告预览：首次印象让外行看得懂成品 */}
@@ -211,13 +197,18 @@ export default function HomePage() {
       {/* 可交互预演 demo：拖动效应量/样本量 → 命中率实时变化 */}
       <DemoSimulation />
 
+      {/* 预演数据水印脚注 */}
+      <p className="mx-auto max-w-5xl px-6 pb-2 text-center font-mono text-caption tracking-wider text-ink-400">
+        {SIMULATED_WATERMARK}
+      </p>
+
       {/* 痛点区 */}
       <section className="mx-auto max-w-5xl px-6 py-8">
-        <Stagger step={0.07} className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Stagger step={0.07} className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {painPoints.map((p) => (
             <StaggerItem key={p.title}>
-              <Card className="lift h-full border-destructive/20 bg-destructive/5 p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+              <Card className="lift h-full border-border bg-card p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface text-ink-500">
                   <p.icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-4 text-h3 font-semibold text-ink-900">{p.title}</h3>
@@ -229,7 +220,7 @@ export default function HomePage() {
       </section>
 
       {/* 三步流程 */}
-      <section className="mx-auto max-w-5xl px-6 py-12">
+      <section className="mx-auto max-w-5xl px-6 py-16">
         <Reveal>
           <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
             三步完成研究预演
@@ -259,7 +250,7 @@ export default function HomePage() {
       </section>
 
       {/* 功能特性区 */}
-      <section className="mx-auto max-w-5xl px-6 py-12">
+      <section className="mx-auto max-w-5xl px-6 py-16">
         <Reveal>
           <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
             核心能力
@@ -283,7 +274,7 @@ export default function HomePage() {
       </section>
 
       {/* 信任背书区 */}
-      <section className="mx-auto max-w-5xl px-6 py-12">
+      <section className="mx-auto max-w-5xl px-6 py-16">
         <Reveal>
           <Card className="bg-cream-surface p-8 transition-shadow duration-base hover:shadow-md">
             <h2 className="text-center text-h2 font-semibold text-ink-900">
@@ -292,7 +283,7 @@ export default function HomePage() {
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {trustItems.map((item) => (
                 <div key={item} className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                  <CheckCircle className="h-4 w-4 shrink-0 text-success" />
                   <span className="text-body text-ink-700">{item}</span>
                 </div>
               ))}
@@ -301,31 +292,31 @@ export default function HomePage() {
         </Reveal>
       </section>
 
-      {/* 定价引导 */}
-      <section className="mx-auto max-w-5xl px-6 py-12 text-center">
+      {/* 服务/开通引导 */}
+      <section className="mx-auto max-w-5xl px-6 py-16 text-center">
         <h2 className="text-h2 font-semibold text-ink-900">
-          免费体检，付费预演
+          免费体检，开通完整能力找客服
         </h2>
         <p className="mt-2 text-body text-ink-500">
-          题目体检与样本代表性诊断永久免费，确认可行后再付费生成数据与报告。
+          题目体检与样本代表性诊断永久免费；数据预演、统计报告、智能诊断与导出等完整能力，联系客服即可开通。
         </p>
         <Button size="lg" className="mt-6" asChild>
           <Link href="/pricing">
-            查看完整定价
+            联系客服
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Link>
         </Button>
       </section>
 
       {/* 页脚 */}
-      <footer className="mx-auto max-w-5xl px-6 py-12">
+      <footer className="mx-auto max-w-5xl px-6 py-16">
         <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-3 text-caption text-ink-500">
           {DISCLAIMER}
         </div>
         <div className="mt-6 flex items-center justify-center gap-4 text-caption text-ink-400">
           <Link href="/" className="hover:text-ink-700">首页</Link>
           <span>·</span>
-          <Link href="/pricing" className="hover:text-ink-700">定价</Link>
+          <Link href="/pricing" className="hover:text-ink-700">联系</Link>
           <span>·</span>
           <Link href="/about" className="hover:text-ink-700">关于</Link>
           <span>·</span>

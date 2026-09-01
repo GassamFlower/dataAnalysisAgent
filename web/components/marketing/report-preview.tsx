@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeCheck, ArrowRight, ShieldCheck } from "lucide-react";
+import { SealCheck, ArrowRight, ShieldCheck } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -71,13 +71,13 @@ const TOTAL_ALPHA = 0.793;
 
 export function ReportPreview() {
   return (
-    <section className="mx-auto max-w-5xl px-6 py-12">
+    <section className="mx-auto max-w-5xl px-6 py-16">
       {/* 标题 + 诚实标识 */}
       <Stagger step={0.1} className="text-center">
         <StaggerItem>
           <Badge variant="outline" className="mb-3 px-3 py-1 font-normal text-ink-500">
             <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-            示例数字 · 仅作结构示意
+            示例数字 · 仅作为展示
           </Badge>
         </StaggerItem>
         <StaggerItem>
@@ -127,7 +127,7 @@ export function ReportPreview() {
 
         {/* 各维度信效度 */}
         <StaggerItem>
-          <Card className="border-border bg-card p-6 shadow-sm">
+          <Card className="border border-border bg-card p-4 shadow-sm">
             <h3 className="mb-4 text-h3 font-semibold text-ink-900">各维度信效度</h3>
             <div className="mb-6">
               <ReliabilityChart results={SAMPLE_RELIABILITY} />
@@ -142,8 +142,7 @@ export function ReportPreview() {
             <h3 className="mb-3 text-h3 font-semibold text-ink-900">智能诊断</h3>
             <DiagnosisAlert diagnosis={SAMPLE_DIAGNOSIS} />
             <p className="mt-3 text-caption text-ink-500">
-              这里特意展示了一个不达标维度（α 0.624）——正是因为回收前就发现、并给出一句话修法，
-              你才不用等答辩前才知道。
+              这里展示了一个不达标维度（α 0.624）——正是因为回收前就能发现，写论文结论前就能改，不用等到答辩。
             </p>
           </div>
         </StaggerItem>
@@ -160,20 +159,20 @@ export function ReportPreview() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link href="/pricing">查看定价</Link>
+              <Link href="/pricing">联系客服</Link>
             </Button>
           </div>
           <p className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-caption text-ink-400">
             <span className="flex items-center gap-1.5">
-              <BadgeCheck className="h-3.5 w-3.5 text-success" />
+              <SealCheck className="h-3.5 w-3.5 text-success" />
               体检永久免费
             </span>
             <span className="flex items-center gap-1.5">
-              <BadgeCheck className="h-3.5 w-3.5 text-success" />
+              <SealCheck className="h-3.5 w-3.5 text-success" />
               示例数据仅作结构展示
             </span>
             <span className="flex items-center gap-1.5">
-              <BadgeCheck className="h-3.5 w-3.5 text-success" />
+              <SealCheck className="h-3.5 w-3.5 text-success" />
               合规路线 · 仅用于研究预演
             </span>
           </p>

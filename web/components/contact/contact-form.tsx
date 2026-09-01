@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Send } from "lucide-react";
+import { PaperPlaneTilt } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -535,7 +535,7 @@ export function ContactForm({
         </>
       ) : (
         <>
-          <Send className="mr-1.5 h-4 w-4" />
+          <PaperPlaneTilt className="mr-1.5 h-4 w-4" />
           提交留言
         </>
       )}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Code2, GraduationCap } from "lucide-react";
+import { ArrowRight, ShieldCheck, Code, GraduationCap } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,7 +26,7 @@ const values = [
     desc: "专为本科毕设场景设计，降低统计软件使用门槛，不需要精通 SPSS 也能完成预演。",
   },
   {
-    icon: Code2,
+    icon: Code,
     title: "技术透明",
     desc: "统计阈值公开对齐学术标准，效应量档位与 Cohen 国际标准一致，不做黑箱。",
   },
@@ -50,8 +50,8 @@ const faqs = [
     a: "智能诊断是基于规则的翻车点匹配 + LLM 自然语言推理的诊断系统。先确定性地匹配常见统计翻车点（如 α 过低、样本量不足），再由 LLM 补充自然语言原因和修改建议。",
   },
   {
-    q: "免费版和付费版的区别？",
-    a: "免费版永久可用，包含题目上传、维度归属推断、题型与反向题识别。付费版解锁数据生成、统计报告、智能诊断和导出功能。详见定价页。",
+    q: "免费版和完整能力的区别？",
+    a: "免费版永久可用，包含题目上传、维度归属推断、题型与反向题识别。完整能力（数据预演、统计报告、智能诊断和导出）直接联系客服开通即可。",
   },
   {
     q: "数据安全吗？",
@@ -145,7 +145,7 @@ export default function AboutPage() {
         <div className="flex items-center justify-center gap-4 text-caption text-ink-400">
           <Link href="/" className="hover:text-ink-700">首页</Link>
           <span>·</span>
-          <Link href="/pricing" className="hover:text-ink-700">定价</Link>
+          <Link href="/pricing" className="hover:text-ink-700">联系</Link>
           <span>·</span>
           <Link href="/about" className="hover:text-ink-700">关于</Link>
         </div>

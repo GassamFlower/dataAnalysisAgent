@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpen, Calculator, Clock, Type } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Calculator, Clock, TextT } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -185,7 +185,7 @@ export default function TutorialDetailPage({
 
                 {/* 字体大小调节 */}
                 <div className="ml-auto flex items-center gap-1">
-                  <Type className="mr-1 h-4 w-4 text-muted-foreground" />
+                  <TextT className="mr-1 h-4 w-4 text-muted-foreground" />
                   {FONT_SIZES.map((f) => (
                     <Button
                       key={f.value}
