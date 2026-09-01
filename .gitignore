@@ -16,6 +16,7 @@ env/
 server/.env.production
 server/.env.test
 web/.env.production
+server/.env.production.bak*
 
 # 数据库文件
 *.db
