@@ -100,6 +100,19 @@ export const adminApi = {
       `/api/v1/admin/users/${id}`
     ),
 
+  /** 线下开通：为指定用户创建线下已支付订单并激活套餐 */
+  createOfflineOrder: (body: {
+    user_id: string;
+    plan_type: "single" | "subscription";
+    days?: number;
+    channel?: string;
+    remark?: string;
+    amount?: number;
+  }) => apiClient.post<AdminUser & { order?: Record<string, unknown> }>(
+    "/api/v1/admin/orders",
+    body
+  ),
+
   /** 调整用户套餐 */
   changePlan: (
     id: string,

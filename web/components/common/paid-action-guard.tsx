@@ -97,15 +97,15 @@ export function PaidActionGuard({
             </DialogTitle>
             <DialogDescription>
               本周{actionLabel}次数已用完（{quota?.limit}次）。
-              {resetDate}自动重置，或升级套餐解锁无限次数。
+              {resetDate}自动重置，或联系客服开通完整能力。
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setOpen(false)}>
-              暂不升级
+              稍后再说
             </Button>
             <Button asChild>
-              <Link href="/pricing">查看套餐</Link>
+              <Link href="/pricing">联系客服</Link>
             </Button>
           </div>
         </DialogContent>

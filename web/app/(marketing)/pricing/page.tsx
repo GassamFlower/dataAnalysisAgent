@@ -1,52 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { PriceTag } from "@/components/common/price-tag";
-import { PageHeader } from "@/components/common/page-header";
-import { WechatPayQrModal } from "@/components/payment/wechat-pay-modal";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "@/components/contact/contact-form";
 import { WechatEntry } from "@/components/contact/wechat-entry";
-import { PRICING, SIMULATED_WATERMARK } from "@/lib/constants";
-import { usePurchasePlan, useSubscription } from "@/lib/hooks/use-payment";
-import { useWechatPayQr } from "@/lib/hooks/use-wechat-pay";
-import { useAuthStore } from "@/lib/stores/auth-store";
+import { SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
 
-export default function PricingPage() {
-  const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-  const { data: subscription } = useSubscription();
-  const purchase = usePurchasePlan();
-  const wxPay = useWechatPayQr();
-
-  const handlePurchase = async (planType: "single" | "subscription") => {
-    if (!isAuthenticated) {
-      router.push("/login");
-      return;
-    }
-    try {
-      // 优先走微信 Native 扫码支付；若未配置 WXPAY 则回落为模拟支付（联调用）
-      await wxPay.startPay(planType);
-      // 成功发起支付后，二维码弹窗由 useWechatPayQr 内部状态驱动；支付成功自动关闭并刷新
-    } catch (err) {
-      // 微信未配置/下单失败 → 回落到模拟支付（快速验证链路）
-      try {
-        await purchase.mutateAsync(planType);
-        router.push("/settings");
-      } catch (fallbackErr) {
-        alert(
-          fallbackErr instanceof Error
-            ? fallbackErr.message
-            : "购买失败，请重试"
-        );
-      }
-    }
-  };
-
-  const currentPlan = subscription?.plan ?? "free";
-
+/**
+ * 服务与咨询页。
+ *
+ * 说明（线下成交转最小可行方案，Step 1）：
+ * - 不再展示三层价格与在线支付 CTA（9.9 / 19.9 / single / subscription 均不出现对外）。
+ * - 作为「免费试用 + 联系客服」枢纽：免费体验入口 + 客服微信一键加 + 留言告知需求。
+ * - 完整能力的开通走线下渠道，由客服引导、管理员在后台开通，本站不承载在线成交。
+ */
+export default function ServiceConsultPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
@@ -59,61 +30,78 @@ export default function PricingPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <PageHeader
-          title="简单透明的定价"
-          description="免费体检确认可行性，付费生成数据与完整报告。开题季早鸟价进行中。"
-        />
-
-        {subscription && (
-          <div className="mb-6 rounded-lg border border-border bg-card p-4 text-center text-body text-ink-700">
-            当前套餐：
-            <span className="font-semibold text-ink-900">
-              {currentPlan === "free" && "免费体检"}
-              {currentPlan === "single" && "单次报告"}
-              {currentPlan === "subscription" && "月度订阅"}
-            </span>
-            {subscription.isActive && subscription.expiresAt && (
-              <span className="ml-2 text-ink-500">
-                有效期至 {new Date(subscription.expiresAt).toLocaleDateString("zh-CN")}
-              </span>
-            )}
+        {/* 免费试用引导 */}
+        <section className="rounded-lg border border-border bg-card p-8 text-center">
+          <Badge variant="secondary" className="mb-4 font-normal text-ink-500">
+            免费试用 · 体检永久免费
+          </Badge>
+          <h1 className="text-h2 font-semibold text-ink-900">
+            先免费体检，确认可行再开通完整能力
+          </h1>
+          <p className="mx-auto mt-3 max-w-2xl text-body text-ink-500">
+            题目体检、维度归属推断、题型/反向题识别永久免费；
+            数据预演、统计报告、智能诊断与导出等完整能力，开通方式请直接联系客服。
+          </p>
+          <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-3">
+            <Button size="lg" asChild>
+              <Link href="/projects/new">开始免费体检</Link>
+            </Button>
+            <WechatEntry
+              trigger={<Button variant="outline" size="lg">一键加客服微信</Button>}
+            />
+            <ContactForm
+              defaultTag="presale"
+              entryPoint="pricing"
+              trigger={<Button variant="outline" size="lg">留言告知需求</Button>}
+            />
           </div>
-        )}
+        </section>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <PriceTag
-            plan={PRICING.free}
-            ctaLabel="免费开始"
-            highlighted={false}
-            ctaHref="/projects/new"
-          />
-          <PriceTag
-            plan={PRICING.single}
-            ctaLabel={currentPlan === "single" ? "已拥有" : "购买单次"}
-            highlighted
-            onCta={() => handlePurchase("single")}
-          />
-          <PriceTag
-            plan={PRICING.subscription}
-            ctaLabel={currentPlan === "subscription" ? "已拥有" : "订阅月度"}
-            highlighted={false}
-            onCta={() => handlePurchase("subscription")}
-          />
-        </div>
+        {/* 开通流程说明 */}
+        <section className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <Card className="lift h-full p-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              ①
+            </div>
+            <h3 className="mt-4 text-h3 font-semibold text-ink-900">先免费体检</h3>
+            <p className="mt-2 text-body text-ink-500">
+              上传问卷题目，免费确认「题目设计 + 假设方向」是否可行。
+            </p>
+          </Card>
+          <Card className="lift h-full p-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              ②
+            </div>
+            <h3 className="mt-4 text-h3 font-semibold text-ink-900">联系客服</h3>
+            <p className="mt-2 text-body text-ink-500">
+              一键加客服二维码或留言说明课题，客服会帮你判断方案并告知完整能力的开通方式。
+            </p>
+          </Card>
+          <Card className="lift h-full p-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              ③
+            </div>
+            <h3 className="mt-4 text-h3 font-semibold text-ink-900">开通完整能力</h3>
+            <p className="mt-2 text-body text-ink-500">
+              由客服/后台管理员为你开通数据预演、报告导出等完整能力。
+            </p>
+          </Card>
+        </section>
 
+        {/* 常见问题 */}
         <section className="mt-16">
           <h2 className="text-h2 font-semibold text-ink-900">常见问题</h2>
           <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div className="rounded-lg border border-border bg-card p-5">
               <h4 className="font-medium text-ink-900">免费体检包含什么？</h4>
               <p className="mt-2 text-body text-ink-500">
-                题目上传解析、维度归属推断、题型与反向题识别。不包含数据生成与报告。
+                题目上传与解析、维度归属推断、题型与反向题识别。可确认题目是否可行。
               </p>
             </div>
             <div className="rounded-lg border border-border bg-card p-5">
-              <h4 className="font-medium text-ink-900">单次和订阅的区别？</h4>
+              <h4 className="font-medium text-ink-900">完整能力怎么开通？</h4>
               <p className="mt-2 text-body text-ink-500">
-                单次报告含 1 次完整预演；月度订阅不限次预演，适合开题季反复调整。
+                扫码/留言联系客服，客服会为你确认需求并指引开通流程，无需在线自助下单操作。
               </p>
             </div>
             <div className="rounded-lg border border-border bg-card p-5">
@@ -125,33 +113,31 @@ export default function PricingPage() {
             <div className="rounded-lg border border-border bg-card p-5">
               <h4 className="font-medium text-ink-900">不达标怎么办？</h4>
               <p className="mt-2 text-body text-ink-500">
-                智能诊断会给出逐项修改建议，调整题目或假设后可重新预演（订阅不限次）。
+                智能诊断会给出逐项修改建议，调整题目或假设后重新体检与预演。
               </p>
             </div>
           </div>
         </section>
+
+        {/* 联系引导 */}
         <section className="mt-16 rounded-lg border border-border bg-card p-8 text-center">
-          <h2 className="text-h2 font-semibold text-ink-900">仍有疑问？</h2>
+          <h2 className="text-h2 font-semibold text-ink-900">需要完整能力？直接联系客服</h2>
           <p className="mx-auto mt-2 max-w-xl text-body text-ink-500">
-            不确定该选免费体检还是付费预演？让顾问帮你判断方案是否适合你的开题课题。
+            不确定该不该、要不要开通？让客服帮你判断方案是否适合你的课题。
           </p>
           <div className="mt-5 inline-flex items-center gap-3">
+            <WechatEntry
+              trigger={<Button size="lg">一键加客服微信</Button>}
+            />
             <ContactForm
               defaultTag="presale"
               entryPoint="pricing"
-              trigger={<Button size="lg">留言咨询</Button>}
-            />
-            <WechatEntry
-              trigger={<Button variant="outline" size="lg">一键加客服微信</Button>}
+              trigger={<Button variant="outline" size="lg">留言咨询</Button>}
             />
           </div>
         </section>
 
-        <WechatPayQrModal
-          open={wxPay.qrState.open}
-          codeUrl={wxPay.qrState.codeUrl}
-          onClose={wxPay.closeQr}
-        />
+        <p className="mt-10 text-center text-caption text-ink-400">{DISCLAIMER}</p>
       </main>
     </div>
   );

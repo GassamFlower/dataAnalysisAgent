@@ -60,6 +60,9 @@ PLAN_FEATURES: dict[str, list[str]] = {
     ],
 }
 
+# 线下成交渠道（用于后台手动开通对账）
+OFFLINE_CHANNELS: tuple[str, ...] = ("xianyu", "wechat", "alipay", "cash", "other")
+
 
 def get_plan_amount(plan_type: OrderType) -> Decimal:
     """获取套餐金额（服务端决定，禁止前端传入）。"""
@@ -250,15 +253,70 @@ async def process_payment_notification(
     user_result = await db.execute(select(User).where(User.id == order.user_id))
     user = user_result.scalar_one()
 
-    now = datetime.now(timezone.utc)
     duration_days = get_plan_duration_days(order.type)  # type: ignore[arg-type]
+    apply_plan_extension(user, order.type, duration_days)  # type: ignore[arg-type]
 
-    if user.plan == order.type and user.plan_expires_at and user.plan_expires_at > now:
-        user.plan_expires_at = user.plan_expires_at + timedelta(days=duration_days)
+    await db.flush()
+    return order
+
+
+def apply_plan_extension(user: User, order_type: str, days: int) -> None:
+    """把指定套餐时长叠加到用户（同类型未过期则顺延，否则从当前起算）。
+
+    供在线支付回调与后台手动开通（线下订单）共用，保证口径一致。
+    """
+    now = datetime.now(timezone.utc)
+    if user.plan == order_type and user.plan_expires_at and user.plan_expires_at > now:
+        user.plan_expires_at = user.plan_expires_at + timedelta(days=days)
     else:
-        user.plan = order.type  # type: ignore[assignment]
-        user.plan_expires_at = now + timedelta(days=duration_days)
+        user.plan = order_type  # type: ignore[assignment]
+        user.plan_expires_at = now + timedelta(days=days)
 
+
+async def create_offline_paid_order(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    order_type: OrderType,
+    channel: str = "other",
+    remark: Optional[str] = None,
+    amount: Optional[Decimal] = None,
+    days: Optional[int] = None,
+) -> Order:
+    """后台手动开通：创建一笔「线下已支付订单」并同事务激活用户套餐。
+
+    用于线下（咸鱼等）成交后由管理员在后台开通权限，同时留一笔对账记录。
+    - channel：线下渠道，取值参照 OFFLINE_CHANNELS（咸鱼/微信/支付宝/现金/其他）。
+    - remark：管理备注（如咸鱼订单号），记入审计。
+    - amount：未传则按服务端定价；days：未传则按套餐默认时长。
+    - 不写第三方流水号（provider_transaction_id 留空），与在线支付区分。
+    """
+    if channel not in OFFLINE_CHANNELS:
+        raise ValidationException(
+            f"渠道必须是 {' / '.join(OFFLINE_CHANNELS)} 之一"
+        )
+    price = amount if amount is not None else get_plan_amount(order_type)
+    if price < 0:
+        raise ValidationException("金额不能为负")
+    duration = days if days is not None else get_plan_duration_days(order_type)
+    if duration <= 0:
+        raise ValidationException("开通天数必须大于 0")
+
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise NotFoundException("用户不存在")
+
+    order = Order(
+        user_id=user_id,
+        type=order_type,
+        amount=price,
+        status="paid",
+        paid_at=datetime.now(timezone.utc),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=duration),
+    )
+    db.add(order)
+    apply_plan_extension(user, order_type, duration)
     await db.flush()
     return order
 

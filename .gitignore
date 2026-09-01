@@ -83,3 +83,6 @@ docs/
 *.html
 demo.zip
 error.txt
+
+# 工具产物（牛马时间看板客户端构建，非项目，勿入库）
+dsh-worktime-board-client/

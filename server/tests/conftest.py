@@ -91,6 +91,8 @@ def ensure_test_settings():
         settings.JWT_SECRET_KEY = "test-jwt-secret-do-not-use-in-production"
     if not settings.RESET_JWT_SECRET_KEY:
         settings.RESET_JWT_SECRET_KEY = "test-reset-jwt-secret-do-not-use-in-production"
+    # 测试开启线上成交，覆盖在线支付/回调路径（生产默认 false 走线下手动开通）
+    settings.ENABLE_ONLINE_PAYMENT = True
 
 
 @pytest.fixture

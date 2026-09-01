@@ -99,6 +99,11 @@ class Settings(BaseSettings):
     # 前端支付成功后的回跳地址（可选）
     WXPAY_REDIRECT_URL: str = ""
 
+    # 线上成交模式开关（线下成交转最小可行方案，Step 2）
+    # True = 允许 C 端在线下单/支付回调自动激活；False（默认）= 在线支付全部拒绝，
+    # 完整能力仅在后台由管理员通过「线下订单」手动开通。生产建议保持 False。
+    ENABLE_ONLINE_PAYMENT: bool = False
+
     # 套餐限制
     FREE_PLAN_PROJECT_LIMIT: int = 3
     FREE_PLAN_SIMULATION_LIMIT_PER_WEEK: int = 3

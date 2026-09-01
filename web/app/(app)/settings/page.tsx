@@ -279,14 +279,14 @@ export default function SettingsPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-destructive">套餐已过期</p>
                       <p className="text-xs text-muted-foreground">
-                        您的套餐已过期，付费功能已暂停。续费后可继续使用数据生成、报告分析等能力。
+                        您的开通权限已过期，完整能力已暂停。联系客服即可续开，继续使用数据生成、报告分析等能力。
                       </p>
                     </div>
                     <Button
                       size="sm"
                       onClick={() => router.push("/pricing")}
                     >
-                      立即续费
+                      联系客服
                     </Button>
                   </div>
                 );
@@ -301,7 +301,7 @@ export default function SettingsPage() {
                         即将到期 · 剩余 {status.daysLeft} 天
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        套餐即将到期，续费可避免付费功能中断。
+                        开通权限即将到期，联系客服续费可避免完整能力中断。
                       </p>
                     </div>
                     <Button
@@ -309,7 +309,7 @@ export default function SettingsPage() {
                       variant="outline"
                       onClick={() => router.push("/pricing")}
                     >
-                      续费
+                      联系客服
                     </Button>
                   </div>
                 );
@@ -329,16 +329,16 @@ export default function SettingsPage() {
             <div className="mt-3 flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div className="flex-1">
-                <p className="text-sm font-medium">升级解锁完整能力</p>
+                <p className="text-sm font-medium">开通完整能力</p>
                 <p className="text-xs text-muted-foreground">
-                  免费版可体检问卷可行性。升级后解锁数据生成、报告分析、Word/Excel 导出等能力。
+                  免费版可体检问卷可行性。开通后解锁数据生成、报告分析、Word/Excel 导出等能力。
                 </p>
               </div>
               <Button
                 size="sm"
                 onClick={() => router.push("/pricing")}
               >
-                查看定价
+                联系客服
               </Button>
             </div>
           )}

@@ -63,33 +63,6 @@ export const DIRECTION_OPTIONS = [
 
 export type Direction = (typeof DIRECTION_OPTIONS)[number]["value"];
 
-/** 定价（宪法第三章 + 立项文档第七章） */
-export const PRICING = {
-  free: {
-    name: "免费体检",
-    price: 0,
-    unit: "",
-    features: ["题目上传解析", "维度归属推断", "题型 / 反向题识别"],
-    locked: ["智能诊断结论", "数据生成", "报告导出"],
-  },
-  single: {
-    name: "单次报告",
-    price: 9.9,
-    unit: "元 / 次",
-    badge: "早鸟套餐含 1 次免费重跑",
-    features: ["完整数据预演", "标准统计套餐", "智能诊断结论", "Word / Excel 导出"],
-    locked: [],
-  },
-  subscription: {
-    name: "月度订阅",
-    price: 19.9,
-    unit: "元 / 月",
-    badge: "不限次 · 开题季重度用户",
-    features: ["单次报告全部能力", "不限次预演", "优先排队", "历史报告留存"],
-    locked: [],
-  },
-} as const;
-
 /** 题型 */
 export const QUESTION_TYPES = {
   likert5: { label: "李克特 5 级", options: 5 },

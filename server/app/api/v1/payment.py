@@ -37,6 +37,18 @@ from app.services.wechat_pay import (
 router = APIRouter(prefix="/payment", tags=["payment"])
 
 
+def _require_online_payment_enabled() -> None:
+    """线上成交开关（线下成交转最小可行方案，Step 2）。
+
+    生产默认 ENABLE_ONLINE_PAYMENT=False，此时在线下单/支付回调一律拒绝，
+    完整能力仅由后台「线下订单」手动开通。
+    """
+    if not settings.ENABLE_ONLINE_PAYMENT:
+        raise ForbiddenException(
+            "在线支付已关闭，完整能力请联系客服开通（线下成交模式）"
+        )
+
+
 def parse_order_id(out_trade_no: str) -> Optional[UUID]:
     """把微信回调 out_trade_no（Order.id 的 32 位 hex）解析回 UUID。
 
@@ -103,6 +115,7 @@ async def create_order(
     current_user: dict = Depends(get_current_user),
 ):
     """创建订单。"""
+    _require_online_payment_enabled()
     order = await payment_service.create_order(db, current_user["id"], request)
     return ResponseModel(data=order)
 
@@ -201,10 +214,12 @@ async def payment_notify(
 
     安全策略：
     - 不要求登录态（支付渠道服务端触发，无 JWT）
+    - 线上成交模式关闭时拒绝（生产默认关闭，见 _require_online_payment_enabled）
     - DEBUG 模式放行（开发联调）
     - 生产环境校验 X-Payment-Signature 与 IP 白名单
     - 通过 order_id 直接查询订单（不再过滤 user_id）
     """
+    _require_online_payment_enabled()
     _verify_payment_callback(http_request)
 
     # 按 order_id 处理（不限制 user_id，回调无登录态；process 内部含金额核验、幂等与行锁）
@@ -247,6 +262,7 @@ async def wechat_pay_qr(
     - 仅 pending 订单可支付
     - 金额由服务端读取订单（不让前端传），杜绝改价
     """
+    _require_online_payment_enabled()
     order = await payment_service.get_order_detail(
         db, current_user["id"], order_id
     )
@@ -278,6 +294,7 @@ async def wechat_pay_notify(
     流程：取 Wechatpay-Timestamp / Nonce / Signature 请求头 →
     验签 → 解析 JSON → 解密 resource → 校验 order 状态与金额 → 更新。
     """
+    _require_online_payment_enabled()
     # 读取原始请求体（明文 JSON）
     raw_body = await http_request.body()
     body_text = raw_body.decode("utf-8")

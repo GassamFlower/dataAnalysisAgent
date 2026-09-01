@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "定价 · 免费体检与付费生成",
+  title: "服务与咨询 | 数据分析智能体",
   description:
-    "免费体验问卷体检与可行性确认，付费生成模拟数据与完整统计报告。单次与月度订阅灵活选择，开题季早鸟价进行中。",
+    "问卷题目免费体检，确认题目与假设方向是否可行；数据预演、统计报告与导出等完整能力，直接联系客服开通。",
   alternates: { canonical: "/pricing" },
   openGraph: {
-    title: "定价 · 数据分析智能体",
-    description: "免费体检确认可行性，付费生成数据与完整报告",
+    title: "服务与咨询 · 数据分析智能体",
+    description: "免费体检确认可行性，完整能力联系客服开通",
   },
 };
 

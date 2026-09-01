@@ -6,10 +6,11 @@
 """
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from decimal import Decimal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +31,7 @@ from app.schemas.message import (
 )
 from app.services.admin_service import VALID_PLANS, get_user_project_counts, user_admin_dict
 from app.services.audit_service import AuditService
+from app.services import payment_service
 
 router = APIRouter(prefix="/admin", tags=["管理后台"])
 
@@ -235,6 +237,72 @@ async def admin_orders(
         for o, u in res.all()
     ]
     return success_response(data=_paged(items, total, page, page_size))
+
+
+class _OfflineOrderCreateRequest(BaseModel):
+    user_id: str = Field(..., description="目标用户 ID")
+    plan_type: Literal["single", "subscription"] = Field(..., description="single 单次 / subscription 开通期")
+    days: Optional[int] = Field(None, ge=1, description="开通天数（默认 single/subscription 均为 30 天）")
+    channel: str = Field("other", description="线下成交渠道：xianyu / wechat / alipay / cash / other")
+    remark: Optional[str] = Field(None, max_length=500, description="对账备注（如咸鱼订单号）")
+    amount: Optional[Decimal] = Field(None, description="实收金额（元，缺省按服务端定价）")
+
+
+@router.post("/orders", summary="手动开通：创建线下已支付订单并激活套餐")
+async def admin_create_offline_order(
+    req: _OfflineOrderCreateRequest,
+    request: Request,
+    current: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """线下成交后，管理后台为该用户开一笔「线下单」并同事务激活套餐。
+
+    - 同事务：订单落库 + 用户套餐写入，成功后要么都有要么都没有。
+    - 渠道 + 备注写入审计（action_detail），供对账；Order 表记录金额/类型/状态。
+    - 不调用在线支付回调，provider_transaction_id 留空的已完成。
+    """
+    uid = _uuid(req.user_id) if req.user_id else None
+    if not uid:
+        raise NotFoundException("无效的用户 ID")
+    user = await db.get(User, uid)
+    if not user or user.deleted_at is not None:
+        raise NotFoundException("用户不存在")
+
+    order = await payment_service.create_offline_paid_order(
+        db,
+        user_id=uid,
+        order_type=req.plan_type,  # type: ignore[arg-type]
+        channel=req.channel or "other",
+        remark=req.remark,
+        amount=req.amount,
+        days=req.days,
+    )
+    await _audit(
+        request, db, current["id"], "admin_create_offline_order",
+        {
+            "target_user_id": str(uid),
+            "order_id": str(order.id),
+            "plan_type": req.plan_type,
+            "amount": str(order.amount),
+            "channel": req.channel or "other",
+            "remark": req.remark,
+            "days": req.days,
+            "new_expires_at": order.expires_at.isoformat() if order.expires_at else None,
+        },
+    )
+    await db.commit()
+    await db.refresh(order)
+    await db.refresh(user)
+    return success_response(data={
+        **user_admin_dict(user),
+        "order": {
+            "id": str(order.id),
+            "type": order.type,
+            "amount": str(order.amount),
+            "status": order.status,
+            "expires_at": order.expires_at.isoformat() if order.expires_at else None,
+        },
+    })
 
 
 @router.get("/orders/{order_id}")

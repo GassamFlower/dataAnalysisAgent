@@ -25,7 +25,6 @@ import {
   useUpdateQuestion,
   useDimensions,
 } from "@/lib/hooks/use-questionnaire";
-import { PRICING } from "@/lib/constants";
 
 export default function WorkbenchPage({
   params,
@@ -182,7 +181,7 @@ export default function WorkbenchPage({
         </div>
       </div>
 
-      {/* 免费层边界：付费解锁 */}
+      {/* 免费层边界：联系开通 */}
       <Card className="border-primary/30 bg-cream-surface p-6">
         <div className="flex items-start gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -191,19 +190,16 @@ export default function WorkbenchPage({
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-h3 font-semibold text-ink-900">
-                付费解锁数据预演
+                开通数据预演与完整能力
               </h3>
-              <Badge variant="warning" className="font-normal">
-                {PRICING.single.badge}
-              </Badge>
             </div>
             <p className="mt-2 text-body text-ink-500">
-              体检永久免费。生成模拟数据、验证假设是否达标、导出报告需付费。
+              体检永久免费。生成模拟数据、验证假设是否达标、导出报告等完整能力，联系客服即可开通。
             </p>
             <div className="mt-4 flex gap-3">
               <Button asChild>
                 <Link href="/pricing">
-                  查看定价
+                  联系客服
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Link>
               </Button>

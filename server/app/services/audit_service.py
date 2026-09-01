@@ -262,4 +262,5 @@ ACTION_TYPES = {
     # 管理后台（F-ADM）
     "ADMIN_CHANGE_PLAN": "admin_change_plan",
     "ADMIN_TOGGLE_DISABLED": "admin_toggle_disabled",
+    "ADMIN_CREATE_OFFLINE_ORDER": "admin_create_offline_order",
 }

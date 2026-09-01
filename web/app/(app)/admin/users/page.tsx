@@ -14,8 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ShieldCheck, ShieldOff, Ban, Undo2 } from "lucide-react";
+import { Loader2, ShieldCheck, ShieldOff, Ban, Undo2, KeyRound } from "lucide-react";
 
 const PLANS = [
   { value: "", label: "全部套餐" },
@@ -24,12 +33,36 @@ const PLANS = [
   { value: "subscription", label: "订阅" },
 ];
 
+const OPEN_CHANNELS = [
+  { value: "xianyu", label: "咸鱼" },
+  { value: "wechat", label: "微信" },
+  { value: "alipay", label: "支付宝" },
+  { value: "cash", label: "现金/线下" },
+  { value: "other", label: "其他" },
+];
+
 export default function AdminUsersPage() {
   const qc = useQueryClient();
   const [keyword, setKeyword] = useState("");
   const [plan, setPlan] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  // 线下开通弹窗状态
+  const [openUser, setOpenUser] = useState<AdminUser | null>(null);
+  const [oPlan, setOPlan] = useState<"single" | "subscription">("single");
+  const [oChannel, setOChannel] = useState("xianyu");
+  const [oDays, setODays] = useState("30");
+  const [oAmount, setOAmount] = useState("");
+  const [oRemark, setORemark] = useState("");
+
+  const resetForm = () => {
+    setOPlan("single");
+    setOChannel("xianyu");
+    setODays("30");
+    setOAmount("");
+    setORemark("");
+  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-users", search, plan, page],
@@ -52,6 +85,23 @@ export default function AdminUsersPage() {
     mutationFn: (v: { id: string; disabled: boolean }) =>
       adminApi.setDisabled(v.id, v.disabled),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+
+  const openOffline = useMutation({
+    mutationFn: (v: {
+      user_id: string;
+      plan_type: "single" | "subscription";
+      days?: number;
+      channel?: string;
+      remark?: string;
+      amount?: number;
+    }) => adminApi.createOfflineOrder(v),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      setOpenUser(null);
+      resetForm();
+    },
   });
 
   return (
@@ -160,7 +210,18 @@ export default function AdminUsersPage() {
                     )}
                   </td>
                   <td className="px-3 py-2">
-                    {u.disabled ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setOpenUser(u);
+                          resetForm();
+                        }}
+                      >
+                        <KeyRound className="mr-1 h-3 w-3" />开通
+                      </Button>
+                      {u.disabled ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -169,7 +230,7 @@ export default function AdminUsersPage() {
                       >
                         <Undo2 className="mr-1 h-3 w-3" />启用
                       </Button>
-                    ) : (
+                      ) : (
                       <Button
                         variant="outline"
                         size="sm"
@@ -178,7 +239,8 @@ export default function AdminUsersPage() {
                       >
                         <Ban className="mr-1 h-3 w-3" />禁用
                       </Button>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -212,6 +274,111 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* 线下开通弹窗（线下成交转最小可行方案 Step 2） */}
+      <Dialog
+        open={openUser !== null}
+        onOpenChange={(o) => {
+          if (!o) setOpenUser(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              线下开通 · {openUser?.email ?? openUser?.email_masked ?? openUser?.id ?? ""}
+            </DialogTitle>
+            <DialogDescription>
+              记录一笔「线下已支付订单」并同时为该用户开通套餐（同事务）。当前套餐：
+              {openUser?.plan}，到期 {openUser?.plan_expires_at ? new Date(openUser.plan_expires_at).toLocaleDateString("zh-CN") : "无"}。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>开通类型</Label>
+                <Select value={oPlan} onValueChange={(v) => setOPlan(v as "single" | "subscription")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">单次</SelectItem>
+                    <SelectItem value="subscription">开通期</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>成交渠道</Label>
+                <Select value={oChannel} onValueChange={setOChannel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPEN_CHANNELS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>开通天数（默认 30）</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={oDays}
+                  onChange={(e) => setODays(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>实收金额（元，留空=按平台默认）</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={oAmount}
+                  onChange={(e) => setOAmount(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>对账备注（如咸鱼订单号）</Label>
+              <Input
+                value={oRemark}
+                onChange={(e) => setORemark(e.target.value)}
+                placeholder="选填，用于后台对账"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenUser(null)}>
+              取消
+            </Button>
+            <Button
+              disabled={openOffline.isPending || !openUser}
+              onClick={() => {
+                if (!openUser) return;
+                openOffline.mutate({
+                  user_id: openUser.id,
+                  plan_type: oPlan,
+                  days: oDays ? Number(oDays) : undefined,
+                  channel: oChannel,
+                  remark: oRemark || undefined,
+                  amount: oAmount ? Number(oAmount) : undefined,
+                });
+              }}
+            >
+              {openOffline.isPending ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />开通中
+                </>
+              ) : (
+                "确认开通并记账"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

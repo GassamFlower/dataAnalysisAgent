@@ -86,7 +86,7 @@ const structuredData = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "CNY",
-    description: "免费体检确认可行性，付费生成数据与完整报告",
+    description: "免费体检确认可行性，完整能力联系客服开通",
   },
   featureList: [
     "问卷题目智能识别与维度归属",
