@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ShieldCheck, ShieldOff, Ban, Undo2, KeyRound } from "lucide-react";
+import { Loader2, ShieldCheck, ShieldOff, Ban, Undo2, KeyRound, Download } from "lucide-react";
 
 const PLANS = [
   { value: "", label: "全部套餐" },
@@ -46,6 +46,7 @@ export default function AdminUsersPage() {
   const [keyword, setKeyword] = useState("");
   const [plan, setPlan] = useState("");
   const [search, setSearch] = useState("");
+  const [disabledOnly, setDisabledOnly] = useState(false);
   const [page, setPage] = useState(1);
 
   // 线下开通弹窗状态
@@ -65,11 +66,12 @@ export default function AdminUsersPage() {
   };
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["admin-users", search, plan, page],
+    queryKey: ["admin-users", search, plan, disabledOnly, page],
     queryFn: () =>
       adminApi.listUsers({
         keyword: search || undefined,
         plan: plan || undefined,
+        disabled: disabledOnly || undefined,
         page,
         page_size: 20,
       }),
@@ -101,6 +103,21 @@ export default function AdminUsersPage() {
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       setOpenUser(null);
       resetForm();
+    },
+  });
+
+  const exportUsers = useMutation({
+    mutationFn: (body: { keyword?: string; plan?: string; disabled?: boolean }) =>
+      adminApi.exportUsers(body),
+    onSuccess: ({ blob, filename }) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || "users-export.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     },
   });
 
@@ -141,6 +158,36 @@ export default function AdminUsersPage() {
             ))}
           </SelectContent>
         </Select>
+        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={disabledOnly}
+            onChange={(e) => { setDisabledOnly(e.target.checked); setPage(1); }}
+          />
+          只看禁用
+        </label>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exportUsers.isPending}
+            onClick={() =>
+              exportUsers.mutate({
+                keyword: search || undefined,
+                plan: plan || undefined,
+                disabled: disabledOnly || undefined,
+              })
+            }
+          >
+            {exportUsers.isPending ? (
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            ) : (
+              <Download className="mr-1 h-3 w-3" />
+            )}
+            导出 CSV
+          </Button>
+        </div>
       </div>
 
       {isLoading && (
@@ -165,6 +212,7 @@ export default function AdminUsersPage() {
                 <th className="px-3 py-2">项目</th>
                 <th className="px-3 py-2">状态</th>
                 <th className="px-3 py-2">管理员</th>
+                <th className="px-3 py-2">注册时间</th>
                 <th className="px-3 py-2">操作</th>
               </tr>
             </thead>
@@ -208,6 +256,9 @@ export default function AdminUsersPage() {
                     ) : (
                       <ShieldOff className="h-4 w-4 text-muted-foreground" />
                     )}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                    {u.created_at ? new Date(u.created_at).toLocaleString("zh-CN") : "-"}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">

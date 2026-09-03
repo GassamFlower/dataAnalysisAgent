@@ -145,6 +145,16 @@ export const adminApi = {
       disabled,
     }),
 
+  /** 导出（筛选后的）全部用户 CSV，返回 Blob + 文件名 */
+  exportUsers: (body?: {
+    keyword?: string;
+    plan?: string;
+    disabled?: boolean;
+  }) =>
+    apiClient.postBlob("/api/v1/admin/users/export", body ?? {}, {
+      timeout: 120_000,
+    }),
+
   /** 订单分页列表 */
   listOrders: (params: { status?: string; page?: number; page_size?: number }) =>
     apiClient.get<Paginated<AdminOrder>>("/api/v1/admin/orders", { params }),

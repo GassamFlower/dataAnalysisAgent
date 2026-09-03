@@ -4,12 +4,15 @@
 覆盖：用户与项目运营、订单与支付、审计日志、看板聚合。
 说明：管理接口统一使用 require_admin 依赖，收敛历史散落的门禁写法。
 """
+import csv
+import io
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -108,7 +111,71 @@ async def admin_users(
     return success_response(data=_paged(items, total, page, page_size))
 
 
-@router.get("/users/{user_id}")
+class _UserExportRequest(BaseModel):
+    """可选筛选：与列表一致；留空则导出全部注册用户。"""
+    keyword: Optional[str] = Field(None, max_length=100)
+    plan: Optional[str] = Field(None)
+    disabled: Optional[bool] = Field(None)
+
+
+@router.post("/users/export", summary="导出全部用户 CSV")
+async def admin_export_users(
+    payload: Optional[_UserExportRequest] = Body(None),
+    request: Request = None,  # noqa: B008 FastAPI 注入
+    current: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出（筛选后的）全部注册用户为 CSV，前端触发浏览器下载。
+
+    覆盖“看到每一个注册用户”需求：不分页、一次拉全量，便于外部运营离线管理。
+    """
+    payload = payload or _UserExportRequest()
+    stmt = select(User).where(User.deleted_at.is_(None))
+    kw = (payload.keyword or "").strip()
+    if kw:
+        like = f"%{kw}%"
+        stmt = stmt.where((User.email.ilike(like)) | (User.nickname.ilike(like)))
+    if payload.plan:
+        stmt = stmt.where(User.plan == payload.plan)
+    if payload.disabled is True:
+        stmt = stmt.where(User.disabled_at.is_not(None))
+    elif payload.disabled is False:
+        stmt = stmt.where(User.disabled_at.is_(None))
+    stmt = stmt.order_by(User.created_at.desc())
+
+    res = await db.execute(stmt)
+    users = res.scalars().all()
+    counts = await get_user_project_counts(db, [str(u.id) for u in users])
+
+    buf = io.StringIO()
+    out = csv.writer(buf)
+    out.writerow([
+        "用户ID", "邮箱", "昵称", "套餐", "套餐到期", "项目数",
+        "是否管理员", "邮箱已验证", "状态", "注册时间",
+    ])
+    for u in users:
+        plan_exp = u.plan_expires_at.strftime("%Y-%m-%d %H:%M") if u.plan_expires_at else ""
+        created = u.created_at.strftime("%Y-%m-%d %H:%M") if u.created_at else ""
+        out.writerow([
+            str(u.id), u.email or "", u.nickname or "", u.plan, plan_exp,
+            counts.get(str(u.id), 0),
+            "是" if u.is_admin else "否",
+            "是" if u.email_verified else "否",
+            "已禁用" if u.disabled_at is not None else "正常",
+            created,
+        ])
+    # 带 BOM，Excel 打开中文不乱码
+    body = "\ufeff" + buf.getvalue()
+    filename = "users-export.csv"
+    await _audit(request, db, current["id"], "admin_export_users",
+                 {"count": len(users), "plan": payload.plan, "disabled_only": payload.disabled is True})
+
+    res = StreamingResponse(iter([body.encode("utf-8")]), media_type="text/csv; charset=utf-8")
+    res.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    # 审计先于 commit，StreamingResponse 返回 STREAMING 时由框架读 body；
+    # 这里确保写入审计后显式 commit，避免脏连接
+    await db.commit()
+    return res
 async def user_detail(
     user_id: str,
     db: AsyncSession = Depends(get_db),

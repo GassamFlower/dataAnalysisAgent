@@ -204,3 +204,36 @@ async def test_dashboard_overview(client: AsyncClient, auth_headers: dict):
         assert "pending_messages" in data
     finally:
         await _unmake_admin()
+
+
+@pytest.mark.anyio
+async def test_export_users_csv(client: AsyncClient, auth_headers: dict):
+    """导出全部用户 CSV：可读、含表头、含登录用户行、带 UTF-8 BOM。"""
+    await _make_admin()
+    try:
+        resp = await client.post(
+            "/api/v1/admin/users/export", headers=auth_headers, json={}
+        )
+        assert resp.status_code == 200
+        body = resp.content
+        # UTF-8 BOM 前缀
+        assert body.startswith(b"\xef\xbb\xbf")
+        text = body.decode("utf-8-sig")
+        lines = text.splitlines()
+        assert lines, "CSV 不应为空"
+        header = lines[0]
+        assert "邮箱" in header and "昵称" in header and "注册时间" in header
+        # 至少包含当前 dev 用户（有昵称/邮箱快照可匹配其 user id）
+        assert str(DEV_USER_ID) in text
+        assert "Content-Disposition" in resp.headers
+    finally:
+        await _unmake_admin()
+
+
+@pytest.mark.anyio
+async def test_export_users_non_admin_forbidden(client: AsyncClient, auth_headers: dict):
+    """非管理员导出用户被拒绝。"""
+    resp = await client.post(
+        "/api/v1/admin/users/export", headers=auth_headers, json={}
+    )
+    assert resp.status_code == 403
