@@ -34,6 +34,8 @@ RUN adduser --system --uid 1001 nextjs
 RUN mkdir -p /app/public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Next.js standalone 不自动打包 public/。手动复制静态资源（客服微信二维码等），否则生产环境不加载
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # 切换到非 root 用户
 USER nextjs
