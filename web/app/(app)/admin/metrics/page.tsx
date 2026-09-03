@@ -1,16 +1,23 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useMetrics } from "@/lib/hooks/use-analytics";
+import { adminApi } from "@/lib/api/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, Users, FileText, CreditCard, Activity } from "lucide-react";
+import { TrendingUp, Users, FileText, CreditCard, Activity, MessagesSquare, FolderKanban } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
 export default function AdminMetricsPage() {
   const { data: metrics7d, isLoading: loading7d } = useMetrics(7);
   const { data: metrics30d, isLoading: loading30d } = useMetrics(30);
 
-  if (loading7d || loading30d) {
+  const { data: overview, isLoading: loadingOverview } = useQuery({
+    queryKey: ["admin-dashboard-overview"],
+    queryFn: () => adminApi.getDashboardOverview(),
+  });
+
+  if (loading7d || loading30d || loadingOverview) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -74,6 +81,70 @@ export default function AdminMetricsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 运营维度补充（套餐分布 / 项目规模 / 活跃 / 留言待办） */}
+      {overview && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">套餐分布</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span>总用户</span>
+                <span className="font-semibold">{overview.total_users}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>免费 / 单次 / 订阅</span>
+                <span className="font-medium text-ink-900">
+                  {overview.plan_distribution.free}
+                  {" / "}
+                  {overview.plan_distribution.single}
+                  {" / "}
+                  {overview.plan_distribution.subscription}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">项目规模</CardTitle>
+              <FolderKanban className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span>项目总数</span>
+                <span className="font-semibold">{overview.total_projects}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>真实 / 模拟</span>
+                <span className="font-medium text-ink-900">
+                  {overview.projects_by_mode.real}
+                  {" / "}
+                  {overview.projects_by_mode.simulation}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>近 7 天活跃用户</span>
+                <span className="font-medium text-ink-900">{overview.active_users_7d}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">留言待办</CardTitle>
+              <MessagesSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{overview.pending_messages}</div>
+              <p className="text-xs text-muted-foreground">待处理留言数</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* 时间周期切换 */}
       <Tabs defaultValue="7d" className="space-y-4">

@@ -534,3 +534,23 @@ CREATE TABLE IF NOT EXISTS scale_items (
 );
 
 CREATE INDEX idx_scale_items_dimension_id ON scale_items(dimension_id);
+
+-- ---------------------------------------------------------------------------
+-- 23. app_configs（后台运行时可调配置，F-ADM-003 增强；key-value，参照 llm_configs）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS app_configs (
+    id SERIAL PRIMARY KEY,
+    config_key VARCHAR(100) NOT NULL UNIQUE,
+    config_value TEXT NOT NULL,
+    description TEXT,
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_by VARCHAR(64),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_app_configs_config_key ON app_configs(config_key);
+
+CREATE TRIGGER trg_app_configs_updated_at
+BEFORE UPDATE ON app_configs
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

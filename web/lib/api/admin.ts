@@ -38,6 +38,25 @@ export interface AdminOrder {
   expires_at?: string | null;
   user_id: string;
   user_email?: string | null;
+  /** 线下开通订单（无第三方流水号） */
+  is_offline?: boolean;
+}
+
+export interface QuotaLimitItem {
+  action: string;
+  label: string;
+  value: number;
+  default_value: number;
+  source: "default" | "override";
+}
+
+export interface DashboardOverview {
+  total_users: number;
+  plan_distribution: { free: number; single: number; subscription: number };
+  projects_by_mode: { real: number; simulation: number };
+  total_projects: number;
+  active_users_7d: number;
+  pending_messages: number;
 }
 
 export interface AdminAuditLog {
@@ -164,4 +183,28 @@ export const adminApi = {
       `/api/v1/admin/messages/${messageId}/status`,
       body
     ),
+
+  /** 读取当前免费配额各动作上限 */
+  getQuotaLimits: () =>
+    apiClient.get<{ items: QuotaLimitItem[]; count: number }>(
+      "/api/v1/admin/configs/quota-limits"
+    ),
+
+  /** 调整单个动作的免费配额上限 */
+  updateQuotaLimit: (action: string, value: number) =>
+    apiClient.put<{ action: string; value: number; source: string }>(
+      `/api/v1/admin/configs/quota-limits/${action}`,
+      { action, value }
+    ),
+
+  /** 订单退款标记（仅 paid → refunded） */
+  refundOrder: (orderId: string, reason?: string) =>
+    apiClient.patch<{ id: string; status: string; amount: string }>(
+      `/api/v1/admin/orders/${orderId}/refund`,
+      { reason }
+    ),
+
+  /** 运营看板补充维度 */
+  getDashboardOverview: () =>
+    apiClient.get<DashboardOverview>("/api/v1/admin/dashboard/overview"),
 };

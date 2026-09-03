@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Copy, Check } from "lucide-react";
 
 import { adminApi, type AdminMessage } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
@@ -236,12 +236,18 @@ export default function AdminMessagesPage() {
                     <div className="truncate text-xs">
                       {m.user_nickname || "-"}
                     </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {m.user_email || "-"}
-                    </div>
+                    {m.user_email ? (
+                      <div className="truncate text-xs text-muted-foreground">
+                        <CopyCell value={m.user_email} />
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">
-                    {m.contact || "-"}
+                    {m.contact ? (
+                      <CopyCell value={m.contact} />
+                    ) : (
+                      "-"
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs">
                     <pre className="max-w-[260px] whitespace-pre-wrap break-words">
@@ -390,6 +396,41 @@ export default function AdminMessagesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** 可复制单元格：显示值 + 一键复制按钮（含短暂"已复制"反馈） */
+function CopyCell({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // 剪贴板不可用时静默失败
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="max-w-[120px] truncate" title={value}>
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        className="shrink-0 text-muted-foreground hover:text-ink-900"
+        aria-label={`复制 ${value}`}
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5 text-emerald-600" />
+        ) : (
+          <Copy className="h-3.5 w-3.5" />
+        )}
+      </button>
     </div>
   );
 }

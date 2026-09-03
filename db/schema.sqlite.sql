@@ -475,4 +475,20 @@ CREATE TABLE scale_items (
 
 CREATE INDEX idx_scale_items_dimension_id ON scale_items(dimension_id);
 
+-- ---------------------------------------------------------------------------
+-- 23. app_configs（后台运行时可调配置，F-ADM-003 增强；key-value，参照 llm_configs）
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS app_configs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    config_key TEXT NOT NULL UNIQUE,
+    config_value TEXT NOT NULL,
+    description TEXT,
+    is_enabled INTEGER NOT NULL DEFAULT 1,
+    updated_by TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_app_configs_config_key ON app_configs(config_key);
+
 COMMIT;

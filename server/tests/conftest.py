@@ -20,6 +20,9 @@ from app.models.simulation_config import SimulationConfig
 from app.models.order import Order
 from app.models.user import User
 from app.models.user_quota import UserQuota
+from app.models.app_config import AppConfig
+from app.models.audit_logs import AuditLog
+from app.models.message import Message
 
 
 DEV_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -42,6 +45,13 @@ async def _cleanup_dev_user_data():
         await db.execute(delete(Order).where(Order.user_id == DEV_USER_ID))
         await db.execute(delete(UserQuota).where(UserQuota.user_id == DEV_USER_ID))
         await db.execute(delete(Project).where(Project.user_id == DEV_USER_ID))
+
+        # 清理后台运行时可调配置，确保每个用例从默认配置开始（避免跨用例污染配额覆盖值）
+        await db.execute(delete(AppConfig))
+
+        # 清理留言与管理审计日志，避免 audit 断言因跨用例累积而 MultipleResultsFound
+        await db.execute(delete(Message).where(Message.user_id == DEV_USER_ID))
+        await db.execute(delete(AuditLog).where(AuditLog.user_id == DEV_USER_ID))
 
         # 重置用户套餐为 subscription（dev-login 默认状态），避免 plan 串扰
         user = await db.get(User, DEV_USER_ID)

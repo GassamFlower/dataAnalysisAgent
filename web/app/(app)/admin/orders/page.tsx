@@ -1,9 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { adminApi } from "@/lib/api/admin";
+import { adminApi, type AdminOrder } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,7 +13,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2, RotateCcw, HandCoins } from "lucide-react";
 
 const STATUS = [
   { value: "", label: "全部状态" },
@@ -31,13 +41,28 @@ const STATUS_BADGE: Record<string, "default" | "secondary" | "outline" | "destru
 };
 
 export default function AdminOrdersPage() {
+  const qc = useQueryClient();
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
+
+  // 退款弹窗状态
+  const [refundTarget, setRefundTarget] = useState<AdminOrder | null>(null);
+  const [refundReason, setRefundReason] = useState("");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-orders", status, page],
     queryFn: () =>
       adminApi.listOrders({ status: status || undefined, page, page_size: 20 }),
+  });
+
+  const refund = useMutation({
+    mutationFn: (o: AdminOrder) =>
+      adminApi.refundOrder(o.id, refundReason.trim() || undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      setRefundTarget(null);
+      setRefundReason("");
+    },
   });
 
   return (
@@ -82,8 +107,10 @@ export default function AdminOrdersPage() {
                 <th className="px-3 py-2">用户邮箱</th>
                 <th className="px-3 py-2">类型</th>
                 <th className="px-3 py-2">金额</th>
+                <th className="px-3 py-2">来源</th>
                 <th className="px-3 py-2">状态</th>
                 <th className="px-3 py-2">创建时间</th>
+                <th className="px-3 py-2 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -94,10 +121,31 @@ export default function AdminOrdersPage() {
                   <td className="px-3 py-2">{o.type}</td>
                   <td className="px-3 py-2">¥{o.amount}</td>
                   <td className="px-3 py-2">
+                    {o.is_offline ? (
+                      <Badge variant="secondary">线下开通</Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">在线</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
                     <Badge variant={STATUS_BADGE[o.status] ?? "outline"}>{o.status}</Badge>
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {o.created_at ? new Date(o.created_at).toLocaleString() : "-"}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {o.status === "paid" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRefundTarget(o);
+                          setRefundReason("");
+                        }}
+                      >
+                        <RotateCcw className="mr-1 h-3 w-3" />退款
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -126,6 +174,52 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* 退款标记弹窗 */}
+      <Dialog
+        open={refundTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setRefundTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HandCoins className="h-4 w-4" />退款标记 · {refundTarget?.id.slice(0, 8)}
+            </DialogTitle>
+            <DialogDescription>
+              将订单 {refundTarget ? `¥${refundTarget.amount}` : ""} 标记为「已退款」（仅作运营对账记录，不实际打款）。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>退款原因 / 备注（选填）</Label>
+              <Input
+                placeholder="如：客户申请退款、线下协商退款"
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRefundTarget(null)}
+              disabled={refund.isPending}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={refund.isPending || !refundTarget}
+              onClick={() => refundTarget && refund.mutate(refundTarget)}
+            >
+              {refund.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              确认退款
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

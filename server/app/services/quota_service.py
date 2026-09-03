@@ -13,15 +13,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ForbiddenException
 from app.core.error_messages import ERR_PLAN_EXPIRED
 from app.models.user_quota import UserQuota
+from app.services import admin_config_service
 
-# 免费额度配置（每周）
-FREE_LIMITS = {
-    "simulation": 6,
-    "export": 6,
-    "analysis": 6,
-    "data_import": 6,
-    "ai_interpret": 1,
-}
+# 免费额度配置（每周）——运行时默认值（真源在 admin_config_service.DEFAULT_QUOTA_LIMITS）
+FREE_LIMITS: dict[str, int] = dict(admin_config_service.DEFAULT_QUOTA_LIMITS)
+
+
+async def _effective_limit(
+    db: AsyncSession, action_type: str, default: int
+) -> int:
+    """读取某动作当前生效的周配额（DB 覆盖优先，否则默认值）。"""
+    try:
+        limits = await admin_config_service.get_quota_limits(db)
+        return limits.get(action_type, default)
+    except Exception:  # noqa: BLE001 DB 极端异常时回落到默认，不影响主流程
+        return default
 
 
 def get_week_period_key(dt: Optional[datetime] = None) -> str:
@@ -75,7 +81,7 @@ async def check_and_consume_quota(
     if plan != "free":
         return
 
-    limit = FREE_LIMITS.get(action_type, 3)
+    limit = await _effective_limit(db, action_type, FREE_LIMITS.get(action_type, 3))
     period_key = get_week_period_key()
     reset_at = get_week_reset_at()
 
@@ -133,6 +139,7 @@ async def get_quota_status(
     quotas = result.scalars().all()
 
     quota_map = {q.action_type: q.used_count for q in quotas}
+    effective_limits = await admin_config_service.get_quota_limits(db)
 
     return {
         "plan": plan,
@@ -141,9 +148,13 @@ async def get_quota_status(
         "quotas": {
             action: {
                 "used": quota_map.get(action, 0),
-                "limit": limit,
-                "remaining": max(0, limit - quota_map.get(action, 0)),
+                "limit": effective_limits.get(action, FREE_LIMITS.get(action, 1)),
+                "remaining": max(
+                    0,
+                    effective_limits.get(action, FREE_LIMITS.get(action, 1))
+                    - quota_map.get(action, 0),
+                ),
             }
-            for action, limit in FREE_LIMITS.items()
+            for action in FREE_LIMITS
         },
     }
