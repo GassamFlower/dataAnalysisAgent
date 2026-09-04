@@ -65,7 +65,7 @@ def _parse_bool_query(value: Optional[str], name: str = "disabled") -> Optional[
     if value is None:
         return None
     v = value.strip().lower()
-    if v in ("", "none", "null"):
+    if v in ("", "none", "null", "undefined"):
         return None
     if v in ("1", "true", "yes", "on", "t", "y"):
         return True

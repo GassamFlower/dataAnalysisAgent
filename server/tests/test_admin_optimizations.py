@@ -268,6 +268,11 @@ async def test_users_list_disabled_variants(client: AsyncClient, auth_headers: d
                 "/api/v1/admin/users", headers=auth_headers, params={"disabled": raw}
             )
             assert resp.status_code == 200, f"disabled={raw} 应 200"
+        # 旧版前端曾把 undefined 序列化为字符串，视为不过滤而非报错
+        resp = await client.get(
+            "/api/v1/admin/users", headers=auth_headers, params={"disabled": "undefined"}
+        )
+        assert resp.status_code == 200
     finally:
         await _unmake_admin()
 

@@ -93,9 +93,11 @@ function buildUrl(path: string, params?: RequestOptions["params"]): string {
     typeof window === "undefined" ? "http://localhost" : window.location.origin
   );
   if (params) {
-    Object.entries(params).forEach(([k, v]) =>
-      url.searchParams.set(k, String(v))
-    );
+    Object.entries(params).forEach(([k, v]) => {
+      // 跳过 undefined/null/空串：空筛选不应发送（否则 String(undefined)="undefined" 污染 query）
+      if (v === undefined || v === null || v === "") return;
+      url.searchParams.set(k, String(v));
+    });
   }
   return url.toString();
 }
