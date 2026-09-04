@@ -90,7 +90,7 @@ export function WjxImporter({
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <div className="text-body text-ink-700">
               <p className="font-medium text-ink-900">如何从问卷星导入？</p>
-              <ol className="mt-2 list-decimal space-y-1 pl-5 text-caption text-ink-600">
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-caption text-ink-500">
                 <li>登录问卷星（wjx.cn），进入您的问卷</li>
                 <li>点击「设计」→「导出问卷」</li>
                 <li>选择「导出题目」，格式选择 Excel（推荐）或 Word</li>

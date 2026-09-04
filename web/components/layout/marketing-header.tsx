@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut, LayoutDashboard, Menu, GraduationCap } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function Brand() {
   return (
@@ -72,6 +73,7 @@ export function MarketingHeader() {
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
             <Link href="/about">关于</Link>
           </Button>
+          <ThemeToggle />
           <Button variant="outline" size="sm" asChild>
             <Link href="/login">登录</Link>
           </Button>
@@ -101,6 +103,7 @@ export function MarketingHeader() {
         <Button variant="ghost" size="sm" asChild>
           <Link href="/about">关于</Link>
         </Button>
+        <ThemeToggle />
         {isAuthenticated ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -80,7 +80,7 @@ export function HitRateCard({ hitRate }: { hitRate: HitRateSummary }) {
       </ul>
 
       {failedPaths.length > 0 && (
-        <p className="mt-4 rounded-lg bg-warning/5 p-3 text-caption text-ink-600">
+        <p className="mt-4 rounded-lg bg-warning/5 p-3 text-caption text-ink-500">
           有 {failedPaths.length} 条假设在当前样本量下检验功效不足，建议增加样本量
           在“样本量规划”中使用，或调整假设路径的预期相关强度。
         </p>

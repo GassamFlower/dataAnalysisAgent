@@ -239,7 +239,7 @@ export default function AdminMessagesPage() {
 
       {data && data.items.length === 0 && (
         <div className="rounded-lg border border-dashed py-14 text-center">
-          <MessageSquare className="mx-auto h-8 w-8 text-ink-300" />
+          <MessageSquare className="mx-auto h-8 w-8 text-ink-400" />
           <p className="mt-2 text-sm text-muted-foreground">暂无留言</p>
         </div>
       )}

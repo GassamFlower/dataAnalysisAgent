@@ -112,7 +112,7 @@ export function SampleRepresentativeness({
         {data.aiConclusion && (
           <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 p-3">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div className="text-sm text-ink-800">{data.aiConclusion}</div>
+            <div className="text-sm text-ink-700">{data.aiConclusion}</div>
           </div>
         )}
 

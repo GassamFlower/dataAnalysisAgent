@@ -87,7 +87,7 @@ export function DataSourceConfirmDialog({
                     <Label htmlFor="real" className="font-semibold text-ink-900">
                       真实调研数据
                     </Label>
-                    <p className="text-xs text-ink-600">
+                    <p className="text-xs text-ink-500">
                       通过问卷调研、实验等方式收集的真实数据
                     </p>
                   </div>
@@ -105,7 +105,7 @@ export function DataSourceConfirmDialog({
                     >
                       模拟数据
                     </Label>
-                    <p className="text-xs text-ink-600">
+                    <p className="text-xs text-ink-500">
                       使用本工具生成的模拟数据，仅用于学习研究
                     </p>
                   </div>
@@ -143,7 +143,7 @@ export function DataSourceConfirmDialog({
                       <Sparkles className="h-3.5 w-3.5 text-brand-indigo" />
                       在代表性章节加入 AI 说人话结论
                     </Label>
-                    <p className="text-xs text-ink-600">
+                    <p className="text-xs text-ink-500">
                       可选开关，默认关闭。开启后由 AI 生成一句话总结与建议（可能消耗 AI 配额）。
                     </p>
                   </div>

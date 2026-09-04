@@ -388,7 +388,7 @@ export default function SimulatePage({
                 onParse={handleParse}
               />
               {parseError && (
-                <p className="mt-2 text-caption text-error">{parseError}</p>
+                <p className="mt-2 text-caption text-destructive">{parseError}</p>
               )}
               <HypothesisPathList
                 paths={paths}
@@ -479,7 +479,7 @@ export default function SimulatePage({
               </PaidActionGuard>
             </div>
             {generateMutation.isError && (
-              <p className="mt-2 text-caption text-error">
+              <p className="mt-2 text-caption text-destructive">
                 生成失败：{generateMutation.error.message}
               </p>
             )}

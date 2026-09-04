@@ -23,13 +23,13 @@ export function DataPreview({ matrix }: DataPreviewProps) {
         <table className="w-full border-collapse text-small">
           <thead>
             <tr className="border-b border-border bg-cream-muted/30">
-              <th className="px-3 py-2 text-left font-medium text-ink-600">
+              <th className="px-3 py-2 text-left font-medium text-ink-700">
                 样本编号
               </th>
               {dimensions.map((dim) => (
                 <th
                   key={dim}
-                  className="px-3 py-2 text-left font-medium text-ink-600"
+                  className="px-3 py-2 text-left font-medium text-ink-700"
                 >
                   {dim}
                 </th>

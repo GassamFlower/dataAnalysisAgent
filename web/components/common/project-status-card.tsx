@@ -117,7 +117,7 @@ export function ProjectStatusCard({ project }: { project: Project }) {
             </Badge>
             <span className="text-caption text-ink-400">当前阶段</span>
           </div>
-          <p className="mt-2 text-body text-ink-600">
+          <p className="mt-2 text-body text-ink-700">
             {getStageDescription(project.status, project.mode)}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-ink-400">

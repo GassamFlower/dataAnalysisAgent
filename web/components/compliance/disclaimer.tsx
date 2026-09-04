@@ -15,7 +15,7 @@ export function Disclaimer({ variant = "full" }: { variant?: "full" | "short" })
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-cream-surface p-4 text-xs text-ink-600">
+    <div className="space-y-2 rounded-lg border border-border bg-cream-surface p-4 text-xs text-ink-500">
       <h4 className="font-semibold text-ink-900">免责声明</h4>
       <ul className="space-y-1 leading-relaxed">
         <li>• 本工具生成的模拟数据仅供学习和研究目的，不得用于正式学术论文或商业用途。</li>

@@ -276,7 +276,7 @@ export default function ReportPage({
             </div>
             <div>
               <h3 className="text-h3 font-semibold text-ink-900">数据分析救急</h3>
-              <p className="mt-1 text-body text-ink-600">
+              <p className="mt-1 text-body text-ink-700">
                 结果不达标、不知道用什么方法？留言求助，我们会帮你定位问题，
                 命中“愿意转人工分析”将转交人工顾问跟进。
               </p>
@@ -463,7 +463,7 @@ export default function ReportPage({
               下方直接给出「已收 vs 目标」达标判定：回收前定目标，回收后验结构。
             </p>
             {report?.sampleSize != null && (
-              <div className="mb-4 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-ink-800">
+              <div className="mb-4 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-ink-700">
                 <Target className="h-4 w-4 shrink-0 text-primary" />
                 已收 N = <b>{report.sampleSize}</b>，与建议回收目标对照判定如下。
               </div>

@@ -240,7 +240,7 @@ export default function LearnPage() {
                     "shrink-0 rounded-full border px-3 py-1 text-xs transition-colors",
                     tag === t
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-ink-600 hover:border-primary/40 hover:bg-primary/5",
+                      : "border-border text-ink-700 hover:border-primary/40 hover:bg-primary/5",
                   )}
                 >
                   #{t}

@@ -23,7 +23,7 @@ export function TableSkeleton({ rows = 6, cols = 5 }: { rows?: number; cols?: nu
           {Array.from({ length: cols }).map((__, c) => (
             <div
               key={c}
-              className="h-3.5 animate-pulse rounded bg-ink-100"
+              className="h-3.5 animate-pulse rounded bg-ink-500/15"
               style={{ opacity: 1 - (c * 0.08) }}
             />
           ))}

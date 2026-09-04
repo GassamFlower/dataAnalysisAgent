@@ -100,7 +100,7 @@ export function PolishButton({
             {polishMutation.isPending ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="mt-3 text-body text-ink-600">
+                <p className="mt-3 text-body text-ink-700">
                   AI 润色中，预计 10-30 秒...
                 </p>
                 <p className="mt-1 text-caption text-ink-400">
@@ -110,7 +110,7 @@ export function PolishButton({
             ) : polishText ? (
               <div className="space-y-3">
                 <div className="rounded-md border border-border bg-cream-surface/50 p-4">
-                  <p className="whitespace-pre-wrap text-body leading-relaxed text-ink-800">
+                  <p className="whitespace-pre-wrap text-body leading-relaxed text-ink-700">
                     {polishText}
                   </p>
                 </div>

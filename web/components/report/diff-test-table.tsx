@@ -110,7 +110,7 @@ export function DiffTestTable({ results }: { results: DiffTestResult[] | null | 
             r.interpretation ? (
               <li
                 key={`interp-${i}`}
-                className="text-small text-ink-600"
+                className="text-small text-ink-500"
               >
                 <span className="font-medium text-ink-700">
                   {r.predictor}→{r.outcome}：

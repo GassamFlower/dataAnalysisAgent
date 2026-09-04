@@ -145,13 +145,13 @@ export function RealDataImporter({
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="text" id="match-text" />
-                <Label htmlFor="match-text" className="text-body text-ink-600">
+                <Label htmlFor="match-text" className="text-body text-ink-700">
                   按题面文本匹配（推荐）
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="index" id="match-index" />
-                <Label htmlFor="match-index" className="text-body text-ink-600">
+                <Label htmlFor="match-index" className="text-body text-ink-700">
                   按题目编号匹配（Q1, Q2…）
                 </Label>
               </div>

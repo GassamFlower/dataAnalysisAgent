@@ -72,7 +72,7 @@ export function EffectSizeChart({ results }: { results: DiffTestResult[] | null 
   return (
     <Card className="relative p-5">
       {/* 图例（可点击筛选） */}
-      <div className="mb-3 flex flex-wrap items-center gap-4 text-caption text-ink-600">
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-caption text-ink-500">
         <span className="flex items-center gap-1.5">
           <button
             type="button"
@@ -217,7 +217,7 @@ export function EffectSizeChart({ results }: { results: DiffTestResult[] | null 
           <div className="font-medium text-ink-900">
             {hovered.predictor} → {hovered.outcome}
           </div>
-          <div className="mt-1 space-y-0.5 text-ink-600">
+          <div className="mt-1 space-y-0.5 text-ink-700">
             <div>方法：{hovered.methodName || hovered.method || "—"}</div>
             <div>
               {hovered.effectSizeName || "r"} = {hovered.effectSize!.toFixed(3)}

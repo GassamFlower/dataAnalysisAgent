@@ -142,7 +142,7 @@ function ProjectCard({
           <p className="mt-1 text-caption text-ink-500">
             更新于 {new Date(project.updatedAt).toLocaleDateString("zh-CN")}
           </p>
-          <div className="mt-3 flex items-center gap-3 text-small text-ink-600">
+          <div className="mt-3 flex items-center gap-3 text-small text-ink-500">
             <span>{questionCount} 道题目</span>
             {dimensionCount > 0 ? (
               <span>· {dimensionCount} 个维度</span>

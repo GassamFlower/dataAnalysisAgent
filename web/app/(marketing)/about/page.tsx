@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/page-header";
+import { MarketingHeader } from "@/components/layout/marketing-header";
 import { DISCLAIMER } from "@/lib/constants";
 
 export const metadata = {
@@ -62,14 +63,7 @@ const faqs = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <Link href="/" className="font-display text-xl font-bold text-ink-900">
-          预演
-        </Link>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/">返回首页</Link>
-        </Button>
-      </header>
+      <MarketingHeader />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <PageHeader
@@ -87,7 +81,7 @@ export default function AboutPage() {
             <h2 className="text-h2 font-semibold text-ink-900">
               在发问卷之前，就知道方向对不对
             </h2>
-            <p className="mt-4 text-body-lg text-ink-600">
+            <p className="mt-4 text-body-lg text-ink-700">
               本科毕设最怕的是：问卷发出去收不回数据，好不容易收回来却发现信效度不达标、
               假设的关系跑不出来。数据分析智能体让你在正式发问卷前，
               先用模拟数据做一次&ldquo;预演&rdquo;，提前发现问题、调整方向。
@@ -136,7 +130,7 @@ export default function AboutPage() {
         <section>
           <Card className="border-warning/30 bg-warning/5 p-6">
             <h3 className="text-h3 font-semibold text-ink-900">免责声明</h3>
-            <p className="mt-2 text-body text-ink-600">{DISCLAIMER}</p>
+            <p className="mt-2 text-body text-ink-700">{DISCLAIMER}</p>
           </Card>
         </section>
       </main>

@@ -25,6 +25,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Disclaimer } from "@/components/compliance/disclaimer";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { href: "/projects", label: "我的项目", icon: LayoutDashboard },
@@ -86,6 +87,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               预演
             </span>
           </Link>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </div>
         <nav className="px-3 py-4">
           {visibleNav.map((item) => {

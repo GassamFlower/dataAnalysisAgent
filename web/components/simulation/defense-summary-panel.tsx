@@ -152,7 +152,7 @@ export function DefenseSummaryPanel({
                     <span className="font-medium text-ink-900">Q：</span>
                     {item.question}
                   </p>
-                  <p className="text-body text-ink-600">
+                  <p className="text-body text-ink-700">
                     <span className="font-medium text-ink-900">A：</span>
                     {item.answer}
                   </p>
@@ -161,7 +161,7 @@ export function DefenseSummaryPanel({
             ))}
           </ul>
 
-          <p className="mt-4 rounded-lg bg-warning/5 p-3 text-caption text-ink-600">
+          <p className="mt-4 rounded-lg bg-warning/5 p-3 text-caption text-ink-500">
             {summary.disclaimer}
           </p>
         </>

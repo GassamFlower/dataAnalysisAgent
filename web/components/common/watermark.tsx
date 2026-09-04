@@ -25,7 +25,7 @@ export function Watermark({
         <span className="font-mono font-medium tracking-wider text-ink-500">
           {SIMULATED_WATERMARK}
         </span>
-        <span className="text-ink-300">·</span>
+        <span className="text-ink-400">·</span>
         <span className="text-ink-400">{DISCLAIMER}</span>
       </div>
     );

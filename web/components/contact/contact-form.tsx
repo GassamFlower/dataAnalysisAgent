@@ -359,7 +359,7 @@ export function ContactForm({
         return (
           <div className="space-y-1">
             <Label className="text-caption text-ink-500">{field.label}</Label>
-            <div className="flex h-10 items-center rounded-md border border-dashed border-border bg-ink-100/40 px-3 text-sm text-ink-600">
+            <div className="flex h-10 items-center rounded-md border border-dashed border-border bg-ink-500/40 px-3 text-sm text-ink-700">
               {display}
             </div>
           </div>
@@ -491,7 +491,7 @@ export function ContactForm({
       )}
 
       {/* 说明文案 */}
-      <p className="rounded-md bg-ink-100/50 px-3 py-2 text-sm text-ink-600">
+      <p className="rounded-md bg-ink-500/50 px-3 py-2 text-sm text-ink-700">
         {meta.intro}
       </p>
 

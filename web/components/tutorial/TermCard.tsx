@@ -29,7 +29,7 @@ export function TermCard({
             </p>
             <p className="mt-1.5 text-body text-ink-700">{term.content}</p>
             {term.example && (
-              <p className="mt-2 rounded-md bg-background/70 px-3 py-2 text-sm text-ink-600">
+              <p className="mt-2 rounded-md bg-background/70 px-3 py-2 text-sm text-ink-700">
                 <span className="mr-1 font-medium text-primary">示例：</span>
                 {term.example}
               </p>

@@ -99,14 +99,14 @@ export function PaperSections({ reportId }: { reportId: string }) {
       {polishMutation.isPending && !text && (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-14 text-center">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
-          <p className="mt-3 text-sm text-ink-600">正在生成，预计 10-30 秒…</p>
+          <p className="mt-3 text-sm text-ink-700">正在生成，预计 10-30 秒…</p>
         </div>
       )}
 
       {text && !polishMutation.isPending && (
         <div className="space-y-3">
           <div className="rounded-md border border-border bg-cream-surface/50 p-4">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-800">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-700">
               {text}
             </p>
           </div>

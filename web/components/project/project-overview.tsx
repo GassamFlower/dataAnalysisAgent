@@ -95,7 +95,7 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
                 {isReal ? "真实数据项目" : "模拟预演项目"}
               </Badge>
             </div>
-            <p className="text-body text-ink-600">
+            <p className="text-body text-ink-700">
               {isReal
                 ? "基于真实回收的问卷数据进行统计分析与报告生成。"
                 : "通过模拟数据预演统计趋势，验证研究假设可行性。"}

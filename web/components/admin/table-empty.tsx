@@ -17,7 +17,7 @@ export function TableEmpty({
     <tr>
       <td colSpan={colSpan}>
         <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center">
-          <Inbox className="h-8 w-8 text-ink-300" />
+          <Inbox className="h-8 w-8 text-ink-400" />
           <div className="text-sm font-medium text-ink-500">{message}</div>
           {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
         </div>

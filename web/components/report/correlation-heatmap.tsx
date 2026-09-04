@@ -61,7 +61,7 @@ export function CorrelationHeatmap({ matrix }: { matrix: CorrelationMatrix }) {
               y={0}
               textAnchor="start"
               transform={`rotate(-45, ${j * cellSize + cellSize / 2}, 0)`}
-              className="fill-ink-600"
+              className="fill-ink-500"
               style={{ fontSize: "11px" }}
             >
               {d}
@@ -175,7 +175,7 @@ export function CorrelationHeatmap({ matrix }: { matrix: CorrelationMatrix }) {
           <span className="font-medium text-ink-900">{dimensions[hover.row]}</span>
           <span className="mx-1 text-ink-400">↔</span>
           <span className="font-medium text-ink-900">{dimensions[hover.col]}</span>
-          <span className="ml-2 tabular text-ink-600">r = {hover.value.toFixed(3)}</span>
+          <span className="ml-2 tabular text-ink-700">r = {hover.value.toFixed(3)}</span>
         </div>
       )}
     </div>

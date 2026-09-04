@@ -68,7 +68,7 @@ export function ReliabilityChart({ results }: { results: ReliabilityResult[] }) 
   return (
     <Card className="relative p-5">
       {/* 图例（可点击筛选系列） */}
-      <div className="mb-3 flex flex-wrap items-center gap-4 text-caption text-ink-600">
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-caption text-ink-500">
         <button
           type="button"
           onClick={() => setShowAlpha((s) => !s)}
@@ -230,7 +230,7 @@ export function ReliabilityChart({ results }: { results: ReliabilityResult[] }) 
                 x={groupCenter}
                 y={y0 + 18}
                 textAnchor="middle"
-                className="fill-ink-600"
+                className="fill-ink-500"
                 style={{ fontSize: 11 }}
               >
                 {truncate(r.dimension, 6)}
@@ -254,7 +254,7 @@ export function ReliabilityChart({ results }: { results: ReliabilityResult[] }) 
       {hoveredValue && hoveredRow && (
         <div className="pointer-events-none absolute left-1/2 top-3 z-10 w-max max-w-xs -translate-x-1/2 rounded-md border border-border bg-card px-3 py-2 text-caption shadow-md">
           <div className="font-medium text-ink-900">{hoveredRow.dimension}</div>
-          <div className="mt-1 text-ink-600">
+          <div className="mt-1 text-ink-700">
             {hoveredValue.label} = {hoveredValue.value.toFixed(3)}
           </div>
           <div className={hoveredValue.pass ? "text-success" : "text-destructive"}>

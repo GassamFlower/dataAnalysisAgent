@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MarketingHeader } from "@/components/layout/marketing-header";
 import { ContactForm } from "@/components/contact/contact-form";
 import { WechatEntry } from "@/components/contact/wechat-entry";
 import { SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
@@ -20,14 +21,7 @@ import { SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
 export default function ServiceConsultPage() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <Link href="/" className="font-display text-xl font-bold text-ink-900">
-          预演
-        </Link>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/">返回首页</Link>
-        </Button>
-      </header>
+      <MarketingHeader />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         {/* 免费试用引导 */}

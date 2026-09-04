@@ -37,7 +37,7 @@ function hitRate(effect: number, n: number): number {
 function hitLabel(p: number): { text: string; color: string } {
   if (p >= 0.8) return { text: "高 · 可放心预演", color: "text-success" };
   if (p >= 0.6) return { text: "中 · 建议加大样本", color: "text-warning" };
-  return { text: "低 · 强依赖加大样本", color: "text-error" };
+  return { text: "低 · 强依赖加大样本", color: "text-destructive" };
 }
 
 export function DemoSimulation() {

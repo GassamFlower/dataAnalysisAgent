@@ -93,7 +93,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="max-w-sm space-y-3 text-center">
-          <ShieldCheck className="mx-auto h-10 w-10 text-ink-300" />
+          <ShieldCheck className="mx-auto h-10 w-10 text-ink-400" />
           <h2 className="font-display text-lg font-bold text-ink-900">
             需要管理员权限
           </h2>
@@ -170,7 +170,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <Button
           variant="ghost"
           size="sm"
-          className="flex-1 justify-start text-ink-600"
+          className="flex-1 justify-start text-ink-700"
           onClick={() => {
             logout();
             router.push("/");
@@ -180,7 +180,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </Button>
         <Link
           href="/projects"
-          className="inline-flex flex-1 items-center justify-start gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-ink-600 hover:bg-accent hover:text-accent-foreground"
+          className="inline-flex flex-1 items-center justify-start gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-ink-700 hover:bg-accent hover:text-accent-foreground"
         >
           <ArrowUpRight className="h-3.5 w-3.5" />端应用
         </Link>
