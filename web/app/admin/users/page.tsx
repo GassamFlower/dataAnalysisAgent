@@ -25,6 +25,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck, ShieldOff, Ban, Undo2, KeyRound, Download } from "lucide-react";
+import { PageHeader } from "@/components/admin/page-header";
+import { TableEmpty } from "@/components/admin/table-empty";
+import { TablePagination } from "@/components/admin/table-pagination";
+import { PageLoading } from "@/components/admin/loading";
 
 const PLANS = [
   { value: "", label: "全部套餐" },
@@ -123,12 +127,10 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-ink-900">用户与项目运营</h2>
-        <p className="text-sm text-muted-foreground">
-          查看用户、调整套餐、禁用/启用账号（F-ADM-001）
-        </p>
-      </div>
+      <PageHeader
+        title="用户与项目运营"
+        description="查看用户、调整套餐、禁用/启用账号（F-ADM-001）"
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <Input
@@ -191,9 +193,7 @@ export default function AdminUsersPage() {
       </div>
 
       {isLoading && (
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-ink-400" />
-        </div>
+        <PageLoading />
       )}
       {isError && (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -217,6 +217,9 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
+              {data.items.length === 0 && (
+                <TableEmpty colSpan={8} message="暂无注册用户" hint="可尝试清除搜索/筛选" />
+              )}
               {data.items.map((u: AdminUser) => (
                 <tr key={u.id} className="border-t hover:bg-accent/40">
                   <td className="px-3 py-2">
@@ -300,30 +303,14 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {data && data.total > data.page_size && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            共 {data.total} 人，第 {data.page} 页
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              上一页
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page * data.page_size >= data.total}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              下一页
-            </Button>
-          </div>
-        </div>
+      {data && (
+        <TablePagination
+          total={data.total}
+          page={data.page}
+          pageSize={data.page_size}
+          onPageChange={setPage}
+          unit="人"
+        />
       )}
 
       {/* 线下开通弹窗（线下成交转最小可行方案 Step 2） */}

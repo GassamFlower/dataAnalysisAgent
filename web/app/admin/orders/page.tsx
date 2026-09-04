@@ -24,6 +24,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2, RotateCcw, HandCoins } from "lucide-react";
+import { PageHeader } from "@/components/admin/page-header";
+import { TableEmpty } from "@/components/admin/table-empty";
+import { TablePagination } from "@/components/admin/table-pagination";
+import { PageLoading } from "@/components/admin/loading";
 
 const STATUS = [
   { value: "", label: "全部状态" },
@@ -67,12 +71,10 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-ink-900">订单与支付管理</h2>
-        <p className="text-sm text-muted-foreground">
-          全局订单查询与对账（F-ADM-002）
-        </p>
-      </div>
+      <PageHeader
+        title="订单与支付管理"
+        description="全局订单查询与对账（F-ADM-002）"
+      />
 
       <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
         <SelectTrigger className="w-40">
@@ -87,11 +89,7 @@ export default function AdminOrdersPage() {
         </SelectContent>
       </Select>
 
-      {isLoading && (
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-ink-400" />
-        </div>
-      )}
+      {isLoading && <PageLoading />}
       {isError && (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           加载失败，请确认有管理员权限。
@@ -114,6 +112,9 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody>
+              {data.items.length === 0 && (
+                <TableEmpty colSpan={8} message="暂无订单" hint="可尝试切换状态筛选" />
+              )}
               {data.items.map((o) => (
                 <tr key={o.id} className="border-t hover:bg-accent/40">
                   <td className="px-3 py-2 font-mono text-xs">{o.id.slice(0, 8)}</td>
@@ -154,25 +155,14 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {data && data.total > data.page_size && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            共 {data.total} 笔，第 {data.page} 页
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={data.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-              上一页
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page * data.page_size >= data.total}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              下一页
-            </Button>
-          </div>
-        </div>
+      {data && (
+        <TablePagination
+          total={data.total}
+          page={data.page}
+          pageSize={data.page_size}
+          onPageChange={setPage}
+          unit="笔"
+        />
       )}
 
       {/* 退款标记弹窗 */}

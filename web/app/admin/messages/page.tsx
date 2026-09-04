@@ -98,6 +98,44 @@ export default function AdminMessagesPage() {
     onError: () => toast.error("更新失败，请重试"),
   });
 
+  // ── 批量处理 ─────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchStatus, setBatchStatus] = useState<"processing" | "done">("done");
+
+  const batchMutation = useMutation({
+    mutationFn: (body: {
+      message_ids: string[];
+      status: "processing" | "done";
+    }) => adminApi.batchUpdateMessageStatus(body),
+    onSuccess: (res) => {
+      toast.success(`已批量更新 ${res.updated} 条留言`);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["admin-messages"] });
+    },
+    onError: () => toast.error("批量更新失败，请重试"),
+  });
+
+  const allOnPageSelected =
+    !!data && data.items.length > 0 && data.items.every((m) => selectedIds.has(m.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (!data) return;
+    if (allOnPageSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(data.items.map((m) => m.id)));
+    }
+  };
+
   const openEdit = (m: AdminMessage) => {
     setEditing(m);
     setEditStatus(m.status);
@@ -207,10 +245,60 @@ export default function AdminMessagesPage() {
       )}
 
       {data && data.items.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border">
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-cream-surface/60 px-3 py-2 text-sm">
+            <div className="flex items-center gap-3">
+              <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={allOnPageSelected}
+                  onChange={toggleSelectAll}
+                />
+                本页全选（{selectedIds.size} 已选）
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={batchStatus} onValueChange={(v) => setBatchStatus(v as "processing" | "done")}>
+                <SelectTrigger className="h-8 w-28 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="done">标记为已处理</SelectItem>
+                  <SelectItem value="processing">标记为处理中</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                disabled={selectedIds.size === 0 || batchMutation.isPending}
+                onClick={() =>
+                  batchMutation.mutate({
+                    message_ids: Array.from(selectedIds),
+                    status: batchStatus,
+                  })
+                }
+              >
+                {batchMutation.isPending && (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                )}
+                批量{ batchStatus === "done" ? "完成" : "处理中"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="bg-cream-surface text-left text-muted-foreground">
               <tr>
+                <th className="w-10 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={allOnPageSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="全选本页"
+                  />
+                </th>
                 <th className="px-3 py-2">时间</th>
                 <th className="px-3 py-2">分类</th>
                 <th className="px-3 py-2">用户</th>
@@ -224,6 +312,15 @@ export default function AdminMessagesPage() {
             <tbody>
               {data.items.map((m) => (
                 <tr key={m.id} className="border-t hover:bg-accent/40 align-top">
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={selectedIds.has(m.id)}
+                      onChange={() => toggleSelect(m.id)}
+                      aria-label="选择该留言"
+                    />
+                  </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
                     {m.created_at ? new Date(m.created_at).toLocaleString() : "-"}
                   </td>
@@ -283,7 +380,8 @@ export default function AdminMessagesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       {data && data.total > data.page_size && (

@@ -735,3 +735,61 @@ async def admin_update_message_status(
     await db.commit()
     await db.refresh(m)
     return success_response(data=_msg_serialize(m))
+
+
+class _MessageBatchStatusRequest(BaseModel):
+    """批量更新留言状态（同状态 + 可选统一备注）。"""
+    message_ids: list[str] = Field(..., min_length=1, max_length=200)
+    status: Literal["pending", "processing", "done"]
+    handle_remark: Optional[str] = Field(None, max_length=500)
+
+
+@router.patch("/messages/batch-status", summary="批量更新留言状态")
+async def admin_batch_update_message_status(
+    req: _MessageBatchStatusRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_admin: dict = Depends(require_admin),
+):
+    """管理员：一次把多条留言标记为同一状态（写逐条审计）。"""
+    if req.status not in STATUS_CHOICES:
+        raise ValidationException(f"status 必须是 {' / '.join(STATUS_CHOICES)} 之一")
+
+    ids = []
+    for raw in req.message_ids:
+        oid = _uuid(raw)
+        if oid:
+            ids.append(oid)
+    if not ids:
+        raise ValidationException("没有有效的留言 ID")
+
+    res = await db.execute(
+        select(Message).where(
+            Message.id.in_(ids),
+            Message.deleted_at.is_(None),
+        )
+    )
+    msgs = res.scalars().all()
+    if not msgs:
+        raise NotFoundException("没有找到匹配的留言")
+
+    now = datetime.now(timezone.utc)
+    updated: list[str] = []
+    for m in msgs:
+        m.status = req.status
+        if req.handle_remark is not None:
+            m.handle_remark = req.handle_remark
+        m.handled_by = current_admin["id"]
+        m.handled_at = now
+        updated.append(str(m.id))
+        await _audit(
+            request, db, current_admin["id"], "admin_mark_message",
+            {
+                "message_id": str(m.id),
+                "status": req.status,
+                "remark": req.handle_remark,
+                "batch": True,
+            },
+        )
+    await db.commit()
+    return success_response(data={"updated": len(updated), "message_ids": updated})

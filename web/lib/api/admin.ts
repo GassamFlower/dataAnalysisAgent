@@ -194,6 +194,17 @@ export const adminApi = {
       body
     ),
 
+  /** 批量更新留言状态（同状态 + 可选统一备注） */
+  batchUpdateMessageStatus: (body: {
+    message_ids: string[];
+    status: AdminMessageStatus;
+    handle_remark?: string | null;
+  }) =>
+    apiClient.patch<{ updated: number; message_ids: string[] }>(
+      "/api/v1/admin/messages/batch-status",
+      body
+    ),
+
   /** 读取当前免费配额各动作上限 */
   getQuotaLimits: () =>
     apiClient.get<{ items: QuotaLimitItem[]; count: number }>(

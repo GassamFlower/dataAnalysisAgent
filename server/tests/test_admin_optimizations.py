@@ -288,3 +288,58 @@ async def test_users_list_disabled_invalid(client: AsyncClient, auth_headers: di
         assert resp.status_code == 400
     finally:
         await _unmake_admin()
+
+
+async def _create_message(client, auth_headers, tag="feedback", content="批量测试留言"):
+    return await client.post(
+        "/api/v1/messages", headers=auth_headers,
+        json={"tag": tag, "content": content},
+    )
+
+
+@pytest.mark.anyio
+async def test_batch_update_message_status(client: AsyncClient, auth_headers: dict):
+    """管理员批量把多条留言标记为已处理（写逐条审计）。"""
+    await _make_admin()
+    try:
+        m1 = (await _create_message(client, auth_headers)).json()["data"]
+        m2 = (await _create_message(client, auth_headers, content="第二条批量留言")).json()["data"]
+
+        resp = await client.patch(
+            "/api/v1/admin/messages/batch-status",
+            headers=auth_headers,
+            json={"message_ids": [m1["id"], m2["id"]], "status": "done"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["updated"] == 2
+
+        # 落库验证两条都已 done，且审计留痕（batch=True）
+        async for db in get_db():
+            audits = (
+                await db.execute(
+                    select(AuditLog)
+                    .where(AuditLog.action_type == "admin_mark_message")
+                    .order_by(AuditLog.created_at.desc())
+                )
+            ).scalars().all()
+            batch_logs = [a for a in audits if (a.action_detail or {}).get("batch")]
+            assert len(batch_logs) >= 2
+            break
+    finally:
+        await _unmake_admin()
+
+
+@pytest.mark.anyio
+async def test_batch_update_message_status_empty_rejected(client: AsyncClient, auth_headers: dict):
+    """空 message_ids 批量请求被拒绝。"""
+    await _make_admin()
+    try:
+        resp = await client.patch(
+            "/api/v1/admin/messages/batch-status",
+            headers=auth_headers,
+            json={"message_ids": [], "status": "done"},
+        )
+        assert resp.status_code in (400, 422)
+    finally:
+        await _unmake_admin()
