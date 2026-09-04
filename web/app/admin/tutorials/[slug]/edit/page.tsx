@@ -6,8 +6,8 @@ import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/common/error-state";
-import { LoadingState } from "@/components/common/loading-state";
-import { PageHeader } from "@/components/common/page-header";
+import { PageHeader } from "@/components/admin/page-header";
+import { PageLoading } from "@/components/admin/loading";
 import { toast } from "@/components/ui/toaster";
 import {
   TutorialForm,
@@ -53,10 +53,12 @@ export default function EditTutorialPage({
         </Link>
       </Button>
 
-      <PageHeader title="编辑教程" description="修改教程内容与发布状态。" />
+      <div className="mb-6">
+        <PageHeader title="编辑教程" description="修改教程内容与发布状态。" />
+      </div>
 
       {isLoading ? (
-        <LoadingState label="正在加载教程..." />
+        <PageLoading label="正在加载教程..." />
       ) : isError || !article ? (
         <ErrorState
           title="加载失败"

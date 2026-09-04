@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Loader2, MessageSquare, Copy, Check } from "lucide-react";
 
 import { adminApi, type AdminMessage } from "@/lib/api/admin";
+import { PageHeader } from "@/components/admin/page-header";
+import { TablePagination } from "@/components/admin/table-pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -163,12 +165,10 @@ export default function AdminMessagesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-ink-900">留言管理</h2>
-        <p className="text-sm text-muted-foreground">
-          查看用户留言、按分类筛选、标记处理状态（售后工单，写审计日志留痕）
-        </p>
-      </div>
+      <PageHeader
+        title="留言管理"
+        description="查看用户留言、按分类筛选、标记处理状态（售后工单，写审计日志留痕）"
+      />
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-2">
@@ -384,30 +384,14 @@ export default function AdminMessagesPage() {
         </>
       )}
 
-      {data && data.total > data.page_size && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            共 {data.total} 条，第 {data.page} 页
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              上一页
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.page * data.page_size >= data.total}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              下一页
-            </Button>
-          </div>
-        </div>
+      {data && (
+        <TablePagination
+          total={data.total}
+          page={data.page}
+          pageSize={data.page_size}
+          onPageChange={setPage}
+          unit="条"
+        />
       )}
 
       {/* 处理留言弹窗 */}

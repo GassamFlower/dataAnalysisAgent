@@ -24,8 +24,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ErrorState } from "@/components/common/error-state";
-import { LoadingState } from "@/components/common/loading-state";
-import { PageHeader } from "@/components/common/page-header";
+import { PageHeader } from "@/components/admin/page-header";
+import { PageLoading } from "@/components/admin/loading";
 import { toast } from "@/components/ui/toaster";
 import {
   useDeleteTutorialArticle,
@@ -90,7 +90,7 @@ export default function AdminTutorialsPage() {
       />
 
       {isLoading ? (
-        <LoadingState label="正在加载教程..." />
+        <PageLoading label="正在加载教程..." />
       ) : isError ? (
         <ErrorState
           title="加载失败"

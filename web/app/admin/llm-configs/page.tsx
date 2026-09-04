@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { PageHeader } from "@/components/admin/page-header";
+import { TableEmpty } from "@/components/admin/table-empty";
+import { PageLoading } from "@/components/admin/loading";
 
 interface LlmConfigItem {
   id: number;
@@ -84,17 +87,20 @@ export default function AdminLlmConfigsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-ink-900">LLM 配置</h2>
-          <p className="text-sm text-muted-foreground">
-            关联供应商、密钥与模型偏好（仅管理员；含 <code className="rounded bg-muted px-1">llm.preferred_provider</code> 白名单校验）
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setShowNew((v) => !v)}>
-          <Plus className="mr-1 h-4 w-4" /> 新增配置
-        </Button>
-      </div>
+      <PageHeader
+        title="LLM 配置"
+        description={
+          <>
+            关联供应商、密钥与模型偏好（仅管理员；含{" "}
+            <code className="rounded bg-muted px-1">llm.preferred_provider</code> 白名单校验）
+          </>
+        }
+        actions={
+          <Button size="sm" onClick={() => setShowNew((v) => !v)}>
+            <Plus className="mr-1 h-4 w-4" /> 新增配置
+          </Button>
+        }
+      />
 
       {showNew && (
         <div className="rounded-lg border p-4 space-y-3">
@@ -129,11 +135,7 @@ export default function AdminLlmConfigsPage() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-ink-400" />
-        </div>
-      )}
+      {isLoading && <PageLoading />}
       {isError && (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           加载失败，请确认有管理员权限。
@@ -153,6 +155,9 @@ export default function AdminLlmConfigsPage() {
               </tr>
             </thead>
             <tbody>
+              {data.items.length === 0 && (
+                <TableEmpty colSpan={5} message="暂无 LLM 配置项" hint="点击右上角「新增配置」创建" />
+              )}
               {data.items.map((c) => (
                 <tr key={c.id} className="border-t hover:bg-accent/40">
                   <td className="px-3 py-2">

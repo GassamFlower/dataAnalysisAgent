@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/common/page-header";
+import { PageHeader } from "@/components/admin/page-header";
 import { toast } from "@/components/ui/toaster";
 import {
   TutorialForm,
@@ -40,7 +40,9 @@ export default function NewTutorialPage() {
         </Link>
       </Button>
 
-      <PageHeader title="新建教程" description="创建一篇新的统计小课堂教程。" />
+      <div className="mb-6">
+        <PageHeader title="新建教程" description="创建一篇新的统计小课堂教程。" />
+      </div>
 
       <TutorialForm
         onSubmit={handleSubmit}

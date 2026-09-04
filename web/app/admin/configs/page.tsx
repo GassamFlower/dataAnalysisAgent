@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Loader2, SlidersHorizontal, RefreshCw, Save } from "lucide-react";
 
 import { adminApi, type QuotaLimitItem } from "@/lib/api/admin";
+import { PageHeader } from "@/components/admin/page-header";
+import { PageLoading } from "@/components/admin/loading";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,21 +46,19 @@ export default function AdminConfigsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-ink-900">系统配置与配额</h2>
-          <p className="text-sm text-muted-foreground">
-            平台配额运行时可调参数一览（F-ADM-003）
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => qc.invalidateQueries({ queryKey: ["admin-quota-limits"] })}
-        >
-          <RefreshCw className="mr-1 h-3 w-3" />刷新
-        </Button>
-      </div>
+      <PageHeader
+        title="系统配置与配额"
+        description="平台配额运行时可调参数一览（F-ADM-003）"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => qc.invalidateQueries({ queryKey: ["admin-quota-limits"] })}
+          >
+            <RefreshCw className="mr-1 h-3 w-3" />刷新
+          </Button>
+        }
+      />
 
       <p className="rounded-md bg-cream-surface p-3 text-xs text-muted-foreground">
         {EDITABLE_HINT}
@@ -74,11 +74,7 @@ export default function AdminConfigsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading && (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-ink-400" />
-            </div>
-          )}
+          {isLoading && <PageLoading />}
           {isError && (
             <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               加载失败，请确认有管理员权限。
