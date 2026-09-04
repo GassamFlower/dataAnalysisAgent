@@ -23,6 +23,11 @@ from app.models.user_quota import UserQuota
 from app.models.app_config import AppConfig
 from app.models.audit_logs import AuditLog
 from app.models.message import Message
+from app.models.research_scale import (
+    ResearchScale,
+    ScaleDimension,
+    ScaleItem,
+)
 
 
 DEV_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -52,6 +57,26 @@ async def _cleanup_dev_user_data():
         # 清理留言与管理审计日志，避免 audit 断言因跨用例累积而 MultipleResultsFound
         await db.execute(delete(Message).where(Message.user_id == DEV_USER_ID))
         await db.execute(delete(AuditLog).where(AuditLog.user_id == DEV_USER_ID))
+
+        # 清理测试生成的量表（slug custom-test%），避免共享库累积把种子量表挤出分页断言
+        custom_scale_ids = (await db.execute(
+            select(ResearchScale.id).where(ResearchScale.slug.like("custom-test%"))
+        )).scalars().all()
+        if custom_scale_ids:
+            custom_dim_ids = (await db.execute(
+                select(ScaleDimension.id)
+                .where(ScaleDimension.scale_id.in_(custom_scale_ids))
+            )).scalars().all()
+            if custom_dim_ids:
+                await db.execute(
+                    delete(ScaleItem).where(ScaleItem.dimension_id.in_(custom_dim_ids))
+                )
+                await db.execute(
+                    delete(ScaleDimension).where(ScaleDimension.id.in_(custom_dim_ids))
+                )
+            await db.execute(
+                delete(ResearchScale).where(ResearchScale.id.in_(custom_scale_ids))
+            )
 
         # 重置用户套餐为 subscription（dev-login 默认状态），避免 plan 串扰
         user = await db.get(User, DEV_USER_ID)

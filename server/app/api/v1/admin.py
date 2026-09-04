@@ -57,6 +57,23 @@ def _paged(items, total, page, page_size):
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
+def _parse_bool_query(value: Optional[str], name: str = "disabled") -> Optional[bool]:
+    """宽松解析 query 布尔参数：容忍空串/大小写/0|1/yes|no/on|off。
+
+    返回 None 表示「不过滤」；无法识别时抛 400（而非 FastAPI 默认 422）。
+    """
+    if value is None:
+        return None
+    v = value.strip().lower()
+    if v in ("", "none", "null"):
+        return None
+    if v in ("1", "true", "yes", "on", "t", "y"):
+        return True
+    if v in ("0", "false", "no", "off", "f", "n"):
+        return False
+    raise ValidationException(f"{name} 需为 true/false/1/0（留空=不过滤），收到：{value!r}")
+
+
 async def _audit(request: Request, db: AsyncSession, admin_id, action_type: str, detail: dict):
     """记录管理员操作审计日志（不 commit，调用方已 commit）。"""
     await AuditService.log_action(
@@ -76,13 +93,16 @@ async def _audit(request: Request, db: AsyncSession, admin_id, action_type: str,
 async def admin_users(
     keyword: str = Query("", description="按邮箱/昵称关键词搜索"),
     plan: Optional[str] = Query(None, description="按套餐筛选"),
-    disabled: Optional[bool] = Query(None, description="true=仅禁用, false=仅正常"),
+    disabled: Optional[str] = Query(
+        None, description="true/false/1/0 = 仅禁用/仅正常；留空 = 全部"
+    ),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_admin),
 ):
     """管理员：用户分页列表（含脱敏邮箱与项目数）。"""
+    disabled_flag = _parse_bool_query(disabled)
     stmt = select(User).where(User.deleted_at.is_(None))
     kw = (keyword or "").strip()
     if kw:
@@ -90,9 +110,9 @@ async def admin_users(
         stmt = stmt.where((User.email.ilike(like)) | (User.nickname.ilike(like)))
     if plan:
         stmt = stmt.where(User.plan == plan)
-    if disabled is True:
+    if disabled_flag is True:
         stmt = stmt.where(User.disabled_at.is_not(None))
-    elif disabled is False:
+    elif disabled_flag is False:
         stmt = stmt.where(User.disabled_at.is_(None))
 
     total = (await db.execute(

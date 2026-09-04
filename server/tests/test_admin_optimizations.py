@@ -237,3 +237,49 @@ async def test_export_users_non_admin_forbidden(client: AsyncClient, auth_header
         "/api/v1/admin/users/export", headers=auth_headers, json={}
     )
     assert resp.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_users_list_disabled_empty_string_ok(client: AsyncClient, auth_headers: dict):
+    """disabled= 空串不再 422：视为不过滤，返回 200。"""
+    await _make_admin()
+    try:
+        resp = await client.get(
+            "/api/v1/admin/users", headers=auth_headers, params={"disabled": ""}
+        )
+        assert resp.status_code == 200
+        assert "items" in resp.json()["data"]
+    finally:
+        await _unmake_admin()
+
+
+@pytest.mark.anyio
+async def test_users_list_disabled_variants(client: AsyncClient, auth_headers: dict):
+    """disabled 宽容解析：1/true/0/false/大小写均可。"""
+    await _make_admin()
+    try:
+        for raw in ("1", "true", "TRUE", "on", "yes"):
+            resp = await client.get(
+                "/api/v1/admin/users", headers=auth_headers, params={"disabled": raw}
+            )
+            assert resp.status_code == 200, f"disabled={raw} 应 200"
+        for raw in ("0", "false", "FALSE", "off", "no"):
+            resp = await client.get(
+                "/api/v1/admin/users", headers=auth_headers, params={"disabled": raw}
+            )
+            assert resp.status_code == 200, f"disabled={raw} 应 200"
+    finally:
+        await _unmake_admin()
+
+
+@pytest.mark.anyio
+async def test_users_list_disabled_invalid(client: AsyncClient, auth_headers: dict):
+    """无法识别的 disabled 值返回 400（而非 422）。"""
+    await _make_admin()
+    try:
+        resp = await client.get(
+            "/api/v1/admin/users", headers=auth_headers, params={"disabled": "abc"}
+        )
+        assert resp.status_code == 400
+    finally:
+        await _unmake_admin()
