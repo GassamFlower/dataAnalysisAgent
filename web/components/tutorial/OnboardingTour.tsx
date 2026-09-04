@@ -239,7 +239,7 @@ export function OnboardingTour({
 const DEFAULT_STEPS: OnboardingStep[] = [
   {
     step: 1,
-    title: "欢迎使用渔宴数据分析",
+    title: "欢迎使用数据分析智能体",
     description:
       "这是一个帮助你完成毕业论文数据分析的工具。接下来我们会一步步引导你完成整个流程。",
     target: "sidebar-projects",

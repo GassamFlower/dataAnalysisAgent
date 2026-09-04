@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/toaster";
 import { Loader2, Upload, CheckCircle2, AlertCircle, RotateCcw, Clock, AlertTriangle } from "lucide-react";
 import { useResetTutorialProgress } from "@/lib/hooks/use-tutorial";
+import { PageHeader } from "@/components/common/page-header";
 
 /**
  * 计算套餐到期状态。
@@ -191,10 +192,11 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto max-w-3xl space-y-8 p-6">
-      <div>
-        <h1 className="text-3xl font-bold">个人设置</h1>
-        <p className="text-muted-foreground">管理你的账号信息和偏好设置</p>
-      </div>
+      <PageHeader
+        title="个人设置"
+        description="管理你的账号信息和偏好设置"
+        className="mb-0"
+      />
 
       {/* 头像与基本信息 */}
       <Card>
@@ -473,7 +475,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>新手引导</CardTitle>
-          <CardDescription>重新播放渔宴数据分析的新手引导</CardDescription>
+          <CardDescription>重新播放数据分析智能体的新手引导</CardDescription>
         </CardHeader>
         <CardContent>
           <Button
