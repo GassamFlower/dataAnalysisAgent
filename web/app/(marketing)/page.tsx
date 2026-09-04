@@ -202,85 +202,125 @@ export default function HomePage() {
         {SIMULATED_WATERMARK}
       </p>
 
-      {/* 痛点区 */}
-      <section className="mx-auto max-w-5xl px-6 py-8">
-        <Stagger step={0.07} className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {painPoints.map((p) => (
-            <StaggerItem key={p.title}>
-              <Card className="lift h-full border-border bg-card p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface text-ink-500">
-                  <p.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mt-4 text-h3 font-semibold text-ink-900">{p.title}</h3>
-                <p className="mt-2 text-body text-ink-500">{p.desc}</p>
-              </Card>
-            </StaggerItem>
-          ))}
-        </Stagger>
+      {/* 痛点区（editorial：标题左对齐 + 不对称 2+2，破除 4 等分平铺） */}
+      <section className="mx-auto max-w-5xl px-6 py-10">
+        <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[1fr_1.6fr]">
+          <Reveal>
+            <div>
+              <div className="flex items-center gap-2 text-caption font-medium uppercase tracking-[0.14em] text-ink-400">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                回收前最怕的
+              </div>
+              <h2 className="mt-3 font-display text-h2 font-semibold leading-snug text-ink-900">
+                问卷白做一趟，
+                <br />
+                问题往往出在这几步
+              </h2>
+              <p className="mt-4 max-w-[30ch] text-body text-ink-500">
+                数据没回收之前，方向是否可行其实已经可以预演——别等发完问卷、跑完 SPSS 才发现。
+              </p>
+            </div>
+          </Reveal>
+          <Stagger step={0.08} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {painPoints.map((p, i) => (
+              <StaggerItem key={p.title}>
+                <Card className="lift h-full border-border bg-card p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <p.icon className="h-5 w-5" />
+                    </div>
+                    <span className="font-display text-caption text-ink-400 tabular">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 text-h3 font-semibold text-ink-900">{p.title}</h3>
+                  <p className="mt-1.5 text-body text-ink-500">{p.desc}</p>
+                </Card>
+              </StaggerItem>
+            ))}
+          </Stagger>
+        </div>
       </section>
 
-      {/* 三步流程 */}
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <Reveal>
-          <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
-            三步完成研究预演
+      {/* 四步流程（大衬线序号打破平铺；sm 两列 lg 四列完整展示） */}
+      <section className="mx-auto max-w-5xl px-6 py-14">
+        <Reveal className="mb-8">
+          <h2 className="font-display text-h2 font-semibold leading-snug text-ink-900">
+            四条路径，闭环一次研究预演
           </h2>
         </Reveal>
-        <Stagger step={0.1} className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {PROJECT_STEPS.map((step, i) => {
             const Icon = stepIcons[i];
             return (
-              <StaggerItem key={step.key}>
-                <Card className="lift h-full p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
+              <Reveal key={step.key} delay={i * 80}>
+                <div className="relative h-full overflow-hidden rounded-lg border border-border bg-card p-6">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -right-1 top-1 select-none font-display text-[5rem] font-bold leading-none text-ink-900/5"
+                  >
+                    {i + 1}
+                  </span>
+                  <div className="relative">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="mt-5 text-h3 font-semibold text-ink-900">{step.label}</h3>
+                    <p className="mt-2 text-body text-ink-500">{step.description}</p>
                   </div>
-                  <div className="mt-4 text-caption font-medium text-ink-400">
-                    步骤 {i + 1}
-                  </div>
-                  <h3 className="mt-1 text-h3 font-semibold text-ink-900">
-                    {step.label}
-                  </h3>
-                  <p className="mt-2 text-body text-ink-500">{step.description}</p>
-                </Card>
-              </StaggerItem>
+                </div>
+              </Reveal>
             );
           })}
-        </Stagger>
+        </div>
       </section>
 
-      {/* 功能特性区 */}
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <Reveal>
-          <h2 className="mb-8 text-center text-h2 font-semibold text-ink-900">
-            核心能力
-          </h2>
-        </Reveal>
-        <Stagger step={0.06} className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <StaggerItem key={f.title}>
-              <Card className="lift flex h-full items-start gap-4 p-6">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <f.icon className="h-5 w-5" />
+      {/* 功能特性区（editorial 头 + 双列清单，区别于前两区） */}
+      <section className="mx-auto max-w-5xl px-6 py-14">
+        <div className="grid grid-cols-1 items-start gap-10 md:grid-cols-[1fr_2fr]">
+          <Reveal>
+            <div>
+              <div className="text-caption font-medium uppercase tracking-[0.14em] text-ink-400">
+                核心能力
+              </div>
+              <h2 className="mt-3 font-display text-h2 font-semibold leading-snug text-ink-900">
+                一套工具，
+                <br />
+                从题目体检到论文报告
+              </h2>
+              <Button variant="outline" size="sm" className="mt-6" asChild>
+                <Link href="/learn">先学统计知识
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </Reveal>
+          <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-2">
+            {features.map((f, i) => (
+              <Reveal key={f.title} delay={i * 60}>
+                <div className="flex items-start gap-3.5">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <f.icon className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-h3 font-semibold text-ink-900">{f.title}</h3>
+                    <p className="mt-1 text-body text-ink-500">{f.desc}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-h3 font-semibold text-ink-900">{f.title}</h3>
-                  <p className="mt-2 text-body text-ink-500">{f.desc}</p>
-                </div>
-              </Card>
-            </StaggerItem>
-          ))}
-        </Stagger>
+              </Reveal>
+            ))}
+          </div>
+        </div>
       </section>
 
-      {/* 信任背书区 */}
-      <section className="mx-auto max-w-5xl px-6 py-16">
+      {/* 覆盖能力带（信息密集：文本分栏而非整卡，制造密集-放松交替） */}
+      <section className="mx-auto max-w-5xl px-6 py-14">
         <Reveal>
-          <Card className="bg-cream-surface p-8 transition-shadow duration-base hover:shadow-md">
-            <h2 className="text-center text-h2 font-semibold text-ink-900">
+          <div className="rounded-lg border border-border bg-cream-surface px-6 py-8 sm:px-8">
+            <h2 className="text-center font-display text-h2 font-semibold text-ink-900">
               覆盖论文所需全部统计方法
             </h2>
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto mt-7 grid max-w-3xl grid-cols-1 gap-x-8 gap-y-2.5 text-left sm:grid-cols-2">
               {trustItems.map((item) => (
                 <div key={item} className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
@@ -288,24 +328,33 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         </Reveal>
       </section>
 
-      {/* 服务/开通引导 */}
-      <section className="mx-auto max-w-5xl px-6 py-16 text-center">
-        <h2 className="text-h2 font-semibold text-ink-900">
-          免费体检，开通完整能力找客服
-        </h2>
-        <p className="mt-2 text-body text-ink-500">
-          题目体检与样本代表性诊断永久免费；数据预演、统计报告、智能诊断与导出等完整能力，联系客服即可开通。
-        </p>
-        <Button size="lg" className="mt-6" asChild>
-          <Link href="/pricing">
-            联系客服
-            <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Link>
-        </Button>
+      {/* 开通收口 CTA */}
+      <section className="mx-auto max-w-5xl px-6 pt-16 text-center">
+        <Reveal>
+          <h2 className="font-display text-h2 font-semibold leading-snug text-ink-900">
+            免费体检，开通完整能力找客服
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-body text-ink-500">
+            题目体检与样本代表性诊断永久免费；数据预演、统计报告、智能诊断与导出等完整能力，联系客服即可开通。
+          </p>
+          <div className="mt-7 flex items-center justify-center gap-3">
+            <Button size="lg" asChild>
+              <Link href="/pricing">
+                联系客服
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button variant="outline" size="lg" asChild>
+              <Link href="/projects/new">
+                开始免费体检
+              </Link>
+            </Button>
+          </div>
+        </Reveal>
       </section>
 
       {/* 页脚 */}
