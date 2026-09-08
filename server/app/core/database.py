@@ -100,8 +100,13 @@ def _sync_missing_columns(sync_conn, base) -> None:
                 default_sql = _default_sql(col)
                 if default_sql is not None:
                     ddl = f"{ddl} DEFAULT {default_sql}"
+            # 用 SAVEPOINT（nested）隔离每条 ALTER：PG 中任何一条 DDL 报错都会
+            # 置整个事务为 aborted，导致后续所有语句继续抛
+            # "current transaction is aborted"。nested 让单列失败可回滚到保存点，
+            # 不污染同一事务里的其它列/表。
             try:
-                sync_conn.execute(text(ddl))
+                with sync_conn.begin_nested():
+                    sync_conn.execute(text(ddl))
                 logger.info(
                     f"已为表 {table.name} 补齐缺失列 {col.name} ({col_type})"
                 )
@@ -131,7 +136,10 @@ def _default_sql(col) -> Optional[str]:
     if dflt is not None:
         arg = getattr(dflt, "arg", dflt)
         if isinstance(arg, bool):
-            return "1" if arg else "0"
+            # PostgreSQL 中 `DEFAULT 0/1` 对 BOOLEAN 列会报
+            # "column is of type boolean but default is of type integer"；
+            # 用 TRUE/FALSE 字面量，SQLite 与 PostgreSQL 均接受。
+            return "TRUE" if arg else "FALSE"
         if isinstance(col.type, Integer):
             return str(int(arg if arg is not None else 0))
         if isinstance(arg, str):
