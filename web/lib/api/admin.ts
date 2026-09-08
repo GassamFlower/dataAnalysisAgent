@@ -12,12 +12,38 @@ export interface AdminUser {
   plan: "free" | "single" | "subscription";
   plan_expires_at?: string | null;
   is_admin: boolean;
+  is_super_admin?: boolean;
   email_verified: boolean;
   disabled: boolean;
   disabled_at?: string | null;
   created_at?: string | null;
   project_count?: number;
   projects?: AdminProject[];
+}
+
+/** 后台可授予模块（对应后端 ADMIN_MODULES） */
+export type AdminModuleKey = "users" | "orders" | "messages" | "configs" | "audit";
+
+/** 单个模块授权记录 */
+export interface AdminPermissionRecord {
+  user_id: string;
+  module: AdminModuleKey;
+  module_label: string;
+  expires_at?: string | null;
+  permanent: boolean;
+  active: boolean;
+  created_at?: string | null;
+}
+
+/** 管理员账号及其授权模块 */
+export interface AdminRole {
+  id: string;
+  email?: string | null;
+  nickname?: string | null;
+  is_admin: boolean;
+  is_super_admin: boolean;
+  disabled: boolean;
+  modules: AdminPermissionRecord[];
 }
 
 export interface AdminProject {
@@ -124,6 +150,7 @@ export const adminApi = {
     user_id: string;
     plan_type: "single" | "subscription";
     days?: number;
+    expires_at?: string;
     channel?: string;
     remark?: string;
     amount?: number;
@@ -228,4 +255,46 @@ export const adminApi = {
   /** 运营看板补充维度 */
   getDashboardOverview: () =>
     apiClient.get<DashboardOverview>("/api/v1/admin/dashboard/overview"),
+
+  /** 可授予模块清单 */
+  listModules: () =>
+    apiClient.get<{ items: { module: AdminModuleKey; label: string }[]; count: number }>(
+      "/api/v1/admin/modules"
+    ),
+
+  /** 列出所有管理员（超管）及其授权模块 */
+  listPermissions: () =>
+    apiClient.get<{ items: AdminRole[]; count: number }>(
+      "/api/v1/admin/permissions"
+    ),
+
+  /** 授予子管理员某模块（days/expires_at 二选一） */
+  grantPermission: (body: {
+    user_id: string;
+    module: AdminModuleKey;
+    days?: number;
+    expires_at?: string;
+  }) => apiClient.post<AdminRole>("/api/v1/admin/permissions", body),
+
+  /** 更新某账号某模块授权期限 */
+  updatePermission: (
+    userId: string,
+    module: AdminModuleKey,
+    body: { days?: number; expires_at?: string }
+  ) => apiClient.patch<AdminPermissionRecord>(
+    `/api/v1/admin/permissions/${userId}/${module}`,
+    body
+  ),
+
+  /** 撤销某账号某模块授权 */
+  revokePermission: (userId: string, module: AdminModuleKey) =>
+    apiClient.delete<{ revoked: boolean; user_id: string; module: string }>(
+      `/api/v1/admin/permissions/${userId}/${module}`
+    ),
+
+  /** 整体移除账号的管理员身份 */
+  removeAdmin: (userId: string) =>
+    apiClient.delete<{ removed: boolean; user_id: string }>(
+      `/api/v1/admin/permissions/user/${userId}`
+    ),
 };

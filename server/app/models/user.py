@@ -20,6 +20,7 @@ class User(Base):
         Index("idx_users_deleted_at", "deleted_at"),
         CheckConstraint("email_verified IN (0, 1)", name="ck_users_email_verified"),
         CheckConstraint("is_admin IN (0, 1)", name="ck_users_is_admin"),
+        CheckConstraint("is_super_admin IN (0, 1)", name="ck_users_is_super_admin"),
         CheckConstraint("plan IN ('free', 'single', 'subscription')", name="ck_users_plan"),
     )
 
@@ -41,6 +42,8 @@ class User(Base):
     plan: Mapped[str] = mapped_column(String(20), default="free")
     plan_expires_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 超管标记：可授权/撤销其他后台管理员；false 的子管理员仅能访问被授予的模块
+    is_super_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     refresh_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # 合规字段（F-SYS-005）
     agreed_terms_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)

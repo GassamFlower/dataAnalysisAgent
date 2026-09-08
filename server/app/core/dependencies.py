@@ -54,6 +54,7 @@ async def get_current_user(
         "email_verified": user.email_verified,
         # 管理员权限不再硬编码 True：由 DEV_USER_IS_ADMIN 控制，默认 False，避免误开后门
         "is_admin": settings.DEV_USER_IS_ADMIN,
+        "is_super_admin": settings.DEV_USER_IS_SUPER_ADMIN,
         "plan": user.plan,
         "plan_expires_at": user.plan_expires_at,
     }
@@ -85,6 +86,7 @@ async def get_current_user(
         "nickname": user.nickname,
         "email_verified": user.email_verified,
         "is_admin": user.is_admin,
+        "is_super_admin": user.is_super_admin,
         "plan": user.plan,
         "plan_expires_at": user.plan_expires_at,
     }
@@ -124,3 +126,68 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
     if not user.get("is_admin"):
         raise ForbiddenException("需要管理员权限")
     return user
+
+
+async def require_super_admin(user: dict = Depends(get_current_user)) -> dict:
+    """要求超级管理员权限（仅超管可做授权/撤销等敏感操作）。"""
+    if not user.get("is_admin"):
+        raise ForbiddenException("需要管理员权限")
+    if not user.get("is_super_admin"):
+        raise ForbiddenException("需要超级管理员权限")
+    return user
+
+
+def require_module(module: str):
+    """按后台模块做访问控制（F-ADM-001 授权模型）。
+
+    - 超管：拥有全部模块，直接放行。
+    - 子管理员：必须有该模块的授权记录且未过期，否则拒绝。
+
+    用法：`Depends(require_module(ADMIN_MODULES.USERS))`
+    """
+
+    async def _check(
+        user: dict = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> dict:
+        if not user.get("is_admin"):
+            raise ForbiddenException("需要管理员权限")
+        if user.get("is_super_admin"):
+            return user
+        from datetime import datetime, timezone
+
+        from sqlalchemy import select
+
+        from app.models.admin_permission import AdminPermission
+        from app.services.admin_service import ALL_ADMIN_MODULES
+
+        if module not in ALL_ADMIN_MODULES:
+            raise ForbiddenException("未知的后台模块")
+
+        res = await db.execute(
+            select(AdminPermission).where(AdminPermission.user_id == user["id"])
+        )
+        perms = res.scalars().all()
+        # 兼容历史管理员：is_admin 但无任何模块授权记录 → 拥有全部模块
+        if not perms:
+            return user
+        hit = next(
+            (p for p in perms if p.module == module and is_admin_active_now(p)),
+            None,
+        )
+        if module not in {p.module for p in perms}:
+            raise ForbiddenException("没有该后台模块的访问权限")
+        if hit is None:
+            raise ForbiddenException("该后台模块授权已过期，请联系管理员续期")
+        return user
+
+    return _check
+
+
+def is_admin_active_now(perm) -> bool:
+    """子模块授权是否仍在有效期内（timezone 感知）。"""
+    from datetime import datetime, timezone
+
+    if perm.expires_at is None:
+        return True
+    return perm.expires_at > datetime.now(timezone.utc)

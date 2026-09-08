@@ -11,8 +11,9 @@ function normalizeUser(user: AuthUser) {
     id: user.id,
     nickname: user.nickname,
     avatar: user.avatar,
-    // is_admin 由后端在 _issue_tokens / /users/me 下发
+    // is_admin / is_super_admin 由后端在 _issue_tokens / /users/me 下发
     isAdmin: user.is_admin ?? false,
+    isSuperAdmin: user.is_super_admin ?? false,
     plan: user.plan as "free" | "single" | "subscription",
   };
 }

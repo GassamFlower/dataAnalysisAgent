@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Loader2,
   ShieldCheck,
+  UserCog,
   Users,
   Receipt,
   SlidersHorizontal,
@@ -70,6 +71,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isAdmin = useAuthStore((s) => s.user?.isAdmin);
+  const isSuperAdmin = useAuthStore((s) => s.user?.isSuperAdmin ?? false);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -126,29 +128,65 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const navBody = (
     <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
-      {adminNavGroups.map((group) => (
-        <div key={group.label}>
-          <div className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-ink-400">
-            {group.label}
-          </div>
-          <div className="space-y-0.5">
-            {group.items.map((item) => {
-              const active = isActive(item.href);
-              return (
+      {adminNavGroups.map((group) => {
+        if (group.label === "系统" && isSuperAdmin) {
+          return (
+            <div key={group.label}>
+              <div className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-ink-400">
+                {group.label}
+              </div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={navLinkClass(active)}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  key="/admin/permissions"
+                  href="/admin/permissions"
                   onClick={() => setMobileOpen(false)}
-                  className={navLinkClass(active)}
+                  className={navLinkClass(isActive("/admin/permissions"))}
                 >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                  <UserCog className="h-4 w-4 shrink-0" />
+                  管理员授权
                 </Link>
-              );
-            })}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={group.label}>
+            <div className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-ink-400">
+              {group.label}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={navLinkClass(active)}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </nav>
   );
 

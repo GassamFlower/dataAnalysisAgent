@@ -1,5 +1,6 @@
 """数据库连接配置。"""
 import logging
+from typing import Optional
 
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -92,6 +93,13 @@ def _sync_missing_columns(sync_conn, base) -> None:
             col_type = col.type.compile(dialect=sync_conn.dialect)
             nullability = "NULL" if col.nullable else "NOT NULL"
             ddl = f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type} {nullability}"
+            # SQLite：给已存在数据的表新增 NOT NULL 列必须带 DEFAULT，否则报
+            # "Cannot add a NOT NULL column with default value NULL"。
+            # 优先用模型声明的 server_default；否则回退到 Python 默认值字面量。
+            if not col.nullable:
+                default_sql = _default_sql(col)
+                if default_sql is not None:
+                    ddl = f"{ddl} DEFAULT {default_sql}"
             try:
                 sync_conn.execute(text(ddl))
                 logger.info(
@@ -101,6 +109,39 @@ def _sync_missing_columns(sync_conn, base) -> None:
                 logger.warning(
                     f"补齐列 {table.name}.{col.name} 失败（可忽略）: {e}"
                 )
+
+
+def _default_sql(col) -> Optional[str]:
+    """为非空列推导可写入 SQL 的 DEFAULT 字面量。
+
+    优先使用模型 ServerDefault；否则用 Python 默认值（bool/int/str）转成字面量。
+    无法推导时返回 None（调用方此时不加 DEFAULT，交由上层兜底/报错）。
+    """
+    from sqlalchemy import String, Boolean, Integer
+
+    # 1) server_default（如 server_default="0"）
+    sd = getattr(col, "server_default", None)
+    if sd is not None:
+        arg = getattr(sd, "arg", None)
+        if arg is not None:
+            return str(arg) if not isinstance(arg, str) else _quote_default(arg)
+
+    # 2) Python 默认值
+    dflt = getattr(col, "default", None)
+    if dflt is not None:
+        arg = getattr(dflt, "arg", dflt)
+        if isinstance(arg, bool):
+            return "1" if arg else "0"
+        if isinstance(col.type, Integer):
+            return str(int(arg if arg is not None else 0))
+        if isinstance(arg, str):
+            return _quote_default(arg)
+    return None
+
+
+def _quote_default(value: str) -> str:
+    """把字符串默认值包成 SQL 单引号字面量（转义单引号）。"""
+    return "'" + value.replace("'", "''") + "'"
 
 
 async def close_db():

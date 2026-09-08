@@ -16,6 +16,7 @@ export interface AuthUser {
   avatar?: string;
   plan: string;
   is_admin?: boolean;
+  is_super_admin?: boolean;
 }
 
 export interface AuthResponse {

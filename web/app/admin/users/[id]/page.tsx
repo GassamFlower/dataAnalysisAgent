@@ -74,14 +74,18 @@ export default function AdminUserDetailPage() {
   const [openOffline, setOpenOffline] = useState(false);
   const [oPlan, setOPlan] = useState<"single" | "subscription">("single");
   const [oChannel, setOChannel] = useState("xianyu");
+  const [oMode, setOMode] = useState<"days" | "date">("days");
   const [oDays, setODays] = useState("30");
+  const [oDate, setODate] = useState("");
   const [oAmount, setOAmount] = useState("");
   const [oRemark, setORemark] = useState("");
 
   const resetOffline = () => {
     setOPlan("single");
     setOChannel("xianyu");
+    setOMode("days");
     setODays("30");
+    setODate("");
     setOAmount("");
     setORemark("");
   };
@@ -91,6 +95,7 @@ export default function AdminUserDetailPage() {
       user_id: string;
       plan_type: "single" | "subscription";
       days?: number;
+      expires_at?: string;
       channel?: string;
       remark?: string;
       amount?: number;
@@ -266,17 +271,35 @@ export default function AdminUserDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>开通天数（默认 30）</Label>
-                <Input type="number" min={1} value={oDays} onChange={(e) => setODays(e.target.value)} />
+                <Label>到期方式</Label>
+                <Select value={oMode} onValueChange={(v) => setOMode(v as "days" | "date")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="days">按天数</SelectItem>
+                    <SelectItem value="date">按到期日期</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label>{oMode === "days" ? "开通天数（默认 30）" : "到期日期（须晚于今天）"}</Label>
+                {oMode === "days" ? (
+                  <Input type="number" min={1} value={oDays} onChange={(e) => setODays(e.target.value)} />
+                ) : (
+                  <Input type="date" value={oDate} onChange={(e) => setODate(e.target.value)} />
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>实收金额（元，留空=平台默认）</Label>
                 <Input type="number" min={0} step="0.01" value={oAmount} onChange={(e) => setOAmount(e.target.value)} />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>对账备注（如咸鱼订单号）</Label>
-              <Input value={oRemark} onChange={(e) => setORemark(e.target.value)} placeholder="选填" />
+              <div className="space-y-1.5">
+                <Label>对账备注（如咸鱼订单号）</Label>
+                <Input value={oRemark} onChange={(e) => setORemark(e.target.value)} placeholder="选填" />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -289,7 +312,9 @@ export default function AdminUserDetailPage() {
                 openOfflineMut.mutate({
                   user_id: data.id,
                   plan_type: oPlan,
-                  days: oDays ? Number(oDays) : undefined,
+                  ...(oMode === "days"
+                    ? { days: oDays ? Number(oDays) : undefined }
+                    : { expires_at: oDate || undefined }),
                   channel: oChannel,
                   remark: oRemark || undefined,
                   amount: oAmount ? Number(oAmount) : undefined,

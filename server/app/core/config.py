@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     ALLOW_DEV_TOKEN: bool = False  # 生产环境必须保持 False
     # dev-token 用户是否拥有管理员权限（仅开发模式生效；默认 False，避免误开后门）
     DEV_USER_IS_ADMIN: bool = False
+    # dev-token 用户是否拥有超管权限（仅开发模式生效；默认 False）
+    DEV_USER_IS_SUPER_ADMIN: bool = False
 
     # 初始管理员（逗号分隔的邮箱）——应用启动时会自动将这些邮箱对应的账号晋升为 is_admin（bootstrap）
     ADMIN_EMAILS: str = ""

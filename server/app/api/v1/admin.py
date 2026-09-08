@@ -7,7 +7,7 @@
 import csv
 import io
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Literal, Optional
 
@@ -18,10 +18,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import require_admin
+from app.core.dependencies import require_admin, require_module, require_super_admin
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.responses import success_response
 from app.models.audit_logs import AuditLog
+from app.models.admin_permission import AdminPermission
 from app.models.message import Message, STATUS_CHOICES
 from app.models.order import Order
 from app.models.project import Project
@@ -33,7 +34,16 @@ from app.schemas.message import (
     DATA_SOURCE_LABELS,
     STATUS_LABELS,
 )
-from app.services.admin_service import VALID_PLANS, get_user_project_counts, user_admin_dict
+from app.services.admin_service import (
+    VALID_PLANS,
+    ADMIN_MODULES,
+    ADMIN_MODULE_LABELS,
+    ALL_ADMIN_MODULES,
+    is_granted_active,
+    get_user_modules,
+    get_user_project_counts,
+    user_admin_dict,
+)
 from app.services import admin_config_service
 from app.services.audit_service import AuditService
 from app.services import payment_service
@@ -86,6 +96,48 @@ async def _audit(request: Request, db: AsyncSession, admin_id, action_type: str,
     )
 
 
+# 授权/套餐时限上限（天）
+MAX_GRANT_DAYS = 3650
+
+
+def _resolve_datetime_aware(value: datetime) -> datetime:
+    """把可能 naive 的输入时间统一为 UTC aware。"""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def validate_expiry(days: Optional[int] = None, expires_at: Optional[datetime] = None, *, field="到期时间"):
+    """把「天数」或「具体日期」解析为 UTC aware 到期时间，并做合法性校验。
+
+    - days 与 expires_at 二选一，不能同时为空或同时给出。
+    - days：必须是正整数的正常天数，且不超过 MAX_GRANT_DAYS（超出报错）。
+    - expires_at：必须晚于当前时刻（过去/今天的日期直接报错）。
+
+    返回 UTC aware 的 datetime，供后续写入 expires_at。
+    """
+    now = datetime.now(timezone.utc)
+    both = days is not None and expires_at is not None
+    neither = days is None and expires_at is None
+    if both or neither:
+        raise ValidationException(
+            f"{field}：请提供 天数(days) 或 具体到期日期(expires_at) 两者之一（不能同时/都不提供）"
+        )
+    if expires_at is not None:
+        aware = _resolve_datetime_aware(expires_at)
+        if aware <= now:
+            raise ValidationException(
+                f"{field}必须晚于当前时间（不允许过去或今天的日期）"
+            )
+        return aware
+    if days is not None:
+        if days < 1:
+            raise ValidationException(f"{field}天数必须为正整数")
+        if days > MAX_GRANT_DAYS:
+            raise ValidationException(f"{field}天数不能超过 {MAX_GRANT_DAYS} 天")
+        return now + timedelta(days=days)
+
+
 # ── 用户与项目运营（F-ADM-001）────────────────────────────────────────
 
 
@@ -99,7 +151,7 @@ async def admin_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_admin),
+    _: dict = Depends(require_module(ADMIN_MODULES.USERS)),
 ):
     """管理员：用户分页列表（含脱敏邮箱与项目数）。"""
     disabled_flag = _parse_bool_query(disabled)
@@ -142,7 +194,7 @@ class _UserExportRequest(BaseModel):
 async def admin_export_users(
     payload: Optional[_UserExportRequest] = Body(None),
     request: Request = None,  # noqa: B008 FastAPI 注入
-    current: dict = Depends(require_admin),
+    current: dict = Depends(require_module(ADMIN_MODULES.USERS)),
     db: AsyncSession = Depends(get_db),
 ):
     """导出（筛选后的）全部注册用户为 CSV，前端触发浏览器下载。
@@ -199,7 +251,7 @@ async def admin_export_users(
 async def user_detail(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_admin),
+    _: dict = Depends(require_module(ADMIN_MODULES.USERS)),
 ):
     """用户详情 + 项目列表。"""
     uid = _uuid(user_id)
@@ -233,7 +285,7 @@ async def user_change_plan(
     user_id: str,
     req: _PlanChangeRequest,
     request: Request,
-    current: dict = Depends(require_admin),
+    current: dict = Depends(require_module(ADMIN_MODULES.USERS)),
     db: AsyncSession = Depends(get_db),
 ):
     """调整用户套餐（管理员；禁止改自己）。"""
@@ -244,6 +296,12 @@ async def user_change_plan(
         raise ValidationException("不能修改自己的套餐")
     if req.plan not in VALID_PLANS:
         raise ValidationException("套餐必须是 free / single / subscription")
+    # 到期时间：若提供必须晚于当前时刻（过去/今天报错）
+    if req.expires_at is not None:
+        expire_aware = _resolve_datetime_aware(req.expires_at)
+        if expire_aware <= datetime.now(timezone.utc):
+            raise ValidationException("到期时间必须晚于当前时间（不允许过去或今天的日期）")
+        req.expires_at = expire_aware
     user = await db.get(User, uid)
     if not user or user.deleted_at is not None:
         raise NotFoundException("用户不存在")
@@ -266,7 +324,7 @@ async def user_set_disabled(
     user_id: str,
     req: _DisableRequest,
     request: Request,
-    current: dict = Depends(require_admin),
+    current: dict = Depends(require_module(ADMIN_MODULES.USERS)),
     db: AsyncSession = Depends(get_db),
 ):
     """禁用/启用账号（禁止禁用自己或其他管理员）。"""
@@ -334,6 +392,7 @@ class _OfflineOrderCreateRequest(BaseModel):
     user_id: str = Field(..., description="目标用户 ID")
     plan_type: Literal["single", "subscription"] = Field(..., description="single 单次 / subscription 开通期")
     days: Optional[int] = Field(None, ge=1, description="开通天数（默认 single/subscription 均为 30 天）")
+    expires_at: Optional[datetime] = Field(None, description="直接开到该具体到期日期（与 days 二选一，须晚于当前）")
     channel: str = Field("other", description="线下成交渠道：xianyu / wechat / alipay / cash / other")
     remark: Optional[str] = Field(None, max_length=500, description="对账备注（如咸鱼订单号）")
     amount: Optional[Decimal] = Field(None, description="实收金额（元，缺省按服务端定价）")
@@ -343,7 +402,7 @@ class _OfflineOrderCreateRequest(BaseModel):
 async def admin_create_offline_order(
     req: _OfflineOrderCreateRequest,
     request: Request,
-    current: dict = Depends(require_admin),
+    current: dict = Depends(require_module(ADMIN_MODULES.USERS)),
     db: AsyncSession = Depends(get_db),
 ):
     """线下成交后，管理后台为该用户开一笔「线下单」并同事务激活套餐。
@@ -367,6 +426,7 @@ async def admin_create_offline_order(
         remark=req.remark,
         amount=req.amount,
         days=req.days,
+        expires_at=req.expires_at,
     )
     await _audit(
         request, db, current["id"], "admin_create_offline_order",
@@ -378,6 +438,7 @@ async def admin_create_offline_order(
             "channel": req.channel or "other",
             "remark": req.remark,
             "days": req.days,
+            "expires_at": req.expires_at.isoformat() if req.expires_at else None,
             "new_expires_at": order.expires_at.isoformat() if order.expires_at else None,
         },
     )
@@ -793,3 +854,270 @@ async def admin_batch_update_message_status(
         )
     await db.commit()
     return success_response(data={"updated": len(updated), "message_ids": updated})
+
+
+# ── 管理员授权管理（F-ADM-006：委派管理员 + 授权有效期）────────────────
+
+
+def _perm_dict(p: AdminPermission) -> dict:
+    return {
+        "user_id": str(p.user_id),
+        "module": p.module,
+        "module_label": ADMIN_MODULE_LABELS.get(p.module, p.module),
+        "expires_at": p.expires_at.isoformat() if p.expires_at else None,
+        "permanent": p.expires_at is None,
+        "active": is_granted_active(p),
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+    }
+
+
+def _admin_role_dict(user: User, modules: list[dict]) -> dict:
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "nickname": user.nickname,
+        "is_admin": user.is_admin,
+        "is_super_admin": user.is_super_admin,
+        "disabled": user.disabled_at is not None,
+        "modules": modules,
+    }
+
+
+@router.get("/modules", summary="后台可授予模块清单")
+async def admin_modules_catalog(
+    _: dict = Depends(require_admin),
+):
+    """返回所有可授权后台模块及其标签（供前端勾选）。"""
+    items = [
+        {"module": m, "label": ADMIN_MODULE_LABELS.get(m, m)}
+        for m in sorted(ALL_ADMIN_MODULES)
+    ]
+    return success_response(data={"items": items, "count": len(items)})
+
+
+@router.get("/permissions", summary="列出所有管理员（超管+子管理员）及其授权")
+async def admin_list_permissions(
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_super_admin),
+):
+    """超管专用：列出全部管理员账号及其已授予模块与到期时间。"""
+    res = await db.execute(
+        select(User)
+        .where(User.deleted_at.is_(None), User.is_admin.is_(True))
+        .order_by(User.created_at.asc())
+    )
+    admins = res.scalars().all()
+    # 一次取回所有授权，按 user 归组
+    perm_res = await db.execute(select(AdminPermission))
+    by_user: dict = {}
+    for p in perm_res.scalars().all():
+        by_user.setdefault(str(p.user_id), []).append(_perm_dict(p))
+    items = [_admin_role_dict(u, by_user.get(str(u.id), [])) for u in admins]
+    return success_response(data={"items": items, "count": len(items)})
+
+
+class _GrantPermRequest(BaseModel):
+    user_id: str = Field(..., description="被授权账号 ID")
+    module: str = Field(..., description="后台模块标识")
+    days: Optional[int] = Field(None, ge=1, description="授权天数（与 expires_at 二选一）")
+    expires_at: Optional[datetime] = Field(None, description="授权具体到期日期（与 days 二选一，须晚于当前）")
+
+
+@router.post("/permissions", summary="授予子管理员某后台模块（可带期限）")
+async def admin_grant_permission(
+    req: _GrantPermRequest,
+    request: Request,
+    current: dict = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """超管：为某账号授予指定后台模块，使其成为子管理员并可访问该模块。
+
+    - 被授权账号会同时被置为 is_admin=True（子管理员）。
+    - module 必须属于可授予模块（ALL_ADMIN_MODULES）。
+    - days / expires_at 二选一：设定该模块授权的有效期（须为未来/合法天数）。
+    """
+    if req.module not in ALL_ADMIN_MODULES:
+        raise ValidationException(
+            f"module 必须是 {' / '.join(sorted(ALL_ADMIN_MODULES))} 之一"
+        )
+    uid = _uuid(req.user_id)
+    if not uid:
+        raise NotFoundException("无效的用户 ID")
+    target = await db.get(User, uid)
+    if not target or target.deleted_at is not None:
+        raise NotFoundException("用户不存在")
+    if str(target.id) == str(current["id"]):
+        raise ValidationException("不能给当前超管自己再授权（超管已拥有全部模块）")
+    if target.is_super_admin:
+        raise ValidationException("超管已拥有全部后台模块，无需再授权")
+
+    expires_at = validate_expiry(req.days, req.expires_at, field="模块授权期限")
+
+    # 幂等：若已有该模块授权，则更新其期限
+    existing = (
+        await db.execute(
+            select(AdminPermission).where(
+                AdminPermission.user_id == target.id,
+                AdminPermission.module == req.module,
+            )
+        )
+    ).scalar_one_or_none()
+    target.is_admin = True
+    if existing:
+        existing.expires_at = expires_at
+        perm = existing
+    else:
+        perm = AdminPermission(
+            user_id=target.id,
+            module=req.module,
+            created_by=current["id"],
+            expires_at=expires_at,
+        )
+        db.add(perm)
+
+    await _audit(
+        request, db, current["id"], "admin_grant_permission",
+        {
+            "target_user_id": str(target.id),
+            "module": req.module,
+            "expires_at": expires_at.isoformat() if expires_at else None,
+        },
+    )
+    await db.commit()
+    await db.refresh(perm) if hasattr(perm, "expires_at") else None
+    return success_response(data={**_admin_role_dict(target, [_perm_dict(perm)])})
+
+
+@router.delete("/permissions/user/{user_id}", summary="移除账号的管理员身份")
+async def admin_remove_admin(
+    user_id: str,
+    request: Request,
+    current: dict = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """超管：彻底移除某账号的管理员身份（撤销全部模块授权 + is_admin=False）。
+
+    不允许对超管账号执行。
+    """
+    uid = _uuid(user_id)
+    if not uid:
+        raise NotFoundException("无效的用户 ID")
+    target = await db.get(User, uid)
+    if not target or target.deleted_at is not None:
+        raise NotFoundException("用户不存在")
+    if target.is_super_admin:
+        raise ValidationException("超管账号不能通过此方式移除，请谨慎操作")
+
+    # 删除该账号所有授权并解除管理员身份
+    perms = (
+        await db.execute(
+            select(AdminPermission).where(AdminPermission.user_id == target.id)
+        )
+    ).scalars().all()
+    for p in perms:
+        await db.delete(p)
+    target.is_admin = False
+
+    await _audit(
+        request, db, current["id"], "admin_remove_admin",
+        {
+            "target_user_id": str(target.id),
+            "removed_modules": [p.module for p in perms],
+        },
+    )
+    await db.commit()
+    return success_response(data={"removed": True, "user_id": user_id})
+
+
+class _UpdatePermRequest(BaseModel):
+    days: Optional[int] = Field(None, ge=1)
+    expires_at: Optional[datetime] = Field(None)
+
+
+@router.patch("/permissions/{user_id}/{module}", summary="更新子管理员某模块授权期限")
+async def admin_update_permission(
+    user_id: str,
+    module: str,
+    req: _UpdatePermRequest,
+    request: Request,
+    current: dict = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """超管：调整某子管理员某模块的到期时间（days：**重新**从当前时间累加）。"""
+    if module not in ALL_ADMIN_MODULES:
+        raise ValidationException("未知的后台模块")
+    uid = _uuid(user_id)
+    if not uid:
+        raise NotFoundException("无效的用户 ID")
+    perm = (
+        await db.execute(
+            select(AdminPermission).where(
+                AdminPermission.user_id == uid,
+                AdminPermission.module == module,
+            )
+        )
+    ).scalar_one_or_none()
+    if not perm:
+        raise NotFoundException("该账号尚未被授予此模块")
+    new_expiry = validate_expiry(req.days, req.expires_at, field="模块授权期限")
+    old_expiry = perm.expires_at
+    perm.expires_at = new_expiry
+    await _audit(
+        request, db, current["id"], "admin_update_permission",
+        {
+            "target_user_id": user_id,
+            "module": module,
+            "old_expires_at": old_expiry.isoformat() if old_expiry else None,
+            "new_expires_at": new_expiry.isoformat() if new_expiry else None,
+        },
+    )
+    await db.commit()
+    await db.refresh(perm)
+    return success_response(data=_perm_dict(perm))
+
+
+@router.delete("/permissions/{user_id}/{module}", summary="撤销某账号的某后台模块")
+async def admin_revoke_permission(
+    user_id: str,
+    module: str,
+    request: Request,
+    current: dict = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """超管：撤销某账号的指定模块授权。
+
+    若撤销后该账号不再拥有任何被授权模块（且非超管），则将 is_admin 置回 False，
+    使其退回普通用户，无法再进入管理后台。
+    """
+    uid = _uuid(user_id)
+    if not uid:
+        raise NotFoundException("无效的用户 ID")
+    perm = (
+        await db.execute(
+            select(AdminPermission).where(
+                AdminPermission.user_id == uid,
+                AdminPermission.module == module,
+            )
+        )
+    ).scalar_one_or_none()
+    if not perm:
+        raise NotFoundException("该账号尚未被授予该模块")
+
+    target = await db.get(User, uid)
+    await db.delete(perm)
+
+    if target and not target.is_super_admin:
+        remain = (
+            await db.execute(
+                select(AdminPermission).where(AdminPermission.user_id == target.id)
+            )
+        ).scalars().all()
+        if not remain:
+            target.is_admin = False
+
+    await _audit(
+        request, db, current["id"], "admin_revoke_permission",
+        {"target_user_id": user_id, "module": module},
+    )
+    await db.commit()
+    return success_response(data={"revoked": True, "user_id": user_id, "module": module})

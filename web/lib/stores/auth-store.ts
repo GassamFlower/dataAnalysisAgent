@@ -10,6 +10,7 @@ interface User {
   nickname: string;
   avatar?: string;
   isAdmin?: boolean;
+  isSuperAdmin?: boolean;
   plan: "free" | "single" | "subscription";
   planExpiresAt?: string;
 }

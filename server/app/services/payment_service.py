@@ -260,12 +260,23 @@ async def process_payment_notification(
     return order
 
 
-def apply_plan_extension(user: User, order_type: str, days: int) -> None:
+def apply_plan_extension(
+    user: User, order_type: str, days: int, absolute_expiry: Optional[datetime] = None
+) -> None:
     """把指定套餐时长叠加到用户（同类型未过期则顺延，否则从当前起算）。
 
     供在线支付回调与后台手动开通（线下订单）共用，保证口径一致。
+    - absolute_expiry：若提供（后台“开到具体日期”），直接将该用户套餐到期时间
+      设为该绝对日期（取与当前顺延中更晚者），而不做天数累加。
     """
     now = datetime.now(timezone.utc)
+    if absolute_expiry is not None:
+        # 具体到期日期模式：取目标日期与“从当前顺延 days 天”二者较晚，避免回退
+        relative = (now + timedelta(days=days)).astimezone(timezone.utc)
+        target = absolute_expiry.astimezone(timezone.utc)
+        user.plan = order_type  # type: ignore[assignment]
+        user.plan_expires_at = target if target > relative else relative
+        return
     if user.plan == order_type and user.plan_expires_at and user.plan_expires_at > now:
         user.plan_expires_at = user.plan_expires_at + timedelta(days=days)
     else:
@@ -282,6 +293,7 @@ async def create_offline_paid_order(
     remark: Optional[str] = None,
     amount: Optional[Decimal] = None,
     days: Optional[int] = None,
+    expires_at: Optional[datetime] = None,
 ) -> Order:
     """后台手动开通：创建一笔「线下已支付订单」并同事务激活用户套餐。
 
@@ -289,6 +301,8 @@ async def create_offline_paid_order(
     - channel：线下渠道，取值参照 OFFLINE_CHANNELS（咸鱼/微信/支付宝/现金/其他）。
     - remark：管理备注（如咸鱼订单号），记入审计。
     - amount：未传则按服务端定价；days：未传则按套餐默认时长。
+    - days / expires_at 二选一：days 表示从当前起算开通天数；expires_at 表示直接
+      开到某个具体到期日期（须晚于当前时刻）。都不传则按套餐默认时长。
     - 不写第三方流水号（provider_transaction_id 留空），与在线支付区分。
     """
     if channel not in OFFLINE_CHANNELS:
@@ -298,25 +312,40 @@ async def create_offline_paid_order(
     price = amount if amount is not None else get_plan_amount(order_type)
     if price < 0:
         raise ValidationException("金额不能为负")
-    duration = days if days is not None else get_plan_duration_days(order_type)
-    if duration <= 0:
-        raise ValidationException("开通天数必须大于 0")
+
+    now = datetime.now(timezone.utc)
+    # 解析到期时间：优先走 expires_at（具体日期），否则走 days / 默认时长
+    if expires_at is not None:
+        _aware = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=timezone.utc)
+        if _aware <= now:
+            raise ValidationException("到期日期必须晚于当前时间（不允许过去或今天的日期）")
+        target_expires = _aware.astimezone(timezone.utc)
+        duration = max(1, (_aware - now).days or 1)
+    else:
+        duration = days if days is not None else get_plan_duration_days(order_type)
+        if duration <= 0:
+            raise ValidationException("开通天数必须大于 0")
+        target_expires = None  # 下面按 days 计算
 
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
         raise NotFoundException("用户不存在")
 
+    # 早于当前时间校验后，计算最终到期时间
+    if target_expires is None:
+        target_expires = now + timedelta(days=duration)
+
     order = Order(
         user_id=user_id,
         type=order_type,
         amount=price,
         status="paid",
-        paid_at=datetime.now(timezone.utc),
-        expires_at=datetime.now(timezone.utc) + timedelta(days=duration),
+        paid_at=now,
+        expires_at=target_expires,
     )
     db.add(order)
-    apply_plan_extension(user, order_type, duration)
+    apply_plan_extension(user, order_type, duration, absolute_expiry=target_expires)
     await db.flush()
     return order
 

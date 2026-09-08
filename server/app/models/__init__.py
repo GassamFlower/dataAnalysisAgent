@@ -50,6 +50,7 @@ from app.models.analytics_event import AnalyticsEvent
 from app.models.message import Message
 from app.models.research_scale import ResearchScale, ScaleDimension, ScaleItem
 from app.models.app_config import AppConfig
+from app.models.admin_permission import AdminPermission
 
 __all__ = [
     "Base",
@@ -78,4 +79,5 @@ __all__ = [
     "ScaleDimension",
     "ScaleItem",
     "AppConfig",
+    "AdminPermission",
 ]

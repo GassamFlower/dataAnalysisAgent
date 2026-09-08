@@ -102,6 +102,7 @@ async def _issue_tokens(user: User, db: AsyncSession) -> dict:
             "email": user.email,
             "plan": user.plan,
             "is_admin": bool(user.is_admin),
+            "is_super_admin": bool(user.is_super_admin),
         },
     }
 
