@@ -883,6 +883,32 @@ def _admin_role_dict(user: User, modules: list[dict]) -> dict:
     }
 
 
+async def _count_super_admins(db: AsyncSession) -> int:
+    """统计当前超管人数（不含软删）。"""
+    res = await db.execute(
+        select(func.count(User.id)).where(
+            User.is_super_admin.is_(True),
+            User.deleted_at.is_(None),
+        )
+    )
+    return res.scalar_one()
+
+
+async def _ensure_not_last_super_admin(db: AsyncSession, target: User) -> None:
+    """防御性护栏：如果 target 是超管，且这是全库最后一个超管，则禁止该操作。
+
+    保证平台永远不会出现"超管只剩一个却被他本人或他人误移除/降级"而彻底锁死的状态。
+    当前业务对超管移除本就 full-block（见 remove 端点），此函数作为纵深防御：
+    即便未来放开移除超管的限制，也会阻止把最后一个超管清掉。
+    """
+    if not target.is_super_admin:
+        return
+    if await _count_super_admins(db) <= 1:
+        raise ValidationException(
+            "无法移除/降级最后一个超级管理员，平台必须至少保留一个超管"
+        )
+
+
 @router.get("/modules", summary="后台可授予模块清单")
 async def admin_modules_catalog(
     _: dict = Depends(require_admin),
@@ -1005,8 +1031,12 @@ async def admin_remove_admin(
     target = await db.get(User, uid)
     if not target or target.deleted_at is not None:
         raise NotFoundException("用户不存在")
+    if str(target.id) == str(current["id"]):
+        raise ValidationException("不能移除当前登录的超管账号")
     if target.is_super_admin:
         raise ValidationException("超管账号不能通过此方式移除，请谨慎操作")
+    # 防御性兜底：即便未来放开"移除超管"，也严禁把最后一个超管移除（保证平台永不锁死）
+    await _ensure_not_last_super_admin(db, target)
 
     # 删除该账号所有授权并解除管理员身份
     perms = (

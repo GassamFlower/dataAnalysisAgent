@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     # 初始管理员（逗号分隔的邮箱）——应用启动时会自动将这些邮箱对应的账号晋升为 is_admin（bootstrap）
     ADMIN_EMAILS: str = ""
 
+    # 初始超级管理员（逗号分隔的邮箱）——应用启动时自动将这些邮箱对应的账号晋升为超管
+    # （is_admin=True 且 is_super_admin=True）。用于首个超管的引导，避免"无超管可授权"的锁死。
+    # 注意：仅在账号自身 is_super_admin=False 时才会被置为超管（不会夺取既有超管权限），幂等安全。
+    BOOTSTRAP_SUPER_ADMIN_EMAILS: str = ""
+
     # 客服微信号（售后占位，Task 2.3）
     # 留空 = 前端显示"敬请期待"占位态；填入真实微信号后只改这一处配置，前端入口即切换为可复制真实号的形态
     CUSTOMER_SERVICE_WECHAT_ID: str = ""

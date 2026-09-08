@@ -98,13 +98,18 @@ async def get_user_modules(
 # ── bootstrap：初始管理员晋升（立项 G1）───────────────────────────────
 
 
-async def promote_emails(db: AsyncSession, emails: Sequence[str]) -> dict:
+async def promote_emails(
+    db: AsyncSession, emails: Sequence[str], as_super_admin: bool = False
+) -> dict:
     """将指定邮箱对应的账号晋升为管理员（is_admin=True）。
 
-    只晋升已存在的、非软删的用户；不存在则跳过并记录。
-    返回 {promoted: [...], not_found: [...], already: int}。
+    as_super_admin=True 时额外置 is_super_admin=True，用于首个超管的引导。
+    - 幂等安全：对已是超管的账号不会降级，对 is_super_admin=True 的账号求晋升为
+      普通管理员也会保留其超管身份（只升不降）。
+    - 只晋升已存在的、非软删的用户；不存在则跳过并记录。
+    返回 {promoted: [...], not_found: [...], already: int, made_super: [...]}。
     """
-    promoted, not_found, already = [], [], 0
+    promoted, not_found, already, made_super = [], [], 0, []
     for raw in emails:
         email = (raw or "").strip().lower()
         if not email:
@@ -114,23 +119,47 @@ async def promote_emails(db: AsyncSession, emails: Sequence[str]) -> dict:
         if not user:
             not_found.append(email)
             continue
-        if user.is_admin:
+        if user.is_admin and not as_super_admin:
+            already += 1
+            continue
+        if user.is_admin and as_super_admin and user.is_super_admin:
             already += 1
             continue
         user.is_admin = True
+        if as_super_admin and not user.is_super_admin:
+            user.is_super_admin = True
+            made_super.append(email)
         promoted.append(email)
     await db.commit()
-    logger.info("ADMIN bootstrap: promoted=%s not_found=%s already=%d",
-                promoted, not_found, already)
-    return {"promoted": promoted, "not_found": not_found, "already": already}
+    logger.info(
+        "ADMIN bootstrap: promoted=%s made_super=%s not_found=%s already=%d",
+        promoted, made_super, not_found, already,
+    )
+    return {
+        "promoted": promoted,
+        "made_super_admin": made_super,
+        "not_found": not_found,
+        "already": already,
+    }
 
 
 async def promote_configured_emails(db: AsyncSession) -> None:
-    """启动阶段：把 settings.ADMIN_EMAILS 中声明的邮箱自动晋升为管理员。"""
+    """启动阶段：按配置自动晋升初始管理员与首个超管。
+
+    - settings.ADMIN_EMAILS：晋升为普通管理员（is_admin=True）。
+    - settings.BOOTSTRAP_SUPER_ADMIN_EMAILS：晋升为超管（is_admin+is_super_admin=True），
+      用于平台首个超管引导；幂等，不会夺取既有超管身份。
+    """
     emails = [e.strip() for e in settings.ADMIN_EMAILS.split(",") if e.strip()]
-    if not emails:
-        return
-    await promote_emails(db, emails)
+    if emails:
+        await promote_emails(db, emails, as_super_admin=False)
+    super_emails = [
+        e.strip()
+        for e in settings.BOOTSTRAP_SUPER_ADMIN_EMAILS.split(",")
+        if e.strip()
+    ]
+    if super_emails:
+        await promote_emails(db, super_emails, as_super_admin=True)
 
 
 # ------------------------------------------------------------------------

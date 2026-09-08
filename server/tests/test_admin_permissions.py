@@ -21,6 +21,7 @@ from sqlalchemy import delete, select
 from app.core.database import get_db
 from app.models.admin_permission import AdminPermission
 from app.models.user import User
+from app.services.admin_service import promote_emails
 
 DEV_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -441,5 +442,86 @@ async def test_offline_open_with_future_date_activates_plan(client: AsyncClient,
             assert u.plan_expires_at is not None
             assert u.plan_expires_at > datetime.now(timezone.utc)
             break
+    finally:
+        await _set_admin(is_admin=False)
+
+
+# ── 首个超管引导（BOOTSTRAP_SUPER_ADMIN_EMAILS）+ 最后一个超管护栏（F-ADM-007）──
+
+
+async def _create_user(email: str) -> uuid.UUID:
+    async for db in get_db():
+        u = User(email=email)
+        db.add(u)
+        await db.commit()
+        return u.id
+
+
+@pytest.mark.anyio
+async def test_bootstrap_super_admin_email_promotes_super(client: AsyncClient, auth_headers: dict):
+    """设置 BOOTSTRAP_SUPER_ADMIN_EMAILS 后，其账号被自动晋升为超管（is_admin+is_super_admin）。"""
+    email = f"super-boot-{uuid.uuid4().hex[:8]}@example.com"
+    uid = await _create_user(email)
+    async for db in get_db():
+        res = await promote_emails(db, [email], as_super_admin=True)
+        assert email.lower() in res["made_super_admin"]
+        u = await db.get(User, uid)
+        assert u.is_admin is True
+        assert u.is_super_admin is True
+        break
+
+
+@pytest.mark.anyio
+async def test_bootstrap_super_admin_only_escalates(client: AsyncClient, auth_headers: dict):
+    """已超管的账号用 as_super_admin=False 引导不会降级（只升不降）。"""
+    email = f"super-lock-{uuid.uuid4().hex[:8]}@example.com"
+    uid = await _create_user(email)
+    async for db in get_db():
+        u = await db.get(User, uid)
+        u.is_admin = True
+        u.is_super_admin = True
+        await db.commit()
+        # 即使普通管理员引导也保持超管
+        await promote_emails(db, [email], as_super_admin=False)
+        u2 = await db.get(User, uid)
+        assert u2.is_super_admin is True
+        assert u2.is_admin is True
+        break
+
+
+@pytest.mark.anyio
+async def test_admin_remove_self_blocked(client: AsyncClient, auth_headers: dict):
+    """超管不能移除当前登录的超管账号（防止自锁）。"""
+    await _set_admin(is_admin=True, is_super_admin=True)
+    try:
+        resp = await client.delete(
+            f"/api/v1/admin/permissions/user/{DEV_USER_ID}",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "当前登录" in resp.json()["message"] or "最后一个" in resp.json()["message"]
+    finally:
+        await _set_admin(is_admin=False)
+
+
+@pytest.mark.anyio
+async def test_admin_remove_last_super_blocked(client: AsyncClient, auth_headers: dict):
+    """全库只剩一个超管时，级联移除/自移除均被拒，平台永不锁死。"""
+    await _set_admin(is_admin=True, is_super_admin=True)
+    # 清空其它超管，只留 dev
+    async for db in get_db():
+        from sqlalchemy import update
+        await db.execute(
+            update(User).where(User.id != DEV_USER_ID).values(is_super_admin=False)
+        )
+        await db.commit()
+        break
+    try:
+        resp = await client.delete(
+            f"/api/v1/admin/permissions/user/{DEV_USER_ID}",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "最后一个" in resp.json()["message"] or "当前登录" in resp.json()["message"]
     finally:
         await _set_admin(is_admin=False)
