@@ -64,6 +64,16 @@ def _uuid(v: Optional[str]):
         return None
 
 
+def _mask_email(email: Optional[str]) -> Optional[str]:
+    """邮箱脱敏（同 user_admin_dict 口径）：首字符 + *** @域名。"""
+    if not email:
+        return None
+    local, _, domain = email.partition("@")
+    if len(local) > 2:
+        return f"{local[:1]}***@{domain}"
+    return "***@" + domain
+
+
 def _paged(items, total, page, page_size):
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
@@ -929,6 +939,48 @@ async def admin_role_templates(
     """返回常用角色模板（key + 角色名 + 预设模块集合），供前端一键勾选后批量授权。"""
     items = role_template_list()
     return success_response(data={"items": items, "count": len(items)})
+
+
+@router.get("/permissions/accounts", summary="可授权目标账号候选（下拉）")
+async def admin_permission_accounts(
+    keyword: str = Query("", description="按邮箱/昵称关键词筛选"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    """授权弹窗的"目标账号"下拉候选：未删除、非超管的账号（超管无需再授权）。
+
+    支持关键词筛选 + 分页；按注册时间倒序，便于拉到最新账号。
+    """
+    stmt = select(User).where(
+        User.deleted_at.is_(None), User.is_super_admin.is_(False)
+    )
+    kw = (keyword or "").strip()
+    if kw:
+        like = f"%{kw}%"
+        stmt = stmt.where((User.email.ilike(like)) | (User.nickname.ilike(like)))
+    total = (
+        await db.execute(select(func.count()).select_from(stmt.subquery()))
+    ).scalar_one()
+    res = await db.execute(
+        stmt.order_by(User.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    users = res.scalars().all()
+    items = [
+        {
+            "id": str(u.id),
+            "email": u.email,
+            "email_masked": _mask_email(u.email),
+            "nickname": u.nickname,
+            "is_admin": u.is_admin,
+            "disabled": u.disabled_at is not None,
+        }
+        for u in users
+    ]
+    return success_response(data=_paged(items, total, page, page_size))
 
 
 @router.get("/permissions", summary="列出所有管理员（超管+子管理员）及其授权")

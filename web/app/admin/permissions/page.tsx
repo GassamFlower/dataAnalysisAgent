@@ -9,7 +9,7 @@ import {
   adminApi,
   type AdminRole,
   type AdminModuleKey,
-  type AdminUser,
+  type PermissionAccount,
 } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ type ExpiryMode = "days" | "date";
 export default function AdminPermissionsPage() {
   const qc = useQueryClient();
   const [grantOpen, setGrantOpen] = useState(false);
-  const [grantUser, setGrantUser] = useState<AdminUser | null>(null);
+  const [grantUser, setGrantUser] = useState<PermissionAccount | null>(null);
   const [grantModules, setGrantModules] = useState<AdminModuleKey[]>(["users"]);
   const [roleKey, setRoleKey] = useState("");
   const [grantMode, setGrantMode] = useState<ExpiryMode>("days");
@@ -54,9 +54,8 @@ export default function AdminPermissionsPage() {
   const [editDays, setEditDays] = useState("30");
   const [editDate, setEditDate] = useState("");
 
-  // 用户搜索
-  const [searchKw, setSearchKw] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  // 目标账号下拉（从数据库拉候选）
+  const [accountKw, setAccountKw] = useState("");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-permissions"],
@@ -73,15 +72,15 @@ export default function AdminPermissionsPage() {
     queryFn: () => adminApi.listRoleTemplates(),
   });
 
-  const { data: userSearch } = useQuery({
-    queryKey: ["admin-user-search", searchKw],
+  const { data: accountList } = useQuery({
+    queryKey: ["admin-permission-accounts", accountKw],
     queryFn: () =>
-      adminApi.listUsers({
-        keyword: searchKw || undefined,
+      adminApi.listPermissionAccounts({
+        keyword: accountKw || undefined,
         page: 1,
-        page_size: 15,
+        page_size: 100,
       }),
-    enabled: grantOpen && searchKw.length > 0,
+    enabled: grantOpen,
   });
 
   const invalidate = () => {
@@ -90,8 +89,7 @@ export default function AdminPermissionsPage() {
 
   const resetGrant = () => {
     setGrantUser(null);
-    setSearchKw("");
-    setSearchInput("");
+    setAccountKw("");
     setGrantModules(["users"]);
     setRoleKey("");
     setGrantMode("days");
@@ -289,31 +287,34 @@ export default function AdminPermissionsPage() {
               <Label>目标账号</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="用邮箱/昵称搜索并对目标授权"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { setSearchKw(searchInput); } }}
+                  placeholder="可输入邮箱/昵称筛选，留空看全部"
+                  value={accountKw}
+                  onChange={(e) => setAccountKw(e.target.value)}
                 />
-                <Button variant="outline" onClick={() => setSearchKw(searchInput)}>搜索</Button>
               </div>
-              {grantOpen && searchKw && (
-                <div className="max-h-48 overflow-y-auto rounded-md border">
-                  {userSearch?.items.map((u: AdminUser) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => { setGrantUser(u); setSearchKw(""); setSearchInput(""); }}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent ${grantUser?.id === u.id ? "bg-accent" : ""}`}
-                    >
-                      <span>{u.email ?? u.email_masked ?? u.id}</span>
-                      <span className="text-xs text-muted-foreground">{u.nickname ?? "-"}</span>
-                    </button>
+              <Select
+                value={grantUser?.id ?? "_"}
+                onValueChange={(id) => {
+                  const acc = accountList?.items.find((a) => a.id === id);
+                  if (acc) setGrantUser({ ...acc, email_masked: acc.email_masked });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="从已注册账号中选择目标" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {accountList?.items.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.email ?? a.email_masked ?? a.nickname ?? a.id}
+                      {a.nickname ? `（${a.nickname}）` : ""}
+                      {a.is_admin ? " （已授权）" : ""}
+                    </SelectItem>
                   ))}
-                  {userSearch?.items?.length === 0 && (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">未找到匹配账号</div>
+                  {!accountList?.items?.length && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">暂无符合条件的账号</div>
                   )}
-                </div>
-              )}
+                </SelectContent>
+              </Select>
               {grantUser && (
                 <div className="text-sm text-muted-foreground">
                   已选：<span className="font-medium text-ink-900">{grantUser.email ?? grantUser.email_masked ?? grantUser.id}</span>

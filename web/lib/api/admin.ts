@@ -54,6 +54,16 @@ export interface AdminRoleTemplate {
   modules_label: string[];
 }
 
+/** 授权目标账号下拉候选（可授权的外部账号，非超管） */
+export interface PermissionAccount {
+  id: string;
+  email?: string | null;
+  email_masked?: string | null;
+  nickname?: string | null;
+  is_admin: boolean;
+  disabled: boolean;
+}
+
 export interface AdminProject {
   id: string;
   name: string;
@@ -275,6 +285,12 @@ export const adminApi = {
     apiClient.get<{ items: AdminRoleTemplate[]; count: number }>(
       "/api/v1/admin/role-templates"
     ),
+
+  /** 授权目标账号下拉候选（非超管；支持关键词+分页） */
+  listPermissionAccounts: (params?: { keyword?: string; page?: number; page_size?: number }) =>
+    apiClient.get<Paginated<PermissionAccount>>("/api/v1/admin/permissions/accounts", {
+      params,
+    }),
 
   /** 列出所有管理员（超管）及其授权模块 */
   listPermissions: () =>

@@ -589,3 +589,42 @@ async def test_batch_grant_rejects_unknown_module(client: AsyncClient, auth_head
         assert "未知模块" in resp.json()["message"]
     finally:
         await _set_admin(is_admin=False)
+
+
+@pytest.mark.anyio
+async def test_permission_accounts_dropdown(client: AsyncClient, auth_headers: dict):
+    """授权弹窗的目标账号下拉：返回非超管账号且不含超管本人。"""
+    await _set_admin(is_admin=True, is_super_admin=True)
+    try:
+        # dev 是超管；再造一个普通用户
+        email = f"cand-{uuid.uuid4().hex[:8]}@example.com"
+        await _create_user(email)
+        resp = await client.get("/api/v1/admin/permissions/accounts", headers=auth_headers)
+        assert resp.status_code == 200
+        items = resp.json()["data"]["items"]
+        assert isinstance(items, list)
+        ids = {i["id"] for i in items}
+        assert str(DEV_USER_ID) not in ids  # 超管不作为目标候选
+        assert all(i["email"] or i["email_masked"] or i["nickname"] for i in items)
+    finally:
+        await _set_admin(is_admin=False)
+
+
+@pytest.mark.anyio
+async def test_permission_accounts_keyword_filter(client: AsyncClient, auth_headers: dict):
+    """目标账号下拉支持关键词筛选。"""
+    await _set_admin(is_admin=True, is_super_admin=True)
+    try:
+        kw = uuid.uuid4().hex[:6]
+        email = f"{kw}-filter@example.com"
+        await _create_user(email)
+        resp = await client.get(
+            "/api/v1/admin/permissions/accounts",
+            params={"keyword": kw},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        items = resp.json()["data"]["items"]
+        assert any(email in (i.get("email") or "") for i in items)
+    finally:
+        await _set_admin(is_admin=False)
