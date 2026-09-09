@@ -53,6 +53,39 @@ ADMIN_MODULE_LABELS: dict[str, str] = {
     ADMIN_MODULES.AUDIT: "审计日志",
 }
 
+# 角色模板：一键批量授予常用工位所需模块（前端据此勾选，超管可再调整后提交）
+# key = 角色标识，value = (角色名称, [模块集合])
+ADMIN_ROLE_TEMPLATES: dict[str, tuple[str, list[str]]] = {
+    "customer_service": (
+        "客服岗",
+        [
+            ADMIN_MODULES.USERS,
+            ADMIN_MODULES.ORDERS,
+            ADMIN_MODULES.MESSAGES,
+        ],
+    ),
+    "ops": ("运营岗", [ADMIN_MODULES.USERS, ADMIN_MODULES.ORDERS]),
+    "finance": ("财务岗", [ADMIN_MODULES.ORDERS]),
+    "content": ("内容/规则岗", [ADMIN_MODULES.MESSAGES, ADMIN_MODULES.CONFIGS]),
+}
+
+
+def role_template_list() -> list[dict]:
+    """返回可用的角色模板目录（供前端下拉）。
+
+    每个元素含：key、name（角色名）、modules(模块标识)、
+    modules_label（带标签的展示串）。
+    """
+    return [
+        {
+            "key": key,
+            "name": name,
+            "modules": modules,
+            "modules_label": [ADMIN_MODULE_LABELS.get(m, m) for m in modules],
+        }
+        for key, (name, modules) in ADMIN_ROLE_TEMPLATES.items()
+    ]
+
 
 # ── 授权存取 ─────────────────────────────────────────────────────────────
 

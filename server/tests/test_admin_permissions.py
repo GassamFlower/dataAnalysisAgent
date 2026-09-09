@@ -525,3 +525,67 @@ async def test_admin_remove_last_super_blocked(client: AsyncClient, auth_headers
         assert "最后一个" in resp.json()["message"] or "当前登录" in resp.json()["message"]
     finally:
         await _set_admin(is_admin=False)
+
+
+# ── 角色模板 + 批量授权（F-ADM-008）────────────────────────────────────
+
+
+@pytest.mark.anyio
+async def test_role_templates_catalog(client: AsyncClient, auth_headers: dict):
+    """管理员可读取角色模板清单。"""
+    await _set_admin(is_admin=True)
+    try:
+        resp = await client.get("/api/v1/admin/role-templates", headers=auth_headers)
+        assert resp.status_code == 200
+        tmpls = resp.json()["data"]["items"]
+        assert len(tmpls) >= 1
+        cs = next(t for t in tmpls if t["key"] == "customer_service")
+        assert "users" in cs["modules"] and "orders" in cs["modules"]
+    finally:
+        await _set_admin(is_admin=False)
+
+
+@pytest.mark.anyio
+async def test_batch_grant_grants_multiple_modules(client: AsyncClient, auth_headers: dict):
+    """批量授权同时授予多个模块，账号成为子管理员。"""
+    await _set_admin(is_admin=True, is_super_admin=True)
+    try:
+        email = f"batch-{uuid.uuid4().hex[:8]}@example.com"
+        uid = await _create_user(email)
+        resp = await client.post(
+            "/api/v1/admin/permissions/batch",
+            headers=auth_headers,
+            json={"user_id": str(uid), "modules": ["users", "orders", "messages"], "days": 30},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()["data"]
+        assert sorted(data["granted_modules"]) == ["messages", "orders", "users"]
+        assert data["is_admin"] is True
+        # 校验 DB 落库
+        async for db in get_db():
+            from sqlalchemy import select as sel
+            rows = (await db.execute(
+                sel(AdminPermission).where(AdminPermission.user_id == uid)
+            )).scalars().all()
+            assert {p.module for p in rows} == {"users", "orders", "messages"}
+            break
+    finally:
+        await _set_admin(is_admin=False)
+
+
+@pytest.mark.anyio
+async def test_batch_grant_rejects_unknown_module(client: AsyncClient, auth_headers: dict):
+    """批量授权中包含未知模块时被拒。"""
+    await _set_admin(is_admin=True, is_super_admin=True)
+    try:
+        email = f"batch-bad-{uuid.uuid4().hex[:8]}@example.com"
+        uid = await _create_user(email)
+        resp = await client.post(
+            "/api/v1/admin/permissions/batch",
+            headers=auth_headers,
+            json={"user_id": str(uid), "modules": ["users", "nope_mod"], "days": 30},
+        )
+        assert resp.status_code == 400
+        assert "未知模块" in resp.json()["message"]
+    finally:
+        await _set_admin(is_admin=False)

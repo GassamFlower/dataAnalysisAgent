@@ -46,6 +46,14 @@ export interface AdminRole {
   modules: AdminPermissionRecord[];
 }
 
+/** 角色模板：一键批量预设常用工位模块 */
+export interface AdminRoleTemplate {
+  key: string;
+  name: string;
+  modules: AdminModuleKey[];
+  modules_label: string[];
+}
+
 export interface AdminProject {
   id: string;
   name: string;
@@ -262,6 +270,12 @@ export const adminApi = {
       "/api/v1/admin/modules"
     ),
 
+  /** 角色模板清单（一键批量授权预设） */
+  listRoleTemplates: () =>
+    apiClient.get<{ items: AdminRoleTemplate[]; count: number }>(
+      "/api/v1/admin/role-templates"
+    ),
+
   /** 列出所有管理员（超管）及其授权模块 */
   listPermissions: () =>
     apiClient.get<{ items: AdminRole[]; count: number }>(
@@ -275,6 +289,17 @@ export const adminApi = {
     days?: number;
     expires_at?: string;
   }) => apiClient.post<AdminRole>("/api/v1/admin/permissions", body),
+
+  /** 批量授予子管理员多个后台模块（角色模板/自定义多选，统一期限） */
+  grantPermissionsBatch: (body: {
+    user_id: string;
+    modules: AdminModuleKey[];
+    days?: number;
+    expires_at?: string;
+  }) => apiClient.post<AdminRole & { granted_modules: AdminModuleKey[] }>(
+    "/api/v1/admin/permissions/batch",
+    body
+  ),
 
   /** 更新某账号某模块授权期限 */
   updatePermission: (

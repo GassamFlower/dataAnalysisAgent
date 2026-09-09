@@ -39,6 +39,7 @@ from app.services.admin_service import (
     ADMIN_MODULES,
     ADMIN_MODULE_LABELS,
     ALL_ADMIN_MODULES,
+    role_template_list,
     is_granted_active,
     get_user_modules,
     get_user_project_counts,
@@ -921,6 +922,15 @@ async def admin_modules_catalog(
     return success_response(data={"items": items, "count": len(items)})
 
 
+@router.get("/role-templates", summary="后台角色模板清单（一键批量授权预设）")
+async def admin_role_templates(
+    _: dict = Depends(require_admin),
+):
+    """返回常用角色模板（key + 角色名 + 预设模块集合），供前端一键勾选后批量授权。"""
+    items = role_template_list()
+    return success_response(data={"items": items, "count": len(items)})
+
+
 @router.get("/permissions", summary="列出所有管理员（超管+子管理员）及其授权")
 async def admin_list_permissions(
     db: AsyncSession = Depends(get_db),
@@ -947,6 +957,110 @@ class _GrantPermRequest(BaseModel):
     module: str = Field(..., description="后台模块标识")
     days: Optional[int] = Field(None, ge=1, description="授权天数（与 expires_at 二选一）")
     expires_at: Optional[datetime] = Field(None, description="授权具体到期日期（与 days 二选一，须晚于当前）")
+
+
+class _GrantBatchRequest(BaseModel):
+    user_id: str = Field(..., description="被授权账号 ID")
+    modules: list[str] = Field(..., min_length=1, description="待授予的后台模块标识数组（至少 1 个）")
+    days: Optional[int] = Field(None, ge=1, description="授权天数（与 expires_at 二选一）")
+    expires_at: Optional[datetime] = Field(None, description="授权具体到期时间（与 days 二选一，须晚于当前）")
+
+
+async def _grant_modules_to_user(
+    db: AsyncSession,
+    target: User,
+    *,
+    granted_by,
+    modules: list[str],
+    expires_at: Optional[datetime],
+) -> list[AdminPermission]:
+    """为某账号幂等授予一组后台模块（已存在的更新到期，新模块新增）。
+
+    被授权账号会被置为 is_admin=True（成为子管理员）。调用方负责 commit 与审计。
+    """
+    existing = (
+        await db.execute(
+            select(AdminPermission).where(AdminPermission.user_id == target.id)
+        )
+    ).scalars().all()
+    existing_map = {p.module: p for p in existing}
+    target.is_admin = True
+    for m in modules:
+        if m in existing_map:
+            existing_map[m].expires_at = expires_at
+        else:
+            db.add(
+                AdminPermission(
+                    user_id=target.id,
+                    module=m,
+                    created_by=granted_by,
+                    expires_at=expires_at,
+                )
+            )
+    # flush 后取回这批授权（含新增对象）
+    await db.flush()
+    fresh = (
+        await db.execute(
+            select(AdminPermission).where(AdminPermission.user_id == target.id)
+        )
+    ).scalars().all()
+    by_mod = {p.module: p for p in fresh}
+    return [by_mod[m] for m in modules if m in by_mod]
+
+
+@router.post("/permissions/batch", summary="批量授予子管理员多个后台模块（可带期限）")
+async def admin_grant_permission_batch(
+    req: _GrantBatchRequest,
+    request: Request,
+    current: dict = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """超管：一次性为某账号授予多个后台模块（角色模板/自定义多选）。
+
+    - modules 至少 1 个，全部须属于 ALL_ADMIN_MODULES。
+    - days / expires_at 二选一：统一作用于本次授予的所有模块。
+    - 幂等：对已有模块更新到期，对新增模块新增。
+    """
+    unknown = [m for m in req.modules if m not in ALL_ADMIN_MODULES]
+    if unknown:
+        raise ValidationException(
+            f"存在未知模块 {'、'.join(unknown)}；可选: {' / '.join(sorted(ALL_ADMIN_MODULES))}"
+        )
+    uid = _uuid(req.user_id)
+    if not uid:
+        raise NotFoundException("无效的用户 ID")
+    target = await db.get(User, uid)
+    if not target or target.deleted_at is not None:
+        raise NotFoundException("用户不存在")
+    if str(target.id) == str(current["id"]):
+        raise ValidationException("不能给当前超管自己再授权（超管已拥有全部模块）")
+    if target.is_super_admin:
+        raise ValidationException("超管已拥有全部后台模块，无需再授权")
+
+    expires_at = validate_expiry(req.days, req.expires_at, field="模块授权期限")
+    new_perms = await _grant_modules_to_user(
+        db, target, granted_by=current["id"], modules=req.modules, expires_at=expires_at
+    )
+    await _audit(
+        request, db, current["id"], "admin_grant_permission_batch",
+        {
+            "target_user_id": str(target.id),
+            "modules": req.modules,
+            "expires_at": expires_at.isoformat() if expires_at else None,
+        },
+    )
+    await db.commit()
+
+    def _sort_key(p):
+        return p.module
+
+    ordered = sorted(new_perms, key=_sort_key)
+    return success_response(
+        data={
+            **_admin_role_dict(target, [_perm_dict(p) for p in ordered]),
+            "granted_modules": [p.module for p in ordered],
+        }
+    )
 
 
 @router.post("/permissions", summary="授予子管理员某后台模块（可带期限）")
@@ -979,27 +1093,10 @@ async def admin_grant_permission(
 
     expires_at = validate_expiry(req.days, req.expires_at, field="模块授权期限")
 
-    # 幂等：若已有该模块授权，则更新其期限
-    existing = (
-        await db.execute(
-            select(AdminPermission).where(
-                AdminPermission.user_id == target.id,
-                AdminPermission.module == req.module,
-            )
-        )
-    ).scalar_one_or_none()
-    target.is_admin = True
-    if existing:
-        existing.expires_at = expires_at
-        perm = existing
-    else:
-        perm = AdminPermission(
-            user_id=target.id,
-            module=req.module,
-            created_by=current["id"],
-            expires_at=expires_at,
-        )
-        db.add(perm)
+    perms = await _grant_modules_to_user(
+        db, target, granted_by=current["id"], modules=[req.module], expires_at=expires_at
+    )
+    perm = perms[0]
 
     await _audit(
         request, db, current["id"], "admin_grant_permission",

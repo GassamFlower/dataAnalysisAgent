@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PageHeader } from "@/components/admin/page-header";
 import { TableEmpty } from "@/components/admin/table-empty";
 import { PageLoading } from "@/components/admin/loading";
@@ -41,7 +42,8 @@ export default function AdminPermissionsPage() {
   const qc = useQueryClient();
   const [grantOpen, setGrantOpen] = useState(false);
   const [grantUser, setGrantUser] = useState<AdminUser | null>(null);
-  const [grantModule, setGrantModule] = useState<AdminModuleKey>("users");
+  const [grantModules, setGrantModules] = useState<AdminModuleKey[]>(["users"]);
+  const [roleKey, setRoleKey] = useState("");
   const [grantMode, setGrantMode] = useState<ExpiryMode>("days");
   const [grantDays, setGrantDays] = useState("30");
   const [grantDate, setGrantDate] = useState("");
@@ -66,6 +68,11 @@ export default function AdminPermissionsPage() {
     queryFn: () => adminApi.listModules(),
   });
 
+  const { data: roleTemplatesData } = useQuery({
+    queryKey: ["admin-role-templates"],
+    queryFn: () => adminApi.listRoleTemplates(),
+  });
+
   const { data: userSearch } = useQuery({
     queryKey: ["admin-user-search", searchKw],
     queryFn: () =>
@@ -85,10 +92,27 @@ export default function AdminPermissionsPage() {
     setGrantUser(null);
     setSearchKw("");
     setSearchInput("");
-    setGrantModule("users");
+    setGrantModules(["users"]);
+    setRoleKey("");
     setGrantMode("days");
     setGrantDays("30");
     setGrantDate("");
+  };
+
+  /** 应用角色模板：把 preset 模块写入勾选集 */
+  const applyRoleTemplate = (key: string) => {
+    setRoleKey(key);
+    const tmpl = roleTemplatesData?.items.find((t) => t.key === key);
+    if (tmpl && tmpl.modules.length > 0) {
+      setGrantModules([...tmpl.modules]);
+    }
+  };
+
+  const toggleModule = (m: AdminModuleKey) => {
+    setRoleKey("");
+    setGrantModules((prev) =>
+      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
+    );
   };
 
   const openEditPerm = (a: AdminRole) => {
@@ -100,9 +124,9 @@ export default function AdminPermissionsPage() {
 
   const grant = useMutation({
     mutationFn: () =>
-      adminApi.grantPermission({
+      adminApi.grantPermissionsBatch({
         user_id: grantUser!.id,
-        module: grantModule,
+        modules: grantModules,
         ...(grantMode === "days"
           ? { days: grantDays ? Number(grantDays) : undefined }
           : { expires_at: grantDate || undefined }),
@@ -111,6 +135,8 @@ export default function AdminPermissionsPage() {
       invalidate();
       setGrantOpen(false);
       setGrantUser(null);
+      setGrantModules(["users"]);
+      setRoleKey("");
       setGrantDate("");
       setGrantDays("30");
       toast.success("已授予该账号模块管理权限");
@@ -255,7 +281,7 @@ export default function AdminPermissionsPage() {
           <DialogHeader>
             <DialogTitle>授予后台模块权限</DialogTitle>
             <DialogDescription>
-              选择一个账号与后台模块，可指定有效天数或到期日期（须晚于当前时间）。
+              选择目标账号、用角色模板或手动勾选一个或多个后台模块，并可指定有效天数或到期日期。
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -294,18 +320,54 @@ export default function AdminPermissionsPage() {
                 </div>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label>模块</Label>
-              <Select value={grantModule} onValueChange={(v) => setGrantModule(v as AdminModuleKey)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {modulesData?.items.map((m) => (
-                    <SelectItem key={m.module} value={m.module}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>角色模板（一键勾选，可再改）</Label>
+                <Select
+                  value={roleKey || "none"}
+                  onValueChange={(v) => applyRoleTemplate(v === "none" ? "" : v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="选择常用角色" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">自定义</SelectItem>
+                    {roleTemplatesData?.items.map((t) => (
+                      <SelectItem key={t.key} value={t.key}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {roleKey && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {roleTemplatesData?.items
+                      .find((t) => t.key === roleKey)
+                      ?.modules_label.map((l) => (
+                        <Badge key={l} variant="secondary">{l}</Badge>
+                      ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>已选模块（{grantModules.length}）</Label>
+                <div className="rounded-md border p-2">
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {modulesData?.items.map((m) => (
+                      <label
+                        key={m.module}
+                        className="flex items-center gap-1.5 text-sm"
+                      >
+                        <Checkbox
+                          checked={grantModules.includes(m.module)}
+                          onCheckedChange={() => toggleModule(m.module)}
+                        />
+                        {m.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>授权期限</Label>
@@ -332,7 +394,7 @@ export default function AdminPermissionsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setGrantOpen(false)}>取消</Button>
             <Button
-              disabled={!grantUser || grant.isPending}
+              disabled={!grantUser || grantModules.length === 0 || grant.isPending}
               onClick={() => grant.mutate()}
             >
               {grant.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
