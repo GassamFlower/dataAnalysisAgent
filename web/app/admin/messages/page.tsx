@@ -7,7 +7,9 @@ import { Loader2, MessageSquare, Copy, Check } from "lucide-react";
 import { adminApi, type AdminMessage } from "@/lib/api/admin";
 import { PageHeader } from "@/components/admin/page-header";
 import { TablePagination } from "@/components/admin/table-pagination";
+import { ErrorState } from "@/components/common/error-state";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -46,10 +48,10 @@ const DATA_SOURCE_OPTIONS = [
   { value: "simulation", label: "模拟数据" },
 ];
 
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  processing: "bg-blue-50 text-blue-700 border-blue-200",
-  done: "bg-emerald-50 text-emerald-700 border-emerald-200",
+const STATUS_TONES: Record<string, "warning" | "info" | "success"> = {
+  pending: "warning",
+  processing: "info",
+  done: "success",
 };
 
 export default function AdminMessagesPage() {
@@ -231,11 +233,7 @@ export default function AdminMessagesPage() {
           <Loader2 className="h-6 w-6 animate-spin text-ink-400" />
         </div>
       )}
-      {isError && (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          加载失败，请确认有管理员权限。
-        </p>
-      )}
+      {isError && <ErrorState message="加载失败，请确认有管理员权限。" />}
 
       {data && data.items.length === 0 && (
         <div className="rounded-lg border border-dashed py-14 text-center">
@@ -360,11 +358,9 @@ export default function AdminMessagesPage() {
                     {m.data_source_label || "-"}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <span
-                      className={`inline-block rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[m.status] ?? ""}`}
-                    >
+                    <StatusBadge tone={STATUS_TONES[m.status] ?? "neutral"}>
                       {m.status_label}
-                    </span>
+                    </StatusBadge>
                     {m.handle_remark && (
                       <div className="mt-1 max-w-[140px] truncate text-xs text-muted-foreground">
                         备注：{m.handle_remark}
@@ -508,7 +504,7 @@ function CopyCell({ value }: { value: string }) {
         aria-label={`复制 ${value}`}
       >
         {copied ? (
-          <Check className="h-3.5 w-3.5 text-emerald-600" />
+          <Check className="h-3.5 w-3.5 text-success" />
         ) : (
           <Copy className="h-3.5 w-3.5" />
         )}

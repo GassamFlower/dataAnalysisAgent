@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { adminApi, type AdminUser } from "@/lib/api/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/common/error-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -120,7 +121,7 @@ export default function AdminUserDetailPage() {
     );
   }
   if (isError || !data) {
-    return <p className="text-sm text-red-600">加载失败或数据为空。</p>;
+    return <ErrorState message="加载失败或数据为空。" />;
   }
 
   return (

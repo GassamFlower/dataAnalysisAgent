@@ -7,6 +7,7 @@ import { Loader2, SlidersHorizontal, RefreshCw, Save } from "lucide-react";
 import { adminApi, type QuotaLimitItem } from "@/lib/api/admin";
 import { PageHeader } from "@/components/admin/page-header";
 import { PageLoading } from "@/components/admin/loading";
+import { ErrorState } from "@/components/common/error-state";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -75,11 +76,7 @@ export default function AdminConfigsPage() {
         </CardHeader>
         <CardContent>
           {isLoading && <PageLoading />}
-          {isError && (
-            <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              加载失败，请确认有管理员权限。
-            </p>
-          )}
+          {isError && <ErrorState message="加载失败，请确认有管理员权限。" />}
 
           {!isLoading && !isError && items.length > 0 && (
             <div className="space-y-3">

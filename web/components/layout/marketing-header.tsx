@@ -58,7 +58,7 @@ export function MarketingHeader() {
   // SSR 时显示默认状态（未登录），避免 hydration mismatch
   if (!mounted) {
     return (
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+      <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
         <Brand />
         <nav className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
@@ -86,7 +86,7 @@ export function MarketingHeader() {
   }
 
   return (
-    <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+    <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
       <Brand />
 
       {/* 桌面导航 */}

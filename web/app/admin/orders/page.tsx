@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { TableEmpty } from "@/components/admin/table-empty";
 import { TablePagination } from "@/components/admin/table-pagination";
 import { PageLoading } from "@/components/admin/loading";
+import { ErrorState } from "@/components/common/error-state";
 
 const STATUS = [
   { value: "", label: "全部状态" },
@@ -90,11 +91,7 @@ export default function AdminOrdersPage() {
       </Select>
 
       {isLoading && <PageLoading />}
-      {isError && (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          加载失败，请确认有管理员权限。
-        </p>
-      )}
+      {isError && <ErrorState message="加载失败，请确认有管理员权限。" />}
 
       {data && (
         <div className="overflow-x-auto rounded-lg border">

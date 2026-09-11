@@ -76,10 +76,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         : "text-ink-700 hover:bg-accent hover:text-accent-foreground"
     );
 
+  // 宽栏页面：报告/导出含宽表格与图表，放宽到 max-w-6xl（与后台一致）；
+  // 流程/表单类页面保持 max-w-4xl 窄栏，利于阅读与聚焦。
+  const wideContent = /^\/projects\/[^/]+\/(report|export)/.test(pathname);
+
   return (
     <div className="min-h-screen bg-background">
       {/* 桌面端侧边栏 */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-border bg-cream-surface md:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-border bg-cream-surface md:block">
         <div className="flex h-16 items-center px-6">
           <Link href="/" className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -143,14 +147,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* 主内容区 */}
-      <main className="pt-16 md:pl-60 md:pt-0">
-        <div className="mx-auto max-w-4xl px-4 py-6 md:px-8 md:py-10">
+      <main className="pt-16 md:pl-64 md:pt-0">
+        <div
+          className={cn(
+            "mx-auto px-4 py-6 md:px-8 md:py-10",
+            wideContent ? "max-w-6xl" : "max-w-4xl"
+          )}
+        >
           {children}
         </div>
         
         {/* 页脚免责声明 */}
         <footer className="border-t border-border bg-cream-surface px-4 py-6 md:px-8">
-          <div className="mx-auto max-w-4xl">
+          <div
+            className={cn("mx-auto", wideContent ? "max-w-6xl" : "max-w-4xl")}
+          >
             <Disclaimer variant="short" />
           </div>
         </footer>

@@ -13,6 +13,7 @@ import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { TableEmpty } from "@/components/admin/table-empty";
 import { PageLoading } from "@/components/admin/loading";
+import { ErrorState } from "@/components/common/error-state";
 
 interface LlmConfigItem {
   id: number;
@@ -136,11 +137,7 @@ export default function AdminLlmConfigsPage() {
       )}
 
       {isLoading && <PageLoading />}
-      {isError && (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          加载失败，请确认有管理员权限。
-        </p>
-      )}
+      {isError && <ErrorState message="加载失败，请确认有管理员权限。" />}
 
       {data && (
         <div className="overflow-x-auto rounded-lg border">
@@ -183,7 +180,7 @@ export default function AdminLlmConfigsPage() {
                   <td className="px-3 py-2">
                     <button
                       onClick={() => toggleEnabled.mutate(c)}
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.is_enabled ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-500"}`}
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.is_enabled ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
                     >
                       {c.is_enabled ? "启用" : "停用"}
                     </button>

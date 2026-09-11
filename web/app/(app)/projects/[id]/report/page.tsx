@@ -315,7 +315,7 @@ export default function ReportPage({
 
       <Reveal onView={false} delay={0.05}>
         <Tabs defaultValue="stats" className="mt-2">
-        <TabsList className="mb-4 w-full justify-start overflow-x-auto sm:w-auto">
+        <TabsList className="sticky top-0 z-20 mb-4 w-full justify-start overflow-x-auto border-b border-border bg-background pb-3 pt-2 sm:w-auto">
           <TabsTrigger value="stats">统计结果</TabsTrigger>
           <TabsTrigger value="hypothesis">假设检验</TabsTrigger>
           <TabsTrigger value="sample">样本质量</TabsTrigger>

@@ -27,6 +27,7 @@
   --success: #5a7d5a; /* 成功（达标） */
   --warning: #c9a227; /* 警告（存疑） */
   --error: #a03e33; /* 错误（不达标） */
+  --info: #3d5a80; /* 信息（复用 indigo 值，职责=链接/信息提示） */
 
   /* ===== 数据可视化色板（低饱和暖色系，冷暖双轴 + 明度拉开，红绿色盲可区分） =====
    * 说明：chart-1 砖红与 chart-5 原橄榄色在色盲视角下难以区分（同为暖褐调）。
@@ -39,19 +40,25 @@
   --chart-5: #1f6f6e; /* 深青 teal（冷调，替代橄榄，避免与砖红撞色） */
   --chart-6: #7a5c8a; /* 紫（微亮，与 teal/indigo 拉开明度） */
 
-  /* ===== 字号 ===== */
-  --text-display: 36px;
-  --text-display-line: 44px;
-  --text-h1: 28px;
-  --text-h1-line: 36px;
-  --text-h2: 22px;
-  --text-h2-line: 30px;
-  --text-h3: 18px;
-  --text-h3-line: 26px;
-  --text-body-lg: 16px;
-  --text-body-lg-line: 26px;
-  --text-body: 14px;
-  --text-body-line: 22px;
+  /* ===== 字号 =====
+   * v2.0 重排（2026-09-11）：原梯度下半段过密（h3 18 / body-lg 16 仅差 2px，
+   * body 14 / small 13 仅差 1px），中文下层级不可辨。
+   * 新梯度：12 / 13 / 15 / 17 / 20 / 24 / 30 / 40，行高随字号放宽到 1.5–1.73。
+   * 注意：tailwind.config.ts 中 text-xs/sm/base/lg/xl/2xl/3xl/4xl 与
+   * text-caption/small/body/body-lg/h3/h2/h1/display 映射到同一组变量，
+   * 改此处即全站生效（630 处引用），无需改动任何 tsx。 */
+  --text-display: 40px;
+  --text-display-line: 48px;
+  --text-h1: 30px;
+  --text-h1-line: 38px;
+  --text-h2: 24px;
+  --text-h2-line: 32px;
+  --text-h3: 20px;
+  --text-h3-line: 28px;
+  --text-body-lg: 17px;
+  --text-body-lg-line: 27px;
+  --text-body: 15px;
+  --text-body-line: 26px;
   --text-small: 13px;
   --text-small-line: 20px;
   --text-caption: 12px;
@@ -121,10 +128,14 @@
   --accent-foreground: var(--ink-900);
   --destructive: var(--error);
   --destructive-foreground: #ffffff;
-  --success: var(--success);
+  /* --success / --warning / --info 的值已在上方"语义色"段定义，
+   * 此处只映射 foreground。勿写 --success: var(--success) 这类自引用——
+   * 同一规则内后声明覆盖前声明，自引用构成循环引用导致变量 invalid，
+   * bg-success / text-success 静默失效（这正是历史代码被迫直写
+   * bg-red-50 等 Tailwind 色板的根因，2026-09-11 修复）。 */
   --success-foreground: #ffffff;
-  --warning: var(--warning);
   --warning-foreground: #ffffff;
+  --info-foreground: #ffffff;
   --border: var(--border-color);
   --input: var(--border-color);
   --ring: var(--accent-brick);
@@ -154,6 +165,13 @@
   --delay-2: 120ms;
   --delay-3: 180ms;
   --delay-4: 240ms;
+
+  /* ===== Shell 布局参数（v2.0 新增：三个 shell 统一从此取值） =====
+   * 用途：marketing-header / app-shell / admin-shell 的导航高度与侧栏宽度。
+   * 现状曾出现 app w-60(240) vs admin pl-64(256) 的 16px 跨区抖动。 */
+  --shell-header-h: 64px;
+  --shell-sidebar-w: 256px;
+  --shell-gutter: 32px;
 }
 
 /* ===== 暗色模式 ===== */
@@ -217,68 +235,4 @@
   --chart-4: #7fa07f;
   --chart-5: #3f9e9c;
   --chart-6: #9a78ae;
-}
-
-/* ===== 复古棕榈墨（sepia）：更厚重的"老期刊纸张"中间态 ===== */
-.sepia {
-  --background: #f4ecdf;
-  --foreground: #33281c;
-
-  --card: #efe5d4;
-  --card-foreground: #33281c;
-  --popover: #f1e8d9;
-  --popover-foreground: #33281c;
-
-  --muted: #e7dabe;
-  --muted-foreground: #8a7a63;
-
-  --border: #d9c9a9;
-  --input: #d9c9a9;
-  --ring: #a5462f;
-
-  --primary: #a5462f;
-  --primary-foreground: #ffffff;
-
-  --secondary: #e7dabe;
-  --secondary-foreground: #4a3b28;
-
-  --accent: #eadfc8;
-  --accent-foreground: #33281c;
-
-  --destructive: #a03e33;
-  --destructive-foreground: #ffffff;
-
-  --success: #6b7d58;
-  --success-foreground: #ffffff;
-
-  --warning: #b58a3c;
-  --warning-foreground: #ffffff;
-
-  --info: #3f5f7d;
-  --info-foreground: #ffffff;
-
-  /* 映射到 cream 原始 token */
-  --bg-base: #f4ecdf;
-  --bg-surface: #ede2cd;
-  --bg-elevated: #f1e8d9;
-  --bg-muted: #e7dabe;
-
-  --ink-900: #2c2217;
-  --ink-700: #4a3b28;
-  --ink-500: #8a7a66;
-  --ink-400: #b0a18a;
-
-  --border-color: #d9c9a9;
-  --border-color-strong: #8a7a66;
-
-  --glass-bg: rgba(241, 232, 217, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.28);
-
-  /* 数据可视化色板（sepia 复古纸面适配：在浅褐底上加深，保持暖本字对比） */
-  --chart-1: #9e4a3f;
-  --chart-2: #33506e;
-  --chart-3: #aa8c1f;
-  --chart-4: #4f7050;
-  --chart-5: #1d5f5e;
-  --chart-6: #654670;
 }

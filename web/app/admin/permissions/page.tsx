@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PageHeader } from "@/components/admin/page-header";
 import { TableEmpty } from "@/components/admin/table-empty";
 import { PageLoading } from "@/components/admin/loading";
+import { ErrorState } from "@/components/common/error-state";
 import {
   Select,
   SelectContent,
@@ -189,11 +190,7 @@ export default function AdminPermissionsPage() {
       </div>
 
       {isLoading && <PageLoading />}
-      {!isLoading && isError && (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          加载失败，请确认你有超级管理员权限。
-        </p>
-      )}
+      {!isLoading && isError && <ErrorState message="加载失败，请确认你有超级管理员权限。" />}
 
       {data && (
         <div className="overflow-x-auto rounded-lg border">
