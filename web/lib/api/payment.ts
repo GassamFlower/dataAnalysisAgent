@@ -103,6 +103,13 @@ export const paymentApi = {
       { method: "POST" }
     ),
 
+  /** 支付宝预下单：返回支付二维码 qr_code */
+  createAlipayQr: (orderId: string): Promise<{ qr_code: string; order_id: string }> =>
+    request<{ qr_code: string; order_id: string }>(
+      `/api/payment/alipay/${orderId}/qr`,
+      { method: "POST" }
+    ),
+
   /** 查询订单状态（支付结果轮询） */
   queryOrder: (orderId: string): Promise<Order> =>
     request<Order>(`/api/payment/orders/${orderId}`),

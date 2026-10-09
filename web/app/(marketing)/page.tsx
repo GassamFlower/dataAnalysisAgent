@@ -27,7 +27,7 @@ import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants"
 export const metadata: Metadata = {
   title: "数据分析智能体 | 回收前预演，回收后看懂",
   description:
-    "全网唯一支持回收前预演：上传问卷题目先做信效度体检，一句话描述假设预演数据是否达标；回收后用样本代表性诊断看懂样本够不够格——在正式发问卷之前，就知道方向对不对。免费题目体检，完整能力联系客服开通。",
+    "全网唯一支持回收前预演：上传问卷题目先做信效度体检，一句话描述假设预演数据是否达标；回收后用样本代表性诊断看懂样本够不够格——在正式发问卷之前，就知道方向对不对。免费题目体检，完整能力自助开通。",
   keywords: [
     "数据分析",
     "问卷预演",
@@ -153,7 +153,14 @@ export default function HomePage() {
       <MarketingHeader />
 
       {/* Hero */}
-      <section className="mx-auto max-w-5xl px-6 pb-24 pt-20 text-center">
+      <section className="relative mx-auto max-w-5xl overflow-hidden px-6 pb-24 pt-20 text-center">
+        {/* 品牌水印：editorial "期刊卷首" 氛围 */}
+        <span
+          aria-hidden
+          className="brand-watermark pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[12rem] leading-none sm:text-[16rem]"
+        >
+          预演
+        </span>
         <Stagger step={0.12} amount={0.3}>
           <StaggerItem>
             <Badge variant="secondary" className="mb-6 font-normal text-ink-500">
@@ -162,7 +169,7 @@ export default function HomePage() {
             </Badge>
           </StaggerItem>
           <StaggerItem>
-            <h1 className="font-display text-4xl font-bold leading-tight text-ink-900 sm:text-5xl">
+            <h1 className="font-display text-display font-bold leading-tight text-ink-900">
               回收前预演，回收后看懂
               <br className="hidden sm:block" />
               <span className="text-primary">避免问卷白做一趟</span>
@@ -184,18 +191,18 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="/pricing">联系客服</Link>
+                <Link href="/pricing">查看套餐</Link>
               </Button>
             </div>
           </StaggerItem>
         </Stagger>
       </section>
 
+      {/* 可交互预演 demo：拖动效应量/样本量 → 命中率实时变化（首屏紧接 Hero） */}
+      <DemoSimulation />
+
       {/* 报告预览：首次印象让外行看得懂成品 */}
       <ReportPreview />
-
-      {/* 可交互预演 demo：拖动效应量/样本量 → 命中率实时变化 */}
-      <DemoSimulation />
 
       {/* 预演数据水印脚注 */}
       <p className="mx-auto max-w-5xl px-6 pb-2 text-center font-mono text-caption tracking-wider text-ink-400">
@@ -300,7 +307,7 @@ export default function HomePage() {
               <Reveal key={f.title} delay={i * 60}>
                 <div className="flex items-start gap-3.5">
                   <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <f.icon className="h-4.5 w-4.5" />
+                    <f.icon className="h-4 w-4" />
                   </div>
                   <div>
                     <h3 className="text-h3 font-semibold text-ink-900">{f.title}</h3>
@@ -336,15 +343,15 @@ export default function HomePage() {
       <section className="mx-auto max-w-5xl px-6 pt-16 text-center">
         <Reveal>
           <h2 className="font-display text-h2 font-semibold leading-snug text-ink-900">
-            免费体检，开通完整能力找客服
+            免费体检，自助开通完整能力
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-body text-ink-500">
-            题目体检与样本代表性诊断永久免费；数据预演、统计报告、智能诊断与导出等完整能力，联系客服即可开通。
+            题目体检与样本代表性诊断永久免费；数据预演、统计报告、智能诊断与导出等完整能力，选择套餐扫码即用。
           </p>
           <div className="mt-7 flex items-center justify-center gap-3">
             <Button size="lg" asChild>
               <Link href="/pricing">
-                联系客服
+                查看套餐
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
             </Button>
@@ -358,38 +365,41 @@ export default function HomePage() {
       </section>
 
       {/* 页脚 */}
-      <footer className="mx-auto max-w-5xl px-6 py-16">
-        <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-3 text-caption text-ink-500">
-          {DISCLAIMER}
+      <footer className="mt-8 border-t border-border bg-cream-surface/50">
+        <div className="mx-auto max-w-5xl px-6 py-12">
+          <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-3 text-caption text-ink-500">
+            {DISCLAIMER}
+          </div>
+          <div className="mt-8 flex flex-col items-center gap-4">
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-caption text-ink-500">
+              <Link href="/" className="transition-colors hover:text-ink-900">首页</Link>
+              <Link href="/pricing" className="transition-colors hover:text-ink-900">套餐</Link>
+              <Link href="/learn" className="transition-colors hover:text-ink-900">统计小课堂</Link>
+              <Link href="/about" className="transition-colors hover:text-ink-900">关于</Link>
+              <WechatEntry
+                trigger={
+                  <span className="cursor-pointer select-none transition-colors hover:text-ink-900">
+                    客服微信
+                  </span>
+                }
+              />
+              <ContactForm
+                variant="sheet"
+                entryPoint="footer"
+                trigger={
+                  <span className="cursor-pointer select-none transition-colors hover:text-ink-900">
+                    留言反馈
+                  </span>
+                }
+              />
+            </nav>
+            <div className="h-px w-16 bg-border" />
+            <p className="text-caption text-ink-400">
+              <span className="font-display font-semibold text-ink-500">预演</span>
+              {" · "}数据分析智能体 · 本科毕设研究预演工具
+            </p>
+          </div>
         </div>
-        <div className="mt-6 flex items-center justify-center gap-4 text-caption text-ink-400">
-          <Link href="/" className="hover:text-ink-700">首页</Link>
-          <span>·</span>
-          <Link href="/pricing" className="hover:text-ink-700">联系</Link>
-          <span>·</span>
-          <Link href="/about" className="hover:text-ink-700">关于</Link>
-          <span>·</span>
-          <WechatEntry
-            trigger={
-              <span className="cursor-pointer select-none hover:text-ink-700">
-                客服微信
-              </span>
-            }
-          />
-          <span>·</span>
-          <ContactForm
-            variant="sheet"
-            entryPoint="footer"
-            trigger={
-              <span className="cursor-pointer select-none hover:text-ink-700">
-                留言反馈
-              </span>
-            }
-          />
-        </div>
-        <p className="mt-4 text-center text-caption text-ink-400">
-          数据分析智能体 · 本科毕设研究预演工具
-        </p>
       </footer>
     </div>
   );

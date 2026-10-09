@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   FileText,
   Loader2,
@@ -11,35 +11,38 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
-import { usePolishReport, type PolishSection } from "@/lib/hooks/use-report";
+import { usePolishReport } from "@/lib/hooks/use-report";
 import { cn } from "@/lib/utils";
 
-/**
- * 论文段落生成（Task 3.1 / R6 扩展）。
- *
- * 方法 / 结果 / 讨论 单选，一键生成对齐实际统计输出（Cronbach α、P 值、效应量、
- * 预演命中率）的 APA 段落。仅结果规范化、不代写研究结论；逐 "统计描述参考" 免责。
- */
-const PAPER_SECTIONS: { value: PolishSection; label: string; desc: string }[] = [
+type PaperSection = "method" | "result" | "discussion";
+
+const PAPER_SECTIONS: { value: PaperSection; label: string; desc: string }[] = [
   { value: "method", label: "研究方法", desc: "量表维度 / 统计检验 / 样本规模" },
   { value: "result", label: "研究结果", desc: "Cronbach α / 差异检验 P 值 / 预演命中率" },
   { value: "discussion", label: "讨论", desc: "对已算数字的规范化解读，不下结论" },
 ];
 
 export function PaperSections({ reportId }: { reportId: string }) {
-  const [section, setSection] = useState<PolishSection>("result");
-  const [text, setText] = useState("");
+  const [section, setSection] = useState<PaperSection>("result");
+  const [cache, setCache] = useState<Record<PaperSection, string>>({
+    method: "",
+    result: "",
+    discussion: "",
+  });
   const polishMutation = usePolishReport();
 
-  const handleGenerate = async () => {
-    setText("");
+  const text = cache[section];
+  const activeDesc = PAPER_SECTIONS.find((s) => s.value === section)?.desc ?? "";
+  const activeLabel = PAPER_SECTIONS.find((s) => s.value === section)?.label ?? "";
+
+  const handleGenerate = useCallback(async () => {
     try {
       const result = await polishMutation.mutateAsync({ reportId, section });
-      setText(result.text);
+      setCache((prev) => ({ ...prev, [section]: result.text }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "生成失败，请重试");
     }
-  };
+  }, [reportId, section, polishMutation]);
 
   const handleCopy = async () => {
     try {
@@ -50,9 +53,6 @@ export function PaperSections({ reportId }: { reportId: string }) {
     }
   };
 
-  const activeLabel =
-    PAPER_SECTIONS.find((s) => s.value === section)?.label ?? "";
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -62,12 +62,12 @@ export function PaperSections({ reportId }: { reportId: string }) {
             type="button"
             variant={section === s.value ? "default" : "outline"}
             size="sm"
-            onClick={() => {
-              setSection(s.value);
-              setText("");
-            }}
+            onClick={() => setSection(s.value)}
           >
             {s.label}
+            {cache[s.value] && (
+              <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+            )}
           </Button>
         ))}
         <span className="ml-auto" />
@@ -77,65 +77,77 @@ export function PaperSections({ reportId }: { reportId: string }) {
           onClick={handleGenerate}
           disabled={polishMutation.isPending}
         >
-          {polishMutation.isPending && !text ? (
+          {polishMutation.isPending ? (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
           ) : (
             <FileText className="mr-1.5 h-4 w-4" />
           )}
-          生成{activeLabel}段落
+          {text ? `重新生成${activeLabel}` : `生成${activeLabel}`}段落
         </Button>
       </div>
-      <p className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        {PAPER_SECTIONS.map((s) => (
-          <span
-            key={s.value}
-            className={cn(section === s.value && "font-medium text-foreground")}
-          >
-            · {s.label}：{s.desc}
-          </span>
-        ))}
+
+      <p className="text-caption text-ink-500">
+        {activeDesc}
       </p>
 
+      {/* 首次生成：空状态 + loading */}
       {polishMutation.isPending && !text && (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-14 text-center">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
-          <p className="mt-3 text-sm text-ink-700">正在生成，预计 10-30 秒…</p>
+          <p className="mt-3 text-body text-ink-700">正在生成，预计 10-30 秒…</p>
         </div>
       )}
 
-      {text && !polishMutation.isPending && (
+      {/* 已有文本（含重新生成时旧文本 + 遮罩） */}
+      {text && (
         <div className="space-y-3">
-          <div className="rounded-md border border-border bg-cream-surface/50 p-4">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-700">
+          <div className="relative rounded-md border border-border bg-cream-surface/50 p-4">
+            <p className={cn(
+              "whitespace-pre-wrap text-body leading-relaxed text-ink-700",
+              polishMutation.isPending && "opacity-40",
+            )}>
               {text}
             </p>
+            {polishMutation.isPending && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-md">
+                <div className="flex items-center gap-2 rounded-full bg-background/90 px-4 py-2 shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-small text-ink-700">正在重新生成…</span>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex items-start gap-2 rounded-md bg-muted/30 p-3 text-xs text-ink-500">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-400" />
-            <span>
-              此为统计描述参考，非研究结论。已自动规避结论性措辞；请结合您的实际研究背景审慎使用。
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleGenerate}
-            >
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-              重新生成
-            </Button>
-            <Button type="button" size="sm" onClick={handleCopy}>
-              <Copy className="mr-1.5 h-3.5 w-3.5" />
-              一键复制
-            </Button>
-          </div>
+          {!polishMutation.isPending && (
+            <>
+              <div className="flex items-start gap-2 rounded-md bg-muted/30 p-3 text-caption text-ink-500">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-400" />
+                <span>
+                  此为统计描述参考，非研究结论。已自动规避结论性措辞；请结合您的实际研究背景审慎使用。
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerate}
+                >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  重新生成
+                </Button>
+                <Button type="button" size="sm" onClick={handleCopy}>
+                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  一键复制
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
+      {/* 空状态：未生成且非 loading */}
       {!polishMutation.isPending && !text && (
-        <div className="rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-md border border-dashed py-10 text-center text-body text-muted-foreground">
           选择章节后点击「生成」按钮，将实际统计输出转为可复制的论文段落
         </div>
       )}

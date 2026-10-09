@@ -127,7 +127,7 @@ export default function LearnPage() {
                 <h2 className="font-semibold text-ink-900">
                   预演微课 · 发问卷前，先模拟一遍
                 </h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">
+                <p className="mt-0.5 text-body text-muted-foreground">
                   回收后再改已太晚——先用“预演”验证量表与假设，发布前发现问题。
                 </p>
               </div>
@@ -158,7 +158,7 @@ export default function LearnPage() {
               </div>
               <div className="min-w-0">
                 <h2 className="font-semibold text-ink-900">学科量表库</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">
+                <p className="mt-0.5 text-body text-muted-foreground">
                   管理学 / 教育学 / 心理学常用量表，一键建项目并进入预演，免去手工录题。
                 </p>
               </div>
@@ -174,7 +174,7 @@ export default function LearnPage() {
 
         {/* 免费工具入口 + 搜索（一行） */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-body text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <Calculator className="h-4 w-4" />
               免费工具：样本量计算器
@@ -275,8 +275,8 @@ export default function LearnPage() {
         ) : data?.items.length === 0 ? (
           <Card className="p-12 text-center">
             <BookOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">暂无教程</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h3 className="text-h3 font-semibold">暂无教程</h3>
+            <p className="mt-1 text-body text-muted-foreground">
               当前筛选条件下没有找到教程，换个关键词试试
             </p>
           </Card>
@@ -322,11 +322,11 @@ export default function LearnPage() {
                       </span>
                     </div>
 
-                    <h3 className="mb-2 line-clamp-2 text-lg font-semibold text-ink-900 transition-colors group-hover:text-primary">
+                    <h3 className="mb-2 line-clamp-2 text-h3 font-semibold text-ink-900 transition-colors group-hover:text-primary">
                       {article.title}
                     </h3>
 
-                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                    <p className="line-clamp-3 text-body text-muted-foreground">
                       {article.summary || "暂无摘要"}
                     </p>
 
@@ -335,7 +335,7 @@ export default function LearnPage() {
                         {article.tags.slice(0, 3).map((t) => (
                           <span
                             key={t}
-                            className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-ink-500"
+                            className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-ink-500"
                           >
                             #{t}
                           </span>

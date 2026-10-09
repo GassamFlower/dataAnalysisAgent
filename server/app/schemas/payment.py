@@ -9,8 +9,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-PlanType = Literal["free", "single", "subscription"]
-OrderType = Literal["single", "subscription"]
+PlanType = Literal["free", "single", "report", "subscription"]
+OrderType = Literal["single", "report", "subscription"]
 OrderStatus = Literal["pending", "paid", "refunded", "cancelled"]
 PaymentChannel = Literal["wechat", "alipay"]
 

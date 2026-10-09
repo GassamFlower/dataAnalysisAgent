@@ -9,7 +9,7 @@ export interface AdminUser {
   email: string | null;
   email_masked?: string | null;
   nickname: string | null;
-  plan: "free" | "single" | "subscription";
+  plan: "free" | "single" | "report" | "subscription";
   plan_expires_at?: string | null;
   is_admin: boolean;
   is_super_admin?: boolean;
@@ -74,7 +74,7 @@ export interface AdminProject {
 
 export interface AdminOrder {
   id: string;
-  type: "single" | "subscription";
+  type: "single" | "report" | "subscription";
   amount: string;
   status: "pending" | "paid" | "refunded" | "cancelled";
   paid_at?: string | null;
@@ -166,7 +166,7 @@ export const adminApi = {
   /** 线下开通：为指定用户创建线下已支付订单并激活套餐 */
   createOfflineOrder: (body: {
     user_id: string;
-    plan_type: "single" | "subscription";
+    plan_type: "single" | "report" | "subscription";
     days?: number;
     expires_at?: string;
     channel?: string;

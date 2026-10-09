@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
     email_verify_expires_at TIMESTAMP WITH TIME ZONE,
     nickname VARCHAR(100),
     avatar VARCHAR(500),
-    plan VARCHAR(20) NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'single', 'subscription')),
+    plan VARCHAR(20) NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'single', 'report', 'subscription')),
     plan_expires_at TIMESTAMP WITH TIME ZONE,
     is_admin BOOLEAN NOT NULL DEFAULT false,
     refresh_token VARCHAR(255),

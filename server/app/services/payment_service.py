@@ -22,42 +22,59 @@ from app.models.user import User
 from app.schemas.payment import OrderCreateRequest, OrderNotifyRequest, OrderType
 
 
-# 套餐定价（单位：元）
+# 套餐定价（单位：元）—— 对齐 VIBE 全流程手册 §1 定价锚点
 PLAN_PRICING: dict[OrderType, Decimal] = {
     "single": Decimal("9.90"),
-    "subscription": Decimal("19.90"),
+    "report": Decimal("69.00"),
+    "subscription": Decimal("199.00"),
 }
 
 # 套餐有效期（天）
 PLAN_DURATION_DAYS: dict[OrderType, int] = {
     "single": 30,
-    "subscription": 30,
+    "report": 365,
+    "subscription": 180,
 }
 
-# 套餐能力描述
+# 套餐能力描述（对齐 VIBE 手册 §1 免费/单次/报告/学期包）
 PLAN_FEATURES: dict[str, list[str]] = {
     "free": [
-        "全功能体验（周配额限制）",
-        "题目上传解析",
+        "题目上传与解析",
         "题型/维度/反向题识别",
-        "维度归属编辑",
-        "数据预演",
-        "标准统计报告",
-        "智能诊断",
-        "报告导出",
+        "题目体检（永久免费）",
+        "样本代表性诊断",
+        "每周 3 次预演体验",
     ],
     "single": [
         "全部免费能力",
-        "单次数据预演",
+        "单次数据预演（完整模拟）",
         "标准统计报告",
-        "智能诊断",
+        "智能诊断建议",
         "Word/Excel 导出",
     ],
-    "subscription": [
+    "report": [
         "全部单次能力",
-        "30 天内不限次预演",
-        "30 天内不限次报告导出",
+        "完整统计报告（含信效度/差异/相关）",
+        "智能诊断 + AI 说人话结论",
+        "Word/Excel/PDF/PPT 全格式导出",
+        "样本量规划 + 代表性分析",
+        "报告润色（LLM 转化为论文段落）",
     ],
+    "subscription": [
+        "全部报告能力",
+        "180 天不限次预演",
+        "180 天不限次报告导出",
+        "多份问卷同时管理",
+        "优先技术支持",
+    ],
+}
+
+# 套餐展示名称（前端定价页使用）
+PLAN_DISPLAY_NAMES: dict[str, str] = {
+    "free": "免费体验",
+    "single": "单次预演",
+    "report": "完整报告",
+    "subscription": "学期包",
 }
 
 # 线下成交渠道（用于后台手动开通对账）

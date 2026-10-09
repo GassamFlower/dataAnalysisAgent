@@ -73,7 +73,7 @@ export default function AdminUserDetailPage() {
 
   // 线下开通弹窗
   const [openOffline, setOpenOffline] = useState(false);
-  const [oPlan, setOPlan] = useState<"single" | "subscription">("single");
+  const [oPlan, setOPlan] = useState<"single" | "report" | "subscription">("single");
   const [oChannel, setOChannel] = useState("xianyu");
   const [oMode, setOMode] = useState<"days" | "date">("days");
   const [oDays, setODays] = useState("30");
@@ -94,7 +94,7 @@ export default function AdminUserDetailPage() {
   const openOfflineMut = useMutation({
     mutationFn: (body: {
       user_id: string;
-      plan_type: "single" | "subscription";
+      plan_type: "single" | "report" | "subscription";
       days?: number;
       expires_at?: string;
       channel?: string;
@@ -183,8 +183,9 @@ export default function AdminUserDetailPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="free">免费</SelectItem>
-                <SelectItem value="single">单次</SelectItem>
-                <SelectItem value="subscription">订阅</SelectItem>
+                <SelectItem value="single">单次预演</SelectItem>
+                <SelectItem value="report">完整报告</SelectItem>
+                <SelectItem value="subscription">学期包</SelectItem>
               </SelectContent>
             </Select>
             {data.plan_expires_at && (
@@ -246,13 +247,14 @@ export default function AdminUserDetailPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>开通类型</Label>
-                <Select value={oPlan} onValueChange={(v) => setOPlan(v as "single" | "subscription")}>
+                <Select value={oPlan} onValueChange={(v) => setOPlan(v as "single" | "report" | "subscription")}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="single">单次</SelectItem>
-                    <SelectItem value="subscription">开通期</SelectItem>
+                    <SelectItem value="single">单次预演</SelectItem>
+                    <SelectItem value="report">完整报告</SelectItem>
+                    <SelectItem value="subscription">学期包</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

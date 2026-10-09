@@ -197,7 +197,7 @@ async def test_dashboard_overview(client: AsyncClient, auth_headers: dict):
         assert resp.status_code == 200
         data = resp.json()["data"]
         assert "total_users" in data
-        assert set(data["plan_distribution"]) == {"free", "single", "subscription"}
+        assert set(data["plan_distribution"]) == {"free", "single", "report", "subscription"}
         assert set(data["projects_by_mode"]) == {"real", "simulation"}
         assert "total_projects" in data
         assert "active_users_7d" in data

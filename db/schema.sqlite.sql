@@ -37,7 +37,7 @@ CREATE TABLE users (
     email_verify_expires_at DATETIME,
     nickname TEXT,
     avatar TEXT,
-    plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'single', 'subscription')),
+    plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'single', 'report', 'subscription')),
     plan_expires_at DATETIME,
     is_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_admin IN (0, 1)),
     refresh_token VARCHAR(255),

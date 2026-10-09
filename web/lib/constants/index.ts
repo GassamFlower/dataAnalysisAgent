@@ -79,6 +79,77 @@ export const SIMULATED_WATERMARK = "SIMULATED · 研究预演数据";
 export const DISCLAIMER =
   "本数据由数据分析智能体生成，仅用于研究可行性预演，不可直接用于论文或正式研究。";
 
+/**
+ * 定价（《VIBE 全流程手册》§1/§4：免费引流 + 付费解锁）。
+ * single=单次预演；report=完整报告；subscription=学期包。
+ * 金额为对外展示的引导价，后端下单金额由 payment_service 服务端决定。
+ */
+export const PRICING = {
+  free: {
+    name: "免费体验",
+    price: 0,
+    unit: "永久免费",
+    features: [
+      "题目上传与解析",
+      "题型/维度/反向题识别",
+      "题目体检（永久免费）",
+      "样本代表性诊断",
+      "每周 3 次预演体验",
+    ],
+    cta: "开始免费体检",
+    ctaHref: "/projects/new",
+  },
+  single: {
+    name: "单次预演",
+    price: 9.9,
+    unit: "元 / 次",
+    badge: "发问卷前先预演",
+    features: [
+      "完整数据预演（模拟生成）",
+      "标准统计报告",
+      "智能诊断建议",
+      "Word/Excel 导出（带水印）",
+      "30 天有效",
+    ],
+    cta: "选择单次预演",
+    ctaHref: "/pricing?plan=single",
+  },
+  report: {
+    name: "完整报告",
+    price: 69,
+    unit: "元 / 份",
+    badge: "推荐 · 毕设够用",
+    features: [
+      "单次预演全部能力",
+      "完整统计报告（信效度/差异/相关）",
+      "智能诊断 + AI 说人话结论",
+      "Word/Excel/PDF/PPT 全格式导出",
+      "样本量规划 + 代表性分析",
+      "报告润色（LLM 论文段落）",
+      "365 天有效",
+    ],
+    cta: "选择完整报告",
+    ctaHref: "/pricing?plan=report",
+  },
+  subscription: {
+    name: "学期包",
+    price: 199,
+    unit: "元 / 学期",
+    badge: "多份问卷 · 不限次",
+    features: [
+      "完整报告全部能力",
+      "180 天不限次预演",
+      "180 天不限次报告导出",
+      "多份问卷同时管理",
+      "优先技术支持",
+    ],
+    cta: "选择学期包",
+    ctaHref: "/pricing?plan=subscription",
+  },
+} as const;
+
+export type PlanKey = keyof typeof PRICING;
+
 /** 项目状态（与后端 ProjectStatus 枚举对齐） */
 export const PROJECT_STATUS = {
   draft: { label: "待体检", tone: "muted" as const },

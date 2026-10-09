@@ -38,7 +38,7 @@ export default function ExamplePage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader>
-          <CardTitle className="font-display text-2xl">示例路由</CardTitle>
+          <CardTitle className="font-display text-h2">示例路由</CardTitle>
           <CardDescription>验证 UI 组件库与接口层封装</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -51,7 +51,7 @@ export default function ExamplePage() {
               <Link href="/">返回首页</Link>
             </Button>
           </div>
-          <pre className="rounded-md bg-muted p-4 text-sm text-muted-foreground">
+          <pre className="rounded-md bg-muted p-4 text-body text-muted-foreground">
             {result}
           </pre>
         </CardContent>

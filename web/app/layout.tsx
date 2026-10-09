@@ -40,8 +40,6 @@ export const metadata: Metadata = {
     locale: "zh_CN",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: `${SITE_NAME} · 问卷研究预演工具`,
-    description: SITE_DESCRIPTION,
     images: [
       {
         url: "/og-image.png",
@@ -53,8 +51,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} · 问卷研究预演工具`,
-    description: SITE_DESCRIPTION,
     images: ["/og-image.png"],
   },
   robots: {
@@ -66,6 +62,9 @@ export const metadata: Metadata = {
       "max-image-preview": "large",
       "max-snippet": -1,
     },
+  },
+  icons: {
+    icon: "/favicon.svg",
   },
   formatDetection: {
     email: false,
@@ -86,7 +85,7 @@ const structuredData = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "CNY",
-    description: "免费体检确认可行性，完整能力联系客服开通",
+    description: "免费体检确认可行性，完整能力自助扫码开通",
   },
   featureList: [
     "问卷题目智能识别与维度归属",

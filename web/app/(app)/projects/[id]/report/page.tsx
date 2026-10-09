@@ -23,7 +23,6 @@ import { PolishButton } from "@/components/report/polish-button";
 import { PaperSections } from "@/components/report/paper-sections";
 import { PaidActionGuard } from "@/components/common/paid-action-guard";
 import { ErrorState } from "@/components/common/error-state";
-import { LoadingState } from "@/components/common/loading-state";
 import { Watermark } from "@/components/common/watermark";
 import { SimulationReportBanner } from "@/components/compliance/simulation-report-banner";
 import { ContactForm } from "@/components/contact/contact-form";
@@ -83,7 +82,7 @@ export default function ReportPage({
 }: {
   params: { id: string };
 }) {
-  const { data: report, isLoading, isError, error } = useReport(params.id);
+  const { data: report, isLoading, isError, error, refetch } = useReport(params.id);
   const { data: simulationData } = useSimulation(params.id);
   const { data: project } = useProject(params.id);
   const analyzeMutation = useAnalyzeReport();
@@ -154,12 +153,41 @@ export default function ReportPage({
     );
   };
 
-  // 正在生成报告
+  // 正在生成报告：展示分步进度
   if (analyzeMutation.isPending) {
+    const steps = [
+      { label: "信效度检验", icon: "α" },
+      { label: "差异分析", icon: "t" },
+      { label: "效应量计算", icon: "d" },
+      { label: "智能诊断", icon: "!" },
+    ];
     return (
       <div>
         <StepNav projectId={params.id} current="report" />
-        <LoadingState label="正在生成报告，运行统计套餐 + 智能诊断，预计 10-30 秒" />
+        <Card className="mx-auto mt-8 max-w-lg p-8 text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          </div>
+          <h3 className="text-h2 font-semibold text-ink-900">正在生成报告</h3>
+          <p className="mt-1 text-body text-ink-500">
+            运行统计套餐 + 智能诊断，预计 10-30 秒
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            {steps.map((step, i) => (
+              <div key={step.label} className="flex items-center gap-3">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary/30 bg-primary/5 font-mono text-caption font-semibold text-primary">
+                    {step.icon}
+                  </div>
+                  <span className="text-[11px] text-ink-500">{step.label}</span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className="mb-4 h-px w-6 bg-border" />
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     );
   }
@@ -193,7 +221,7 @@ export default function ReportPage({
         <ErrorState
           title="加载报告失败"
           message={error?.message || "无法获取报告数据，请稍后重试"}
-          onRetry={() => window.location.reload()}
+          onRetry={() => refetch()}
         />
       </div>
     );

@@ -24,7 +24,7 @@ export default function SampleSizeToolPage() {
         </Button>
 
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-ink-900">样本量计算器</h1>
+          <h1 className="text-h2 font-bold text-ink-900">样本量计算器</h1>
           <p className="text-muted-foreground">
             自由输入参数，快速估算论文所需的有效样本量。
           </p>

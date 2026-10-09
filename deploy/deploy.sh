@@ -85,8 +85,9 @@ ufw default deny incoming > /dev/null 2>&1
 ufw default allow outgoing > /dev/null 2>&1
 ufw allow ssh > /dev/null 2>&1
 ufw allow 80/tcp > /dev/null 2>&1
+ufw allow 443/tcp > /dev/null 2>&1
 ufw --force enable > /dev/null 2>&1
-echo -e "${GREEN}  ✓ 防火墙已配置（仅开放 SSH + 80 端口）${NC}"
+echo -e "${GREEN}  ✓ 防火墙已配置（仅开放 SSH + 80 + 443 端口）${NC}"
 
 # 配置 Fail2ban
 cat > /etc/fail2ban/jail.local << 'EOF'

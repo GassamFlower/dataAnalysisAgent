@@ -11,7 +11,7 @@ interface User {
   avatar?: string;
   isAdmin?: boolean;
   isSuperAdmin?: boolean;
-  plan: "free" | "single" | "subscription";
+  plan: "free" | "single" | "report" | "subscription";
   planExpiresAt?: string;
 }
 

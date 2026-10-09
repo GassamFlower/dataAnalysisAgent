@@ -127,8 +127,8 @@ export default function TutorialDetailPage({
           </Button>
           <Card className="p-12 text-center">
             <BookOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">教程不存在</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h3 className="text-h3 font-semibold">教程不存在</h3>
+            <p className="mt-1 text-body text-muted-foreground">
               该教程可能已被删除或尚未发布
             </p>
           </Card>
@@ -165,7 +165,7 @@ export default function TutorialDetailPage({
                 <Badge variant={CATEGORY_VARIANTS[article.category] ?? "secondary"}>
                   {CATEGORY_LABELS[article.category] ?? article.category}
                 </Badge>
-                <span className="flex items-center text-sm text-muted-foreground">
+                <span className="flex items-center text-body text-muted-foreground">
                   <Clock className="mr-1 h-4 w-4" />
                   {estimateReadTime(article.content_markdown)}
                 </span>
@@ -175,7 +175,7 @@ export default function TutorialDetailPage({
                     {article.tags.map((t) => (
                       <span
                         key={t}
-                        className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-ink-500"
+                        className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-ink-500"
                       >
                         #{t}
                       </span>
@@ -200,12 +200,12 @@ export default function TutorialDetailPage({
                 </div>
               </div>
 
-              <h1 className="text-3xl font-bold text-ink-900 sm:text-4xl">
+              <h1 className="text-h2 font-bold text-ink-900 sm:text-h1">
                 {article.title}
               </h1>
 
               {article.summary && (
-                <p className="mt-4 text-lg text-muted-foreground">{article.summary}</p>
+                <p className="mt-4 text-body-lg text-muted-foreground">{article.summary}</p>
               )}
 
               {article.slug === "sample-size-power" && (

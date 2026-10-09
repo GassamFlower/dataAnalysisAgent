@@ -1,7 +1,7 @@
 """用户用量服务。
 
 按自然周统计免费用户的模拟生成/报告导出/高级统计调用次数。
-付费用户（single/subscription）不限次数，不记录用量。
+付费用户（single/report/subscription）不限次数,不记录用量。
 """
 import uuid
 from datetime import datetime, timedelta, timezone

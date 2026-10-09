@@ -401,7 +401,7 @@ async def admin_orders(
 
 class _OfflineOrderCreateRequest(BaseModel):
     user_id: str = Field(..., description="目标用户 ID")
-    plan_type: Literal["single", "subscription"] = Field(..., description="single 单次 / subscription 开通期")
+    plan_type: Literal["single", "report", "subscription"] = Field(..., description="single 单次预演 / report 完整报告 / subscription 学期包")
     days: Optional[int] = Field(None, ge=1, description="开通天数（默认 single/subscription 均为 30 天）")
     expires_at: Optional[datetime] = Field(None, description="直接开到该具体到期日期（与 days 二选一，须晚于当前）")
     channel: str = Field("other", description="线下成交渠道：xianyu / wechat / alipay / cash / other")
@@ -629,6 +629,7 @@ async def admin_dashboard_overview(
         "plan_distribution": {
             "free": plan_dist.get("free", 0),
             "single": plan_dist.get("single", 0),
+            "report": plan_dist.get("report", 0),
             "subscription": plan_dist.get("subscription", 0),
         },
         "projects_by_mode": {

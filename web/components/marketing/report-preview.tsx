@@ -159,7 +159,7 @@ export function ReportPreview() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link href="/pricing">联系客服</Link>
+              <Link href="/pricing">查看套餐</Link>
             </Button>
           </div>
           <p className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-caption text-ink-400">

@@ -7,7 +7,7 @@ export interface User {
   nickname: string | null;
   avatar: string | null;
   email_verified: boolean;
-  plan: "free" | "single" | "subscription";
+  plan: "free" | "single" | "report" | "subscription";
   plan_expires_at: string | null;
   created_at: string;
   updated_at: string;

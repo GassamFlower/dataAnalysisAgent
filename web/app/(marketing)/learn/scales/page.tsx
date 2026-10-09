@@ -160,8 +160,8 @@ export default function ScalesLibraryPage() {
         ) : !data || data.items.length === 0 ? (
           <Card className="p-12 text-center">
             <BookOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">未找到量表</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h3 className="text-h3 font-semibold">未找到量表</h3>
+            <p className="mt-1 text-body text-muted-foreground">
               换一个关键词或学科试试
             </p>
           </Card>
@@ -189,7 +189,7 @@ export default function ScalesLibraryPage() {
                     </Badge>
                   </div>
 
-                  <p className="line-clamp-3 text-sm text-muted-foreground">
+                  <p className="line-clamp-3 text-body text-muted-foreground">
                     {scale.description || "暂无简介"}
                   </p>
 

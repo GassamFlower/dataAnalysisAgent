@@ -281,14 +281,14 @@ export default function SettingsPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-destructive">套餐已过期</p>
                       <p className="text-xs text-muted-foreground">
-                        您的开通权限已过期，完整能力已暂停。联系客服即可续开，继续使用数据生成、报告分析等能力。
+                        您的套餐已过期，完整能力已暂停。选择套餐续费即可恢复数据生成、报告分析等能力。
                       </p>
                     </div>
                     <Button
                       size="sm"
                       onClick={() => router.push("/pricing")}
                     >
-                      联系客服
+                      续费套餐
                     </Button>
                   </div>
                 );
@@ -303,7 +303,7 @@ export default function SettingsPage() {
                         即将到期 · 剩余 {status.daysLeft} 天
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        开通权限即将到期，联系客服续费可避免完整能力中断。
+                        套餐即将到期，续费可避免完整能力中断。
                       </p>
                     </div>
                     <Button
@@ -311,7 +311,7 @@ export default function SettingsPage() {
                       variant="outline"
                       onClick={() => router.push("/pricing")}
                     >
-                      联系客服
+                      续费套餐
                     </Button>
                   </div>
                 );
@@ -340,7 +340,7 @@ export default function SettingsPage() {
                 size="sm"
                 onClick={() => router.push("/pricing")}
               >
-                联系客服
+                查看套餐
               </Button>
             </div>
           )}

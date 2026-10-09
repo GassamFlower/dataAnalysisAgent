@@ -106,10 +106,19 @@ class Settings(BaseSettings):
     # 前端支付成功后的回跳地址（可选）
     WXPAY_REDIRECT_URL: str = ""
 
-    # 线上成交模式开关（线下成交转最小可行方案，Step 2）
-    # True = 允许 C 端在线下单/支付回调自动激活；False（默认）= 在线支付全部拒绝，
-    # 完整能力仅在后台由管理员通过「线下订单」手动开通。生产建议保持 False。
-    ENABLE_ONLINE_PAYMENT: bool = False
+    # ── 支付宝（当面付 / 扫码）──
+    # 开通支付宝当面付后从开放平台获取（open.alipay.com）
+    ALIPAY_APP_ID: str = ""               # 应用 APPID
+    ALIPAY_APP_PRIVATE_KEY: str = ""       # 应用私钥（RSA2，PEM 内容或文件路径）
+    ALIPAY_ALIPAY_PUBLIC_KEY: str = ""     # 支付宝公钥（PEM 内容，用于验签）
+    ALIPAY_NOTIFY_URL: str = ""            # 异步通知 URL（https://你的域名/api/v1/payment/alipay/notify）
+    ALIPAY_GATEWAY: str = "https://openapi.alipay.com/gateway.do"
+
+    # 线上成交模式开关（《VIBE 全流程手册》P0：开自助在线支付）
+    # True = 允许 C 端在线下单/支付回调自动激活（微信 Native 扫码 + 支付宝）；
+    # False = 在线支付全部拒绝，完整能力仅在后台由管理员「线下订单」手动开通。
+    # 生产默认开启以支持自助闭环；若需临时切回线下，置 False 即可。
+    ENABLE_ONLINE_PAYMENT: bool = True
 
     # 套餐限制
     FREE_PLAN_PROJECT_LIMIT: int = 3

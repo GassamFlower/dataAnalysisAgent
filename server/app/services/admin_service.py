@@ -15,7 +15,7 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 # 合法套餐枚举（与 users 表 ck_users_plan 一致）
-VALID_PLANS = {"free", "single", "subscription"}
+VALID_PLANS = {"free", "single", "report", "subscription"}
 
 
 # ── 后台模块定义（F-ADM-001 授权模型）───────────────────────────────────

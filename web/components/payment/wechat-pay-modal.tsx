@@ -30,28 +30,28 @@ export function WechatPayQrModal({ open, codeUrl, onClose }: WechatPayQrModalPro
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg"
+        className="w-full max-w-sm rounded-xl bg-card p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-ink-900">微信扫码支付</h3>
-          <p className="mt-1 text-sm text-ink-500">
+          <h3 className="text-h3 font-semibold text-ink-900">微信扫码支付</h3>
+          <p className="mt-1 text-body text-ink-500">
             请使用微信扫一扫，扫描下方二维码完成支付
           </p>
         </div>
 
-        <div className="mx-auto mt-4 w-fit rounded-lg border border-border bg-white p-3">
+        <div className="mx-auto mt-4 w-fit rounded-lg border border-border bg-card p-3">
           <QRCodeSVG value={codeUrl} size={220} />
         </div>
 
-        <p className="mt-4 text-center text-xs text-ink-400">
+        <p className="mt-4 text-center text-caption text-ink-400">
           支付完成后本页面将自动跳转，请勿关闭此窗口
         </p>
 
         <button
           type="button"
           onClick={onClose}
-          className="mt-4 w-full rounded-md border border-border py-2 text-center text-sm font-medium text-ink-700 hover:bg-muted"
+          className="mt-4 w-full rounded-md border border-border py-2 text-center text-body font-medium text-ink-700 hover:bg-muted"
         >
           取消支付
         </button>

@@ -18,25 +18,23 @@ import { cn } from "@/lib/utils";
 
 /**
  * 相关矩阵可视化（宪法第 12、13 条：透明展示）。
- * 标注【用户假设】vs【系统补全】，支持点击循环切换强度或直接输入数值。
+ * 标注【用户假设】vs【系统补全】，点击单元格直接输入数值编辑。
  */
 export function CorrelationMatrix({
   matrix,
-  onCellClick,
   onCellChange,
 }: {
   matrix: CorrelationMatrix;
-  /** 单击非对角单元格回调（循环切换强度档位） */
-  onCellClick?: (rowIdx: number, colIdx: number) => void;
   /** 直接输入数值后回调（rowIdx, colIdx, value） */
   onCellChange?: (rowIdx: number, colIdx: number, value: number) => void;
 }) {
   const { dimensions, cells } = matrix;
   const [editing, setEditing] = useState<{ row: number; col: number } | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editError, setEditError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const editable = !!onCellClick || !!onCellChange;
+  const editable = !!onCellChange;
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -56,29 +54,36 @@ export function CorrelationMatrix({
     if (!onCellChange) return;
     setEditing({ row, col });
     setEditValue(value.toFixed(2));
+    setEditError("");
   };
 
-  const commitEdit = () => {
+  const commitEdit = (blur = false) => {
     if (!editing || !onCellChange) return;
 
     const raw = editValue.trim();
     const parsed = parseFloat(raw);
     if (raw === "" || Number.isNaN(parsed) || parsed < -1 || parsed > 1) {
-      // 非法值：回退，不触发变更
-      setEditing(null);
+      if (blur) {
+        setEditing(null);
+        setEditError("");
+      } else {
+        setEditError("请输入 [-1, 1] 范围内的数值");
+      }
       return;
     }
 
     const rounded = Math.round(parsed * 100) / 100;
     onCellChange(editing.row, editing.col, rounded);
     setEditing(null);
+    setEditError("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      commitEdit();
+      commitEdit(false);
     } else if (e.key === "Escape") {
       setEditing(null);
+      setEditError("");
     }
   };
 
@@ -124,9 +129,8 @@ export function CorrelationMatrix({
                   return (
                     <TableCell
                       key={colDim}
-                      onClick={editable && !isEditing ? () => onCellClick?.(i, j) : undefined}
+                      onClick={editable && !isEditing ? () => startEdit(i, j, cell.value) : undefined}
                       role={editable ? "button" : undefined}
-                      onDoubleClick={editable ? () => startEdit(i, j, cell.value) : undefined}
                       className={cn(
                         "group relative text-center tabular",
                         editable && "cursor-pointer hover:ring-2 hover:ring-ring/40",
@@ -134,14 +138,25 @@ export function CorrelationMatrix({
                       )}
                     >
                       {isEditing ? (
-                        <Input
-                          ref={inputRef}
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={commitEdit}
-                          onKeyDown={handleKeyDown}
-                          className="h-7 w-20 px-1 text-center text-ink-900"
-                        />
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Input
+                            ref={inputRef}
+                            value={editValue}
+                            onChange={(e) => {
+                              setEditValue(e.target.value);
+                              if (editError) setEditError("");
+                            }}
+                            onBlur={() => commitEdit(true)}
+                            onKeyDown={handleKeyDown}
+                            className={cn(
+                              "h-7 w-20 px-1 text-center text-ink-900",
+                              editError && "border-destructive focus-visible:ring-destructive",
+                            )}
+                          />
+                          {editError && (
+                            <span className="text-[10px] text-destructive">{editError}</span>
+                          )}
+                        </div>
                       ) : (
                         <>
                           <span className="pointer-events-none text-ink-900">
@@ -169,7 +184,7 @@ export function CorrelationMatrix({
         </Table>
       </div>
       <p className="text-caption text-ink-400">
-        单击切换强度档位，双击可直接输入 [-1, 1] 范围内的相关系数。
+        点击单元格可直接输入 [-1, 1] 范围内的相关系数，按 Enter 确认。
       </p>
     </div>
   );

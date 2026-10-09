@@ -359,7 +359,7 @@ export function ContactForm({
         return (
           <div className="space-y-1">
             <Label className="text-caption text-ink-500">{field.label}</Label>
-            <div className="flex h-10 items-center rounded-md border border-dashed border-border bg-ink-500/40 px-3 text-sm text-ink-700">
+            <div className="flex h-10 items-center rounded-md border border-dashed border-border bg-ink-500/40 px-3 text-body text-ink-700">
               {display}
             </div>
           </div>
@@ -377,7 +377,7 @@ export function ContactForm({
                 onChange={(e) => setValue(_key, e.target.value)}
               />
               {field.suffix && (
-                <span className="shrink-0 text-sm text-ink-500">
+                <span className="shrink-0 text-body text-ink-500">
                   {field.suffix}
                 </span>
               )}
@@ -426,7 +426,7 @@ export function ContactForm({
               {(field.options ?? []).map((o) => (
                 <label
                   key={o}
-                  className="flex cursor-pointer items-center gap-1.5 text-sm text-ink-700"
+                  className="flex cursor-pointer items-center gap-1.5 text-body text-ink-700"
                 >
                   <Checkbox
                     checked={(multi[_key] ?? []).includes(o)}
@@ -483,15 +483,15 @@ export function ContactForm({
                   : "border-border bg-background text-ink-700 hover:border-primary/40"
               )}
             >
-              <div className="text-sm font-medium">{t.label}</div>
-              <div className="text-xs text-ink-500">{t.desc}</div>
+              <div className="text-body font-medium">{t.label}</div>
+              <div className="text-caption text-ink-500">{t.desc}</div>
             </button>
           ))}
         </div>
       )}
 
       {/* 说明文案 */}
-      <p className="rounded-md bg-ink-500/50 px-3 py-2 text-sm text-ink-700">
+      <p className="rounded-md bg-ink-500/50 px-3 py-2 text-body text-ink-700">
         {meta.intro}
       </p>
 
@@ -514,7 +514,7 @@ export function ContactForm({
       <div className="space-y-1.5">
         <Label htmlFor="cf-contact">
           联系方式（选填）
-          <span className="ml-1 text-xs text-ink-400">便于我们回访</span>
+          <span className="ml-1 text-caption text-ink-400">便于我们回访</span>
         </Label>
         <Input
           id="cf-contact"

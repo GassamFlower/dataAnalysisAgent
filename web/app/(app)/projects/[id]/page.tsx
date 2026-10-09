@@ -194,12 +194,12 @@ export default function WorkbenchPage({
               </h3>
             </div>
             <p className="mt-2 text-body text-ink-500">
-              体检永久免费。生成模拟数据、验证假设是否达标、导出报告等完整能力，联系客服即可开通。
+              体检永久免费。生成模拟数据、验证假设是否达标、导出报告等完整能力，选择套餐扫码即用。
             </p>
             <div className="mt-4 flex gap-3">
               <Button asChild>
                 <Link href="/pricing">
-                  联系客服
+                  查看套餐
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Link>
               </Button>

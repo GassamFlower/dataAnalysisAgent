@@ -67,6 +67,18 @@ export function HypothesisPathList({
     strength: "medium",
   });
 
+  const emptyDraft: HypothesisPath = {
+    predictor: "",
+    outcome: "",
+    direction: "positive",
+    strength: "medium",
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setAddOpen(open);
+    if (!open) setDraft(emptyDraft);
+  };
+
   // 空列表且不支持添加：不渲染
   if (paths.length === 0 && !onAdd) return null;
 
@@ -78,7 +90,7 @@ export function HypothesisPathList({
       direction: draft.direction,
       strength: draft.strength,
     });
-    setDraft({ predictor: "", outcome: "", direction: "positive", strength: "medium" });
+    setDraft(emptyDraft);
     setAddOpen(false);
   };
 
@@ -184,7 +196,7 @@ export function HypothesisPathList({
       )}
 
       {onAdd && (
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <Dialog open={addOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="w-full border-dashed">
               <Plus className="mr-1.5 h-4 w-4" />
@@ -271,7 +283,7 @@ export function HypothesisPathList({
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setAddOpen(false)}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 取消
               </Button>
               <Button

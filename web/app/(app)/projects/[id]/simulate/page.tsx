@@ -43,11 +43,6 @@ import {
   useSimulationDisclaimerCheck,
   useConfirmSimulationDisclaimer,
 } from "@/lib/hooks/use-compliance";
-import {
-  STRENGTH_TO_R,
-  nextStrength,
-  rToStrength,
-} from "@/lib/constants";
 import type {
   CorrelationMatrix as Matrix,
   HypothesisPath,
@@ -75,6 +70,8 @@ export default function SimulatePage({
   const [hitRate, setHitRate] = useState<HitRateSummary | null>(null);
   /** 答辩摘要（生成成功后设置） */
   const [defenseSummary, setDefenseSummary] = useState<DefenseSummary | null>(null);
+  /** 矩阵是否有未保存的编辑 */
+  const [matrixDirty, setMatrixDirty] = useState(false);
 
   // 查询项目、已生成的矩阵 + 已保存假设
   const { data: project } = useProject(params.id);
@@ -98,6 +95,16 @@ export default function SimulatePage({
     };
   }, []);
 
+  // 有未保存的矩阵编辑时，阻止意外关闭/导航
+  useEffect(() => {
+    if (!matrixDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [matrixDirty]);
+
   // 根据项目 mode 初始化/同步当前 Tab
   useEffect(() => {
     if (project?.mode) {
@@ -114,11 +121,13 @@ export default function SimulatePage({
 
   /** debounce 保存矩阵到后端 */
   const debouncedSaveMatrix = (matrixToSave: Matrix) => {
+    setMatrixDirty(true);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveMatrixMutation.mutate(
         { projectId: params.id, matrix: matrixToSave },
         {
+          onSuccess: () => setMatrixDirty(false),
           onError: () => {
             toast.error("矩阵保存失败，编辑可能不会保留");
           },
@@ -148,18 +157,6 @@ export default function SimulatePage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedHypothesisText, savedPaths]);
-
-  // 点击单元格：循环切换强度档位（弱→中→强→弱），保留符号，对称更新
-  const handleCellClick = (rowIdx: number, colIdx: number) => {
-    if (!matrix) return;
-    const cell = matrix.cells[rowIdx]?.[colIdx];
-    if (!cell) return;
-    const currentTier = rToStrength(Math.abs(cell.value));
-    const nextTier = nextStrength(currentTier);
-    const sign = cell.value === 0 ? 1 : Math.sign(cell.value);
-    const newValue = Number((STRENGTH_TO_R[nextTier] * sign).toFixed(2));
-    updateMatrixCell(rowIdx, colIdx, newValue);
-  };
 
   // 直接输入数值：校验 [-1, 1]，对称更新，标记为用户编辑
   const handleCellChange = (rowIdx: number, colIdx: number, value: number) => {
@@ -210,14 +207,13 @@ export default function SimulatePage({
   // 实际执行模拟数据生成
   const executeGenerate = async () => {
     try {
-      await generateMutation.mutateAsync({
+      const result = await generateMutation.mutateAsync({
         projectId: params.id,
         sampleSize,
       });
 
       // 保存本次生成返回的预演命中率用于展示
-      const lastGen = generateMutation.data;
-      setHitRate(lastGen?.hitRate ?? null);
+      setHitRate(result?.hitRate ?? null);
 
       toast.success("数据生成成功");
     } catch (err) {
@@ -235,6 +231,11 @@ export default function SimulatePage({
 
     if (paths.length === 0) {
       toast.warning("假设路径为空，请先解析假设");
+      return;
+    }
+
+    if (!sampleSize || sampleSize <= 0) {
+      toast.warning("请输入有效的样本量");
       return;
     }
 
@@ -281,7 +282,7 @@ export default function SimulatePage({
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
           toast.success("数据集导出成功，请检查浏览器下载列表");
         },
         onError: (err) => {
@@ -410,8 +411,13 @@ export default function SimulatePage({
 
           {/* 步骤 2：相关矩阵（C 底层 + 透明展示） */}
           <Card className="p-6">
-            <div className="mb-1 text-caption font-medium text-ink-400">
-              步骤 2
+            <div className="mb-1 flex items-center gap-2 text-caption font-medium text-ink-400">
+              <span>步骤 2</span>
+              {matrixDirty && (
+                <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[11px] text-warning">
+                  保存中…
+                </span>
+              )}
             </div>
             <h3 className="text-h3 font-semibold text-ink-900">
               相关矩阵（可编辑）
@@ -423,9 +429,6 @@ export default function SimulatePage({
               {hasMatrix ? (
                 <CorrelationMatrix
                   matrix={matrix}
-                  onCellClick={
-                    generateMutation.isPending ? undefined : handleCellClick
-                  }
                   onCellChange={
                     generateMutation.isPending ? undefined : handleCellChange
                   }
@@ -480,7 +483,7 @@ export default function SimulatePage({
             </div>
             {generateMutation.isError && (
               <p className="mt-2 text-caption text-destructive">
-                生成失败：{generateMutation.error.message}
+                生成失败：{generateMutation.error instanceof Error ? generateMutation.error.message : "未知错误"}
               </p>
             )}
           </Card>

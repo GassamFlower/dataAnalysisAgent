@@ -16,6 +16,7 @@ function fmtPct(value: number): string {
  */
 export function HitRateCard({ hitRate }: { hitRate: HitRateSummary }) {
   const failedPaths = hitRate.paths.filter((p) => !p.passed);
+  const sortedPaths = [...hitRate.paths].sort((a, b) => Number(a.passed) - Number(b.passed));
 
   return (
     <Card className="p-6">
@@ -44,7 +45,7 @@ export function HitRateCard({ hitRate }: { hitRate: HitRateSummary }) {
       </div>
 
       <ul className="mt-5 space-y-2.5">
-        {hitRate.paths.map((p) => (
+        {sortedPaths.map((p) => (
           <li
             key={`${p.predictor}->${p.outcome}`}
             className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"

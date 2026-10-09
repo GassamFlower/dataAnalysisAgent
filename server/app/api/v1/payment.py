@@ -33,6 +33,10 @@ from app.services.wechat_pay import (
     decrypt_notify_resource,
     verify_notify_signature,
 )
+from app.services.alipay import (
+    create_precreate_order,
+    verify_notify_signature as alipay_verify_notify_signature,
+)
 
 router = APIRouter(prefix="/payment", tags=["payment"])
 
@@ -270,7 +274,11 @@ async def wechat_pay_qr(
         from app.core.exceptions import ValidationException
         raise ValidationException(f"订单当前状态为 {order.status}，不可支付")
 
-    plan_label = "月度订阅" if order.type == "subscription" else "单次报告"
+    plan_label = {
+        "single": "单次预演",
+        "report": "完整报告",
+        "subscription": "学期包",
+    }.get(order.type, "套餐")
     code_url = await create_native_order(
         out_trade_no=str(order.id).replace("-", ""),
         description=plan_label,
@@ -386,3 +394,115 @@ async def wechat_pay_notify(
         )
         await payment_service.process_payment_notification(db, order_id, notify_request)
         return ResponseModel(data={"code": "FAIL", "message": "订单未支付"})
+
+
+@router.post(
+    "/alipay/{order_id}/qr",
+    response_model=ResponseModel,
+    summary="支付宝预下单（返回支付二维码 qr_code）",
+    description="为已有 pending 订单发起支付宝预下单，返回 qr_code（前端生成二维码）。",
+)
+async def alipay_qr(
+    order_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """为订单发起支付宝预下单，返回 qr_code 供前端生成二维码。
+
+    - 仅订单本人可发起
+    - 仅 pending 订单可支付
+    - 金额由服务端读取订单（不让前端传），杜绝改价
+    """
+    _require_online_payment_enabled()
+    order = await payment_service.get_order_detail(
+        db, current_user["id"], order_id
+    )
+    if order.status != "pending":
+        from app.core.exceptions import ValidationException
+        raise ValidationException(f"订单当前状态为 {order.status}，不可支付")
+
+    plan_label = {
+        "single": "单次预演",
+        "report": "完整报告",
+        "subscription": "学期包",
+    }.get(order.type, "套餐")
+    qr_code = await create_precreate_order(
+        out_trade_no=str(order.id).replace("-", ""),
+        total_amount=order.amount,
+        subject=plan_label,
+    )
+    return ResponseModel(data={"qr_code": qr_code, "order_id": str(order_id)})
+
+
+@router.post(
+    "/alipay/notify",
+    summary="支付宝支付结果回调（官方验签）",
+    description="支付宝服务器回调：验签 → 校验金额 → 更新订单 → 激活套餐。无需登录。",
+)
+async def alipay_notify(
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """支付宝异步通知回调。
+
+    流程：读取 form 参数 → 验签 → 校验 order 状态与金额 → 更新。
+    """
+    _require_online_payment_enabled()
+
+    # 支付宝回调以 form-urlencoded 形式 POST
+    form_data = await http_request.form()
+    params = dict(form_data)
+    signature = params.get("sign", "")
+
+    if not alipay_verify_notify_signature(params, signature):
+        from app.core.exceptions import UnauthorizedException
+        raise UnauthorizedException("支付宝回调验签失败")
+
+    # 解析回调参数
+    out_trade_no = params.get("out_trade_no", "")
+    trade_status = params.get("trade_status", "")
+    trade_no = params.get("trade_no", "")  # 支付宝交易号
+    total_amount = params.get("total_amount", "")
+
+    order_id = parse_order_id(out_trade_no)
+    if not order_id:
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("回调订单号无法解析")
+
+    # 处理成功
+    if trade_status in ("TRADE_SUCCESS", "TRADE_FINISHED"):
+        amount_yuan = Decimal(total_amount) if total_amount else None
+        notify_request = OrderNotifyRequest(
+            channel="alipay",
+            transaction_id=trade_no or out_trade_no,
+            status="success",
+            amount=amount_yuan,
+        )
+        order = await payment_service.process_payment_notification(
+            db, order_id, notify_request
+        )
+        await AuditService.log_action(
+            db=db,
+            user_id=order.user_id,
+            action_type=ACTION_TYPES["PAYMENT_NOTIFY"],
+            action_detail={
+                "order_id": str(order.id),
+                "channel": "alipay",
+                "transaction_id": trade_no,
+                "status": "success",
+            },
+            ip_address=http_request.client.host if http_request.client else None,
+        )
+        # 支付宝要求返回纯文本 "success"
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse("success")
+    else:
+        # 失败回调
+        notify_request = OrderNotifyRequest(
+            channel="alipay",
+            transaction_id=trade_no or out_trade_no,
+            status="failed",
+        )
+        await payment_service.process_payment_notification(db, order_id, notify_request)
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse("success")

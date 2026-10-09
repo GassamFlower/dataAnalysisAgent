@@ -43,6 +43,10 @@ echo "  ✓ SSH 端口已开放"
 ufw allow http
 echo "  ✓ HTTP 80 端口已开放"
 
+# 允许 HTTPS（Nginx TLS）
+ufw allow https
+echo "  ✓ HTTPS 443 端口已开放"
+
 # 允许 1Panel 端口（默认 9999，可根据实际修改）
 read -p "请输入 1Panel 面板端口（默认 9999）: " PANEL_PORT
 PANEL_PORT=${PANEL_PORT:-9999}

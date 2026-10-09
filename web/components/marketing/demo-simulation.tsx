@@ -59,7 +59,7 @@ export function DemoSimulation() {
                 <MousePointerClick className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="font-display text-2xl font-semibold text-ink-900">
+                <h2 className="font-display text-h2 font-semibold text-ink-900">
                   拖一拖，回收前就知道命中率
                 </h2>
                 <p className="mt-2 text-body text-ink-500">
@@ -130,7 +130,7 @@ export function DemoSimulation() {
               }}
             >
               <div className="flex h-[calc(128px-38px)] w-[calc(128px-38px)] items-center justify-center rounded-full bg-card">
-                <span className="font-mono text-2xl font-bold text-ink-900 tabular-nums">
+                <span className="font-mono text-h2 font-bold text-ink-900 tabular-nums">
                   {percent}%
                 </span>
               </div>

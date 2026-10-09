@@ -15,7 +15,7 @@ import {
 import { useQuota } from "@/lib/hooks/use-payment";
 
 interface PaidActionGuardProps {
-  /** 当前用户套餐：free / single / subscription */
+  /** 当前用户套餐：free / single / report / subscription */
   plan: string;
   /** 付费操作类型：simulation / export / analysis / data_import */
   actionType?: "simulation" | "export" | "analysis" | "data_import";
@@ -97,7 +97,7 @@ export function PaidActionGuard({
             </DialogTitle>
             <DialogDescription>
               本周{actionLabel}次数已用完（{quota?.limit}次）。
-              {resetDate}自动重置，或联系客服开通完整能力。
+              {resetDate}自动重置，或开通完整能力不限次使用。
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -105,7 +105,7 @@ export function PaidActionGuard({
               稍后再说
             </Button>
             <Button asChild>
-              <Link href="/pricing">联系客服</Link>
+              <Link href="/pricing">查看套餐</Link>
             </Button>
           </div>
         </DialogContent>

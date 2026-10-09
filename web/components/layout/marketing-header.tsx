@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { Button } from "@/components/ui/button";
@@ -20,12 +20,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut, LayoutDashboard, Menu, GraduationCap } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
 
 function Brand() {
   return (
     <div className="flex items-center gap-2">
       <Link href="/" className="flex items-center gap-2">
-        <span className="font-display text-xl font-bold text-ink-900">预演</span>
+        <span className="font-display text-h3 font-bold text-ink-900">预演</span>
       </Link>
       <Badge variant="outline" className="hidden font-normal text-ink-500 sm:inline-flex">
         研究预演工具
@@ -40,8 +41,18 @@ export function MarketingHeader() {
   const logout = useAuthStore((s) => s.logout);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  const handleScroll = useCallback(() => {
+    setScrolled(window.scrollY > 8);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   const handleLogout = () => {
     logout();
@@ -55,147 +66,159 @@ export function MarketingHeader() {
     { href: "/about", label: "关于" },
   ];
 
+  const shellClasses = cn(
+    "sticky top-0 z-50 border-b transition-[background-color,border-color] duration-base ease-out",
+    scrolled
+      ? "border-border bg-background/80 backdrop-blur-lg"
+      : "border-transparent bg-transparent"
+  );
+
   // SSR 时显示默认状态（未登录），避免 hydration mismatch
   if (!mounted) {
     return (
-      <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-        <Brand />
-        <nav className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-            <Link href="/pricing">联系</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-            <Link href="/learn">
-              <GraduationCap className="mr-1.5 h-4 w-4" />
-              统计小课堂
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-            <Link href="/about">关于</Link>
-          </Button>
-          <ThemeToggle />
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/login">登录</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/projects/new">免费体检</Link>
-          </Button>
-        </nav>
-      </header>
-    );
-  }
-
-  return (
-    <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-      <Brand />
-
-      {/* 桌面导航 */}
-      <nav className="hidden items-center gap-2 md:flex">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/pricing">联系</Link>
-        </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/learn">
-            <GraduationCap className="mr-1.5 h-4 w-4" />
-            统计小课堂
-          </Link>
-        </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/about">关于</Link>
-        </Button>
-        <ThemeToggle />
-        {isAuthenticated ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <User className="mr-1.5 h-3.5 w-3.5" />
-                {user?.nickname ?? "用户"}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem asChild>
-                <Link href="/projects" className="flex items-center gap-2 cursor-pointer">
-                  <LayoutDashboard className="h-4 w-4" />
-                  我的项目
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="flex items-center gap-2 cursor-pointer text-destructive"
-              >
-                <LogOut className="h-4 w-4" />
-                退出登录
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <>
+      <div className={shellClasses}>
+        <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+          <Brand />
+          <nav className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+              <Link href="/pricing">联系</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+              <Link href="/learn">
+                <GraduationCap className="mr-1.5 h-4 w-4" />
+                统计小课堂
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+              <Link href="/about">关于</Link>
+            </Button>
+            <ThemeToggle />
             <Button variant="outline" size="sm" asChild>
               <Link href="/login">登录</Link>
             </Button>
             <Button size="sm" asChild>
               <Link href="/projects/new">免费体检</Link>
             </Button>
-          </>
-        )}
-      </nav>
+          </nav>
+        </header>
+      </div>
+    );
+  }
 
-      {/* 移动端：汉堡菜单（保持 CTA 可见） */}
-      <div className="flex items-center gap-2 md:hidden">
-        <Button size="sm" asChild>
-          <Link href={isAuthenticated ? "/projects" : "/projects/new"}>
-            {user?.nickname ? "我的项目" : "免费体检"}
-          </Link>
-        </Button>
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="打开菜单">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72 sm:max-w-sm">
-            <SheetHeader>
-              <SheetTitle className="text-left">菜单</SheetTitle>
-            </SheetHeader>
-            <nav className="mt-6 flex flex-col gap-1">
-              {navLinks.map((l) => (
+  return (
+    <div className={shellClasses}>
+      <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+        <Brand />
+
+        {/* 桌面导航 */}
+        <nav className="hidden items-center gap-2 md:flex">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/pricing">联系</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/learn">
+              <GraduationCap className="mr-1.5 h-4 w-4" />
+              统计小课堂
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/about">关于</Link>
+          </Button>
+          <ThemeToggle />
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <User className="mr-1.5 h-3.5 w-3.5" />
+                  {user?.nickname ?? "用户"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem asChild>
+                  <Link href="/projects" className="flex items-center gap-2 cursor-pointer">
+                    <LayoutDashboard className="h-4 w-4" />
+                    我的项目
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 cursor-pointer text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  退出登录
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/login">登录</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/projects/new">免费体检</Link>
+              </Button>
+            </>
+          )}
+        </nav>
+
+        {/* 移动端：汉堡菜单（保持 CTA 可见） */}
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <Button size="sm" asChild>
+            <Link href={isAuthenticated ? "/projects" : "/projects/new"}>
+              {user?.nickname ? "我的项目" : "免费体检"}
+            </Link>
+          </Button>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="打开菜单">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 sm:max-w-sm">
+              <SheetHeader>
+                <SheetTitle className="text-left">菜单</SheetTitle>
+              </SheetHeader>
+              <nav className="mt-6 flex flex-col gap-1">
+                {navLinks.map((l) => (
+                  <Button
+                    key={l.href}
+                    variant="ghost"
+                    size="lg"
+                    asChild
+                    className="justify-start"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Link href={l.href}>{l.label}</Link>
+                  </Button>
+                ))}
                 <Button
-                  key={l.href}
                   variant="ghost"
                   size="lg"
                   asChild
                   className="justify-start"
                   onClick={() => setMobileOpen(false)}
                 >
-                  <Link href={l.href}>{l.label}</Link>
+                  <Link href={isAuthenticated ? "/projects" : "/login"}>
+                    {isAuthenticated ? "我的项目" : "登录"}
+                  </Link>
                 </Button>
-              ))}
-              <Button
-                variant="ghost"
-                size="lg"
-                asChild
-                className="justify-start"
-                onClick={() => setMobileOpen(false)}
-              >
-                <Link href={isAuthenticated ? "/projects" : "/login"}>
-                  {isAuthenticated ? "我的项目" : "登录"}
-                </Link>
-              </Button>
-              {isAuthenticated ? (
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="justify-start text-destructive"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  退出登录
-                </Button>
-              ) : null}
-            </nav>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </header>
+                {isAuthenticated ? (
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="justify-start text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    退出登录
+                  </Button>
+                ) : null}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </header>
+    </div>
   );
 }

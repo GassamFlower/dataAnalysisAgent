@@ -1,8 +1,8 @@
 /** 套餐类型 */
-export type PlanType = "free" | "single" | "subscription";
+export type PlanType = "free" | "single" | "report" | "subscription";
 
 /** 订单类型 */
-export type OrderType = "single" | "subscription";
+export type OrderType = "single" | "report" | "subscription";
 
 /** 订单状态 */
 export type OrderStatus = "pending" | "paid" | "refunded" | "cancelled";
