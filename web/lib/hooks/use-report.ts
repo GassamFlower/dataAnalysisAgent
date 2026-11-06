@@ -66,20 +66,53 @@ export type PolishSection =
   | "result"
   | "discussion";
 
+/** 表达体检单项（与后端 ai_tone.summarize_actionable 同构） */
+export interface PolishToneItem {
+  id: string;
+  level: string;
+  name: string;
+  count: number;
+  advice: string;
+  examples: string[];
+}
+
+export interface PolishToneFingerprint {
+  key: string;
+  label: string;
+  density: number;
+  note: string;
+}
+
+export interface PolishTone {
+  actionable: number;
+  kinds: number;
+  items: PolishToneItem[];
+  fingerprints: PolishToneFingerprint[];
+  structure_flags: number;
+  previous_actionable?: number;
+}
+
 /**
  * 报告文字润色 / 论文段落（R6，Task 3.1）。
  * 调用 LLM 将指定章节的统计结果转化为论文段落。
+ * 传入 currentText 时按体检清单做最小改写（再润色），不重新生成。
  * 对应后端：POST /api/report/:reportId/polish
  */
 export function usePolishReport() {
   return useMutation({
-    mutationFn: (params: { reportId: string; section: PolishSection }) =>
+    mutationFn: (params: {
+      reportId: string;
+      section: PolishSection;
+      currentText?: string;
+    }) =>
       apiClient.post<{
         section: string;
         text: string;
         disclaimer: string;
+        tone?: PolishTone | null;
       }>(`/api/report/${params.reportId}/polish`, {
         section: params.section,
+        ...(params.currentText ? { current_text: params.currentText } : {}),
       }),
   });
 }

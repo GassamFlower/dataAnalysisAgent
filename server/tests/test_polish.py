@@ -12,6 +12,7 @@ import pytest
 from app.services.report_polisher import (
     polish_section,
     polish_paper_section,
+    refine_with_tone,
     _build_polish_prompt,
     _build_paper_excerpt,
     _post_process,
@@ -314,3 +315,132 @@ def test_paper_section_unsupported():
     """异常：不支持的论文段落章节类型抛 ValueError。"""
     with pytest.raises(ValueError, match="不支持的论文段落章节类型"):
         polish_paper_section({}, "abstract")
+
+
+# ============================
+# 表达体检联动：生成时附带 tone，按体检项再润色
+# ============================
+
+_TONE_SAMPLE = (
+    "本研究首先对量表进行信效度检验。不是样本量不足，而是测量工具本身存在结构问题。"
+    "通过对 120 份问卷的整理，总量表 Cronbach's α = 0.856。"
+    "总结：该量表在本次样本中达到可用水平。以上为统计描述参考。"
+)
+
+_CLEAN_SAMPLE = (
+    "本研究对量表进行了信效度检验。总量表 Cronbach's α = 0.856，各维度内部一致性达到可用水平。"
+    "样本来自三所高校的在校学生，共回收有效问卷 120 份。"
+    "数据整理后按维度计算 α 系数，并记录每个维度的检验结果。以上为统计描述参考。"
+)
+
+
+def test_polish_section_attaches_tone(monkeypatch):
+    """正常：润色结果附带确定性表达体检摘要。"""
+    monkeypatch.setattr(
+        "app.services.report_polisher.chat_pro", lambda prompt: _TONE_SAMPLE
+    )
+
+    result = polish_section(_build_full_report_data(), "reliability")
+
+    tone = result["tone"]
+    assert tone is not None
+    assert tone["actionable"] >= 1
+    assert any(item["id"] == "contrast" for item in tone["items"])
+
+
+def test_paper_polish_attaches_tone(monkeypatch):
+    """正常：论文段落同样附带表达体检摘要。"""
+    monkeypatch.setattr(
+        "app.services.report_polisher.chat_pro", lambda prompt: _TONE_SAMPLE
+    )
+
+    result = polish_paper_section(_build_full_report_data(), "result")
+
+    assert result["tone"]["actionable"] >= 1
+
+
+def test_refine_with_tone_rewrites_and_reports_previous(monkeypatch):
+    """正常：按体检项再润色，返回改写稿、体检前后计数与声明。"""
+    rewritten = (
+        "本研究首先对量表进行信效度检验。样本量不足与测量工具的结构问题需要分开判断。"
+        "通过对 120 份问卷的整理，总量表 Cronbach's α = 0.856。"
+        "该量表在本次样本中达到可用水平。以上为统计描述参考。"
+    )
+
+    def mock_chat_pro(prompt, system=""):
+        assert "对举句式" in prompt
+        return '{"rewritten_text": "' + rewritten + '"}'
+
+    monkeypatch.setattr("app.services.report_polisher.chat_pro", mock_chat_pro)
+
+    result = refine_with_tone(_build_full_report_data(), "reliability", _TONE_SAMPLE)
+
+    assert result["section"] == "reliability"
+    assert result["text"] == rewritten
+    assert result["disclaimer"] == DISCLAIMER
+    assert result["tone"]["previous_actionable"] >= 1
+    assert result["redline"] is None
+
+
+def test_refine_accepts_shorter_rewrite(monkeypatch):
+    """边界：改写稿短于输入下限时仍可返回，回测不再按输入下限拒绝。"""
+    original = (
+        "本研究对量表进行信效度检验。不是样本量不足，而是测量工具存在结构问题。"
+        "共回收 120 份问卷，总量表 α = 0.856，各维度 α 介于 0.798 至 0.903。"
+        "以上为统计描述参考。"
+    )
+    rewritten = (
+        "本研究检验量表信效度。共回收 120 份问卷，总量表 α = 0.856，"
+        "各维度 α 介于 0.798 至 0.903，测量工具存在结构问题。以上为统计描述参考。"
+    )
+
+    monkeypatch.setattr(
+        "app.services.report_polisher.chat_pro",
+        lambda prompt, system="": '{"rewritten_text": "' + rewritten + '"}',
+    )
+
+    result = refine_with_tone(_build_full_report_data(), "reliability", original)
+
+    assert result["text"] == rewritten
+    assert result["tone"]["previous_actionable"] >= 1
+
+
+def test_refine_rejects_missing_number(monkeypatch):
+    """异常：改写稿丢失原文数字时拒绝返回。"""
+    rewritten = _TONE_SAMPLE.replace("120", "")
+
+    monkeypatch.setattr(
+        "app.services.report_polisher.chat_pro",
+        lambda prompt, system="": '{"rewritten_text": "' + rewritten + '"}',
+    )
+
+    with pytest.raises(ValueError, match="未保留原文数字"):
+        refine_with_tone(_build_full_report_data(), "reliability", _TONE_SAMPLE)
+
+
+def test_refine_rejects_without_actionable_items():
+    """异常：原文没有可改项时不发起再润色。"""
+    with pytest.raises(ValueError, match="没有检测到可改"):
+        refine_with_tone(_build_full_report_data(), "reliability", _CLEAN_SAMPLE)
+
+
+def test_refine_paper_rejects_new_conclusive_words(monkeypatch):
+    """异常：论文段落再润色引入结论性用语时拒绝返回。"""
+    original = (
+        "研究结果显示，总量表 Cronbach's α = 0.856，各维度 α 介于 0.798 至 0.903。"
+        "不是所有维度都达到门槛，而是有 1 个维度需要复核。该维度共有 6 道题项，"
+        "删除其中 1 题后需要重新计算内部一致性。以上为统计描述参考。"
+    )
+    rewritten = (
+        "研究结果显示，总量表 Cronbach's α = 0.856，各维度 α 介于 0.798 至 0.903，"
+        "其中 1 个维度需要复核，该维度共有 6 道题项，删除其中 1 题后需要重新计算内部一致性，"
+        "干预显著提升了学业成绩。以上为统计描述参考。"
+    )
+
+    monkeypatch.setattr(
+        "app.services.report_polisher.chat_pro",
+        lambda prompt, system="": '{"rewritten_text": "' + rewritten + '"}',
+    )
+
+    with pytest.raises(ValueError, match="结论性用语"):
+        refine_with_tone(_build_full_report_data(), "result", original)

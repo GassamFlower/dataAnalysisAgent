@@ -13,7 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
+import { ToneCheck } from "@/components/report/tone-check";
 import { usePolishReport } from "@/lib/hooks/use-report";
+import type { PolishTone } from "@/lib/hooks/use-report";
 import type { Report } from "@/types";
 
 /**
@@ -35,6 +37,7 @@ export function PolishButton({
 }) {
   const [open, setOpen] = useState(false);
   const [polishText, setPolishText] = useState<string>("");
+  const [polishTone, setPolishTone] = useState<PolishTone | null>(null);
   const polishMutation = usePolishReport();
 
   const sectionLabels: Record<typeof section, string> = {
@@ -47,14 +50,32 @@ export function PolishButton({
   const handlePolish = async () => {
     setOpen(true);
     setPolishText("");
+    setPolishTone(null);
     try {
       const result = await polishMutation.mutateAsync({
         reportId,
         section,
       });
       setPolishText(result.text);
+      setPolishTone(result.tone ?? null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "润色失败，请重试");
+    }
+  };
+
+  const handleRefine = async () => {
+    if (!polishText) return;
+    try {
+      const result = await polishMutation.mutateAsync({
+        reportId,
+        section,
+        currentText: polishText,
+      });
+      setPolishText(result.text);
+      setPolishTone(result.tone ?? null);
+      toast.success("已按表达体检项改写");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "再润色失败，请重试");
     }
   };
 
@@ -96,8 +117,8 @@ export function PolishButton({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[420px] overflow-y-auto">
-            {polishMutation.isPending ? (
+          <div className="max-h-[520px] overflow-y-auto">
+            {polishMutation.isPending && !polishText ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="mt-3 text-body text-ink-700">
@@ -109,11 +130,20 @@ export function PolishButton({
               </div>
             ) : polishText ? (
               <div className="space-y-3">
+                {polishMutation.isPending && (
+                  <p className="flex items-center gap-2 text-caption text-ink-500">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    正在按体检项改写，预计 10-30 秒…
+                  </p>
+                )}
                 <div className="rounded-md border border-border bg-cream-surface/50 p-4">
                   <p className="whitespace-pre-wrap text-body leading-relaxed text-ink-700">
                     {polishText}
                   </p>
                 </div>
+                {polishTone && !polishMutation.isPending ? (
+                  <ToneCheck tone={polishTone} onRefine={handleRefine} />
+                ) : null}
                 <div className="flex items-start gap-2 rounded-md bg-muted/30 p-3 text-caption text-ink-500">
                   <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-400" />
                   <span>

@@ -799,15 +799,26 @@ async def polish_report(
     from app.services.report_polisher import (
         polish_section,
         polish_paper_section,
+        refine_with_tone,
         PAPER_SECTIONS,
     )
+    current_text = (request.current_text or "").strip()
+    mode = "refine" if current_text else "generate"
     try:
         if request.section in PAPER_SECTIONS:
             # 论文段落（方法/结果/讨论）：尽力注入预演命中率摘要，让「结果」能对齐功效预演
             await _inject_hit_rate(db, report.project_id, report_data)
-            polish_result = polish_paper_section(report_data, request.section)
+            polish_result = (
+                refine_with_tone(report_data, request.section, current_text)
+                if current_text
+                else polish_paper_section(report_data, request.section)
+            )
         else:
-            polish_result = polish_section(report_data, request.section)
+            polish_result = (
+                refine_with_tone(report_data, request.section, current_text)
+                if current_text
+                else polish_section(report_data, request.section)
+            )
     except ValueError as e:
         raise ValidationException(str(e))
     except Exception as e:
@@ -822,6 +833,7 @@ async def polish_report(
         action_detail={
             "report_id": str(report_id),
             "section": request.section,
+            "mode": mode,
         },
         ip_address=http_request.client.host if http_request.client else None,
         user_agent=http_request.headers.get("user-agent"),
@@ -832,6 +844,7 @@ async def polish_report(
             section=polish_result["section"],
             text=polish_result["text"],
             disclaimer=polish_result["disclaimer"],
+            tone=polish_result.get("tone"),
         )
     )
 

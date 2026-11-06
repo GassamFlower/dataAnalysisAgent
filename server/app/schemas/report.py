@@ -115,6 +115,11 @@ class PolishRequest(BaseModel):
     """报告润色请求。"""
 
     section: str = Field(..., description="章节类型: reliability / correlation / diff_test / diagnosis / method / result / discussion")
+    current_text: Optional[str] = Field(
+        None,
+        max_length=8000,
+        description="待再润色的已有段落；传入时按表达体检清单做最小改写，不重新生成",
+    )
 
 
 class PolishResponse(BaseModel):
@@ -123,6 +128,10 @@ class PolishResponse(BaseModel):
     section: str
     text: str
     disclaimer: str = "此为统计描述参考，非研究结论"
+    tone: Optional[Dict[str, Any]] = Field(
+        None,
+        description="表达体检摘要：actionable / kinds / items / fingerprints / previous_actionable",
+    )
 
 
 class SampleRepDistribution(BaseModel):

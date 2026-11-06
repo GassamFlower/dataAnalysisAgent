@@ -11,9 +11,15 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from app.services.ai_tone import (
+    analyze_text,
+    summarize_actionable,
+    validate_rewrite_text,
+)
 from app.services.llm.client import chat_pro
 from app.services.llm.utils import (
     build_prompt_injection_guard,
+    parse_llm_json_response,
     wrap_user_input,
 )
 
@@ -160,6 +166,14 @@ def self_check_defense(text: str) -> dict:
             words.append(word)
             warnings.append(f"检测到结论性用语「{word}」，请改为仅描述统计结果")
     return {"passed": not words, "warnings": warnings, "words": words}
+
+
+def tone_summary(text: str) -> Optional[Dict[str, Any]]:
+    """对润色结果跑确定性表达检测；文本过短或检测失败时返回 None，不影响主流程。"""
+    try:
+        return summarize_actionable(analyze_text(text))
+    except ValueError:
+        return None
 
 
 def generate_path_qa(path: Dict[str, Any], required_n: int) -> Dict[str, Any]:
@@ -318,33 +332,38 @@ def polish_section(report_data: Dict[str, Any], section: str) -> Dict[str, Any]:
         "section": section,
         "text": text,
         "disclaimer": DISCLAIMER,
+        "tone": tone_summary(text),
     }
+
+
+def _section_payload(report_data: Dict[str, Any], section: str) -> Dict[str, Any]:
+    """按章节抽取报告数据（润色与再润色共用）。"""
+    if section == "reliability":
+        return {
+            "reliability_results": report_data.get("reliability_results", []),
+            "overall_alpha": report_data.get("overall_alpha"),
+            "passed_count": report_data.get("passed_count"),
+            "total_count": report_data.get("total_count"),
+        }
+    if section == "correlation":
+        diff_tests = report_data.get("diff_tests", [])
+        return {
+            "correlation_tests": [t for t in diff_tests if t.get("method") == "pearson"]
+        }
+    if section == "diff_test":
+        return {"diff_tests": report_data.get("diff_tests", [])}
+    if section == "diagnosis":
+        return {"diagnosis": report_data.get("diagnosis")}
+    if section in PAPER_SECTIONS:
+        return _build_paper_excerpt(report_data, section)
+    return {}
 
 
 def _build_polish_prompt(report_data: Dict[str, Any], section: str) -> str:
     """构建润色 prompt。"""
     import json
 
-    # 提取对应章节的数据
-    if section == "reliability":
-        data = {
-            "reliability_results": report_data.get("reliability_results", []),
-            "overall_alpha": report_data.get("overall_alpha"),
-            "passed_count": report_data.get("passed_count"),
-            "total_count": report_data.get("total_count"),
-        }
-    elif section == "correlation":
-        # 从 diff_tests 中提取 Pearson 相关
-        diff_tests = report_data.get("diff_tests", [])
-        pearson_tests = [t for t in diff_tests if t.get("method") == "pearson"]
-        data = {"correlation_tests": pearson_tests}
-    elif section == "diff_test":
-        data = {"diff_tests": report_data.get("diff_tests", [])}
-    elif section == "diagnosis":
-        data = {"diagnosis": report_data.get("diagnosis")}
-    else:
-        data = {}
-
+    data = _section_payload(report_data, section)
     data_json = json.dumps(data, ensure_ascii=False, indent=2)
     wrapped_data = wrap_user_input(data_json, label=f"{section}_data")
 
@@ -573,6 +592,128 @@ def polish_paper_section(report_data: Dict[str, Any], section: str) -> Dict[str,
         "text": text,
         "disclaimer": DISCLAIMER,
         "redline": redline,
+        "tone": tone_summary(text),
+    }
+
+
+REFINE_PROMPT = """你是严谨的学术写作编辑。下面这段文字已由系统根据统计结果生成，请按体检清单做最小改写。
+
+硬性要求：
+1. 只改清单命中的位置和同类表达问题，不整段重写。
+2. 信息守恒：数字、百分比、p 值、统计量、姓名、引语、来源原样保留。
+3. 段落数量与顺序不变，不增删标题、列表、表格、引用。
+4. 不新增原文没有的事实、数字或判断。
+5. 不添加结论性用语（如「显著提升」「显著影响」「证明假设成立」「因果」）。
+6. 保留末尾的统计描述声明。
+
+体检清单：
+{checklist}
+
+参考数据（只用于确认事实，不得据此新增数字）：
+{data}
+
+待改写文字：
+{text}
+
+只输出 JSON，不要 Markdown 代码块，不要解释：
+{{"rewritten_text":"完整改写稿"}}"""
+
+
+def _strip_code_fence(text: str) -> str:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.split("\n", 1)[1] if "\n" in stripped else stripped[3:]
+        if stripped.rstrip().endswith("```"):
+            stripped = stripped.rstrip()[:-3]
+    return stripped.strip()
+
+
+def _build_checklist(summary: Dict[str, Any]) -> str:
+    lines: List[str] = []
+    for item in summary.get("items", []):
+        lines.append(
+            f"- [{item['level']}] {item['name']}：{item['count']} 处；{item['advice']}"
+        )
+        for excerpt in item.get("examples", [])[:2]:
+            lines.append(f"  例：「{excerpt}」")
+    for item in summary.get("fingerprints", []):
+        lines.append(
+            f"- [F] {item['label']}：{item['density']}/千字；{item['note']}"
+        )
+    return "\n".join(lines) if lines else "- 无"
+
+
+def refine_with_tone(
+    report_data: Dict[str, Any],
+    section: str,
+    current_text: str,
+) -> Dict[str, Any]:
+    """按已生成的表达体检清单，对润色结果再做一次最小改写。
+
+    - 只复用报告数据作为事实边界，不引入新数字。
+    - 改写后校验数字与引语守恒；论文段落额外检查结论性用语。
+    """
+    import json
+
+    if section not in SECTION_PROMPTS and section not in PAPER_SECTIONS:
+        raise ValueError(f"不支持的章节类型: {section}")
+
+    normalized = (current_text or "").replace("\r\n", "\n").strip()
+    analysis = analyze_text(normalized)
+    before = summarize_actionable(analysis)
+    if before["actionable"] == 0:
+        raise ValueError("这段文字没有检测到可改的表达问题。")
+
+    data = _section_payload(report_data, section)
+    prompt = REFINE_PROMPT.format(
+        checklist=_build_checklist(before),
+        data=wrap_user_input(
+            json.dumps(data, ensure_ascii=False, indent=2), label=f"{section}_data"
+        ),
+        text=wrap_user_input(normalized, label="current_text"),
+    )
+    prompt = f"{build_prompt_injection_guard()}\n\n{prompt}"
+
+    try:
+        raw = chat_pro(
+            prompt,
+            system="你是严谨的学术写作编辑。只输出符合要求的 JSON，不输出其他内容。",
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("按体检项再润色 LLM 失败 | section=%s | error=%s", section, exc)
+        raise ValueError("润色服务暂不可用，请稍后重试。") from exc
+
+    try:
+        payload = parse_llm_json_response(raw)
+    except ValueError as exc:
+        logger.warning("再润色结果解析失败 | section=%s | raw=%s", section, raw[:200])
+        raise ValueError("润色结果解析失败，请重试。") from exc
+
+    rewritten = _strip_code_fence(str(payload.get("rewritten_text") or ""))
+    if not rewritten:
+        raise ValueError("润色结果为空，请重试。")
+
+    rewritten = _post_process(rewritten)
+    validate_rewrite_text(normalized, rewritten)
+
+    redline = self_check_defense(rewritten)
+    if section in PAPER_SECTIONS:
+        before_words = set(self_check_defense(normalized)["words"])
+        new_words = [word for word in redline["words"] if word not in before_words]
+        if new_words:
+            raise ValueError(
+                "再润色引入了结论性用语（" + "、".join(new_words) + "），已拒绝本次结果。"
+            )
+
+    after = summarize_actionable(analyze_text(rewritten, strict=False))
+    after["previous_actionable"] = before["actionable"]
+
+    return {
+        "section": section,
+        "text": rewritten,
+        "disclaimer": DISCLAIMER,
+        "redline": redline if section in PAPER_SECTIONS else None,
+        "tone": after,
     }
 
 

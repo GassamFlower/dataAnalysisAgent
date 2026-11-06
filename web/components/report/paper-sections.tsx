@@ -11,7 +11,9 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
+import { ToneCheck } from "@/components/report/tone-check";
 import { usePolishReport } from "@/lib/hooks/use-report";
+import type { PolishTone } from "@/lib/hooks/use-report";
 import { cn } from "@/lib/utils";
 
 type PaperSection = "method" | "result" | "discussion";
@@ -24,25 +26,49 @@ const PAPER_SECTIONS: { value: PaperSection; label: string; desc: string }[] = [
 
 export function PaperSections({ reportId }: { reportId: string }) {
   const [section, setSection] = useState<PaperSection>("result");
-  const [cache, setCache] = useState<Record<PaperSection, string>>({
-    method: "",
-    result: "",
-    discussion: "",
+  const [cache, setCache] = useState<
+    Record<PaperSection, { text: string; tone: PolishTone | null }>
+  >({
+    method: { text: "", tone: null },
+    result: { text: "", tone: null },
+    discussion: { text: "", tone: null },
   });
   const polishMutation = usePolishReport();
 
-  const text = cache[section];
+  const text = cache[section].text;
+  const tone = cache[section].tone;
   const activeDesc = PAPER_SECTIONS.find((s) => s.value === section)?.desc ?? "";
   const activeLabel = PAPER_SECTIONS.find((s) => s.value === section)?.label ?? "";
 
   const handleGenerate = useCallback(async () => {
     try {
       const result = await polishMutation.mutateAsync({ reportId, section });
-      setCache((prev) => ({ ...prev, [section]: result.text }));
+      setCache((prev) => ({
+        ...prev,
+        [section]: { text: result.text, tone: result.tone ?? null },
+      }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "生成失败，请重试");
     }
   }, [reportId, section, polishMutation]);
+
+  const handleRefine = useCallback(async () => {
+    if (!text) return;
+    try {
+      const result = await polishMutation.mutateAsync({
+        reportId,
+        section,
+        currentText: text,
+      });
+      setCache((prev) => ({
+        ...prev,
+        [section]: { text: result.text, tone: result.tone ?? null },
+      }));
+      toast.success("已按表达体检项改写");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "再润色失败，请重试");
+    }
+  }, [reportId, section, text, polishMutation]);
 
   const handleCopy = async () => {
     try {
@@ -65,7 +91,7 @@ export function PaperSections({ reportId }: { reportId: string }) {
             onClick={() => setSection(s.value)}
           >
             {s.label}
-            {cache[s.value] && (
+            {cache[s.value].text && (
               <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-current opacity-60" />
             )}
           </Button>
@@ -117,6 +143,13 @@ export function PaperSections({ reportId }: { reportId: string }) {
               </div>
             )}
           </div>
+          {tone && (
+            <ToneCheck
+              tone={tone}
+              onRefine={handleRefine}
+              refining={polishMutation.isPending}
+            />
+          )}
           {!polishMutation.isPending && (
             <>
               <div className="flex items-start gap-2 rounded-md bg-muted/30 p-3 text-caption text-ink-500">
