@@ -19,8 +19,8 @@ export function LoadingState({
         className
       )}
     >
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="mt-4 text-body text-ink-500">{label}</p>
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <p className="mt-3 text-body text-ink-500">{label}</p>
     </div>
   );
 }

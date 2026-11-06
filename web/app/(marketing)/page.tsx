@@ -4,30 +4,33 @@ import {
   ArrowRight,
   FileSearch,
   FlaskConical,
-  Users,
   FileBarChart,
-  Download,
+  Users,
   ShieldCheck,
   CheckCircle2,
   AlertTriangle,
   Lightbulb,
+  Download,
+  GraduationCap,
+  Code2,
+  ShoppingBag,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { ReportPreview } from "@/components/marketing/report-preview";
 import { DemoSimulation } from "@/components/marketing/demo-simulation";
-import { ContactForm } from "@/components/contact/contact-form";
-import { WechatEntry } from "@/components/contact/wechat-entry";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
-import { PROJECT_STEPS, SIMULATED_WATERMARK, DISCLAIMER } from "@/lib/constants";
+import { PRICING, SIMULATED_WATERMARK } from "@/lib/constants";
+import { SITE } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "数据分析智能体 | 回收前预演，回收后看懂",
+  title: "预演 | 发问卷前先预演，回收后看懂样本",
   description:
-    "全网唯一支持回收前预演：上传问卷题目先做信效度体检，一句话描述假设预演数据是否达标；回收后用样本代表性诊断看懂样本够不够格——在正式发问卷之前，就知道方向对不对。免费题目体检，完整能力自助开通。",
+    "上传问卷题目先做信效度和样本代表性体检，再用一句话描述假设预演数据是否达标。题目体检永久免费，完整报告与导出按服务包开通，小红书店铺下单。",
   keywords: [
     "数据分析",
     "问卷预演",
@@ -40,65 +43,49 @@ export const metadata: Metadata = {
     "KMO",
     "数据生成",
   ],
-  authors: [{ name: "数据分析智能体团队" }],
+  authors: [{ name: SITE.name }],
   openGraph: {
-    title: "数据分析智能体 | 回收前预演，回收后看懂",
+    title: "预演 | 发问卷前先预演，回收后看懂样本",
     description:
-      "回收前预演：先体检题目、预演数据是否达标；回收后看懂：样本代表性诊断帮你判断样本够不够格。",
+      "回收前预演数据方向，回收后诊断样本代表性。题目体检永久免费，完整能力按服务包开通。",
     type: "website",
     locale: "zh_CN",
-    siteName: "数据分析智能体",
+    siteName: SITE.name,
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "数据分析智能体 - 回收前预演，回收后看懂",
+        alt: "预演 - 发问卷前先预演，回收后看懂样本",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "数据分析智能体 | 回收前预演，回收后看懂",
+    title: "预演 | 发问卷前先预演，回收后看懂样本",
     description:
-      "回收前预演：先体检题目、预演数据是否达标；回收后看懂：样本代表性诊断帮你判断样本够不够格。",
+      "回收前预演数据方向，回收后诊断样本代表性。题目体检永久免费。",
     images: ["/og-image.png"],
   },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-    },
-  },
-  alternates: {
-    canonical: "/",
-  },
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
 };
 
-const stepIcons = [FileSearch, FlaskConical, FileBarChart, Download];
-
-const painPoints = [
+const quickSteps = [
   {
-    icon: AlertTriangle,
-    title: "收不回数据",
-    desc: "问卷发出去石沉大海，好不容易收回几十份，样本量不够。",
+    icon: FileSearch,
+    title: "上传问卷题目",
+    desc: "粘贴题目文本，或导入问卷星与 SPSS 文件。",
   },
   {
-    icon: AlertTriangle,
-    title: "信效度不达标",
-    desc: "SPSS 一跑 α 系数太低，维度划分有问题，题目设计要重来。",
+    icon: FlaskConical,
+    title: "说清研究假设",
+    desc: "选维度强度，系统生成相关矩阵并预演数据。",
   },
   {
-    icon: AlertTriangle,
-    title: "样本没代表性",
-    desc: "收回来全是同学填的，男女比 8:2、年龄全在 20 岁上下，答辩一句话就被问住。",
-  },
-  {
-    icon: AlertTriangle,
-    title: "相关性不显著",
-    desc: "假设的关系跑不出来，论文核心结论站不住脚。",
+    icon: FileBarChart,
+    title: "拿到预演报告",
+    desc: "信效度、差异分析、智能诊断与导出一次完成。",
   },
 ];
 
@@ -106,32 +93,69 @@ const features = [
   {
     icon: FileSearch,
     title: "题目体检",
-    desc: "上传问卷文本，自动识别题型、维度归属与反向题。永久免费。",
+    desc: "自动识别题型、维度归属与反向题。永久免费。",
   },
   {
     icon: FlaskConical,
     title: "数据预演",
-    desc: "一句话描述假设，自动生成相关矩阵与模拟数据，透明可编辑——回收前就知道方向对不对。",
+    desc: "一句话描述假设，生成相关矩阵与模拟数据，透明可编辑。",
   },
   {
     icon: Users,
     title: "样本代表性诊断",
-    desc: "回收后自动体检：样本量够不够、性别分布是否失衡、结构是否集中，给出补收建议。",
+    desc: "样本量够不够、性别分布是否失衡、结构是否集中，给出补收建议。",
   },
   {
     icon: FileBarChart,
     title: "统计报告",
-    desc: "信效度检验、差异分析、智能诊断，一键导出 Word / Excel。",
+    desc: "信效度检验、差异分析、智能诊断，一键导出 Word / Excel / PDF / PPT。",
   },
   {
     icon: Lightbulb,
     title: "智能诊断",
-    desc: "AI 推理诊断不达标项，每个问题配一句话告诉你怎么办。",
+    desc: "先匹配常见翻车点，再用自然语言说明原因和改法。",
   },
   {
     icon: Download,
     title: "一键导入与导出",
-    desc: "问卷星 / SPSS 文件直接导入，Word / Excel / PPT / PDF 报告导出。",
+    desc: "问卷星、SPSS 文件直接导入，报告与数据集按需导出。",
+  },
+];
+
+const painPoints = [
+  {
+    title: "收不回数据",
+    desc: "问卷发出去石沉大海，好不容易收回几十份，样本量不够。",
+  },
+  {
+    title: "信效度不达标",
+    desc: "SPSS 一跑 α 系数太低，维度划分有问题，题目设计要重来。",
+  },
+  {
+    title: "样本没代表性",
+    desc: "收回来全是同学填的，男女比 8:2、年龄全在 20 岁上下。",
+  },
+  {
+    title: "相关性不显著",
+    desc: "假设的关系跑不出来，论文核心结论站不住脚。",
+  },
+];
+
+const principles = [
+  {
+    icon: ShieldCheck,
+    title: "合规优先",
+    desc: "生成数据强制带 SIMULATED 标识，仅用于研究可行性预演。",
+  },
+  {
+    icon: GraduationCap,
+    title: "面向本科生",
+    desc: "不需要精通统计软件，按步骤就能完成一次完整预演。",
+  },
+  {
+    icon: Code2,
+    title: "技术透明",
+    desc: "统计阈值公开，效应量档位与学术标准一致。",
   },
 ];
 
@@ -142,192 +166,189 @@ const trustItems = [
   "KMO + Bartlett 效度检验",
   "t检验 / ANOVA / 卡方 / 回归",
   "智能诊断",
-  "Word / Excel / PPT 一键导出",
+  "Word / Excel / PPT / PDF 导出",
   "论文信效度段落自动生成",
+];
+
+const faqs = [
+  {
+    q: "题目体检真的免费吗？",
+    a: "是。题目上传、解析、维度归属推断、题型与反向题识别、样本代表性诊断都免费，不需要下单。",
+  },
+  {
+    q: "完整能力怎么开通？",
+    a: "在小红书店铺选择服务包下单，把订单号发给客服，核对后为你开通。站点不提供在线支付。",
+  },
+  {
+    q: "生成的数据能写进论文吗？",
+    a: "不能。所有生成数据带 SIMULATED 标识，仅用于研究可行性预演，帮助你提前发现题目或假设的问题。",
+  },
+  {
+    q: "统计方法和 SPSS 一致吗？",
+    a: "核心方法（α、KMO、Bartlett、t 检验、ANOVA、卡方、回归）与 SPSS 输出一致，差异检验方法由决策树自动选择。",
+  },
+  {
+    q: "需要会统计吗？",
+    a: "不需要。按页面步骤操作即可；每个指标旁边都有解释，诊断会直接告诉你下一步改什么。",
+  },
+  {
+    q: "数据安全吗？",
+    a: "问卷与生成数据存储在国内服务器。AI 诊断只传输题目与假设文本，不传输邮箱、昵称和密码。",
+  },
 ];
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* 顶部导航 */}
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <MarketingHeader />
 
-      {/* Hero */}
-      <section className="relative mx-auto max-w-5xl overflow-hidden px-6 pb-24 pt-20 text-center">
-        {/* 品牌水印：editorial "期刊卷首" 氛围 */}
-        <span
-          aria-hidden
-          className="brand-watermark pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[12rem] leading-none sm:text-[16rem]"
-        >
-          预演
-        </span>
-        <Stagger step={0.12} amount={0.3}>
+      <section className="mx-auto max-w-4xl px-6 pb-8 pt-10 sm:pt-14">
+        <Stagger step={0.1} amount={0.3}>
           <StaggerItem>
-            <Badge variant="secondary" className="mb-6 font-normal text-ink-500">
+            <Badge variant="outline" className="mb-4 font-normal text-ink-500">
               <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-              全网唯一支持回收前预演 · 合规路线 · 仅用于研究预演
+              题目体检永久免费 · 数据仅用于研究预演
             </Badge>
           </StaggerItem>
           <StaggerItem>
-            <h1 className="font-display text-display font-bold leading-tight text-ink-900">
-              回收前预演，回收后看懂
-              <br className="hidden sm:block" />
-              <span className="text-primary">避免问卷白做一趟</span>
+            <h1 className="text-[30px] font-semibold leading-[1.18] tracking-tight text-ink-900 sm:text-[42px]">
+              发问卷前先预演
+              <br className="sm:hidden" />
+              <span className="text-primary">回收后看懂样本</span>
             </h1>
           </StaggerItem>
           <StaggerItem>
-            <p className="mx-auto mt-6 max-w-2xl text-body-lg text-ink-500">
-              发问卷之前：先做一次信效度体检，一句话描述假设，预演数据是否达标；
-              收问卷之后：用样本代表性诊断看懂样本量、性别分布和结构集中度——
-              两条路都在正式写结论之前，就知道方向对不对。
+            <p className="mt-4 max-w-2xl text-body-lg leading-relaxed text-ink-500">
+              上传题目先做信效度体检，一句话描述假设预演数据是否达标；
+              收回问卷后用样本代表性诊断判断样本够不够格。两步都在写结论之前。
             </p>
           </StaggerItem>
           <StaggerItem>
-            <div className="mt-8 flex items-center justify-center gap-3">
-              <Button size="lg" asChild>
+            <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+              <Button size="lg" asChild className="w-full sm:w-auto">
                 <Link href="/projects/new">
                   开始免费体检
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/pricing">查看套餐</Link>
+              <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
+                <Link href="/example">先看样例报告</Link>
               </Button>
             </div>
           </StaggerItem>
         </Stagger>
       </section>
 
-      {/* 可交互预演 demo：拖动效应量/样本量 → 命中率实时变化（首屏紧接 Hero） */}
-      <DemoSimulation />
+      <section className="mx-auto max-w-5xl px-6 pb-4">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-cream-surface p-4 sm:grid-cols-3 sm:p-5">
+          {quickSteps.map((step, index) => (
+            <div key={step.title} className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card text-ink-700">
+                <step.icon className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-body font-semibold text-ink-900">
+                  {index + 1}. {step.title}
+                </h2>
+                <p className="mt-0.5 text-small text-ink-500">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      {/* 报告预览：首次印象让外行看得懂成品 */}
       <ReportPreview />
 
-      {/* 预演数据水印脚注 */}
       <p className="mx-auto max-w-5xl px-6 pb-2 text-center font-mono text-caption tracking-wider text-ink-400">
         {SIMULATED_WATERMARK}
       </p>
 
-      {/* 痛点区（editorial：标题左对齐 + 不对称 2+2，破除 4 等分平铺） */}
       <section className="mx-auto max-w-5xl px-6 py-10">
-        <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[1fr_1.6fr]">
-          <Reveal>
+        <Reveal>
+          <div className="flex flex-col items-start justify-between gap-5 rounded-xl border border-border bg-card p-6 sm:flex-row sm:items-center">
             <div>
-              <div className="flex items-center gap-2 text-caption font-medium uppercase tracking-[0.14em] text-ink-400">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                回收前最怕的
-              </div>
-              <h2 className="mt-3 font-display text-h2 font-semibold leading-snug text-ink-900">
-                问卷白做一趟，
-                <br />
-                问题往往出在这几步
-              </h2>
-              <p className="mt-4 max-w-[30ch] text-body text-ink-500">
-                数据没回收之前，方向是否可行其实已经可以预演——别等发完问卷、跑完 SPSS 才发现。
+              <h2 className="text-h3 font-semibold text-ink-900">免费额度内先把流程跑通</h2>
+              <p className="mt-1.5 text-small text-ink-500">
+                免费账号可创建 3 个项目，每周 3 次预演与导出。确认好用后再开通服务包。
               </p>
             </div>
-          </Reveal>
-          <Stagger step={0.08} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {painPoints.map((p, i) => (
-              <StaggerItem key={p.title}>
-                <Card className="lift h-full border-border bg-card p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <p.icon className="h-5 w-5" />
-                    </div>
-                    <span className="font-display text-caption text-ink-400 tabular">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <h3 className="mt-3 text-h3 font-semibold text-ink-900">{p.title}</h3>
-                  <p className="mt-1.5 text-body text-ink-500">{p.desc}</p>
-                </Card>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </div>
-      </section>
-
-      {/* 四步流程（大衬线序号打破平铺；sm 两列 lg 四列完整展示） */}
-      <section className="mx-auto max-w-5xl px-6 py-14">
-        <Reveal className="mb-8">
-          <h2 className="font-display text-h2 font-semibold leading-snug text-ink-900">
-            四条路径，闭环一次研究预演
-          </h2>
-        </Reveal>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {PROJECT_STEPS.map((step, i) => {
-            const Icon = stepIcons[i];
-            return (
-              <Reveal key={step.key} delay={i * 80}>
-                <div className="relative h-full overflow-hidden rounded-lg border border-border bg-card p-6">
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute -right-1 top-1 select-none font-display text-[5rem] font-bold leading-none text-ink-900/5"
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="relative">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="mt-5 text-h3 font-semibold text-ink-900">{step.label}</h3>
-                    <p className="mt-2 text-body text-ink-500">{step.description}</p>
-                  </div>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 功能特性区（editorial 头 + 双列清单，区别于前两区） */}
-      <section className="mx-auto max-w-5xl px-6 py-14">
-        <div className="grid grid-cols-1 items-start gap-10 md:grid-cols-[1fr_2fr]">
-          <Reveal>
-            <div>
-              <div className="text-caption font-medium uppercase tracking-[0.14em] text-ink-400">
-                核心能力
-              </div>
-              <h2 className="mt-3 font-display text-h2 font-semibold leading-snug text-ink-900">
-                一套工具，
-                <br />
-                从题目体检到论文报告
-              </h2>
-              <Button variant="outline" size="sm" className="mt-6" asChild>
-                <Link href="/learn">先学统计知识
-                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            <div className="flex shrink-0 gap-2">
+              <Button asChild>
+                <Link href="/projects/new">免费开始</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/pricing">
+                  <ShoppingBag className="mr-1.5 h-4 w-4" />
+                  看服务包
                 </Link>
               </Button>
             </div>
-          </Reveal>
-          <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-2">
-            {features.map((f, i) => (
-              <Reveal key={f.title} delay={i * 60}>
-                <div className="flex items-start gap-3.5">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <f.icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-h3 font-semibold text-ink-900">{f.title}</h3>
-                    <p className="mt-1 text-body text-ink-500">{f.desc}</p>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
           </div>
+        </Reveal>
+      </section>
+
+      <DemoSimulation />
+
+      <section className="mx-auto max-w-5xl px-6 py-12">
+        <Reveal className="mb-7">
+          <div className="flex items-center gap-2 text-caption font-medium uppercase tracking-[0.14em] text-ink-400">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            回收前最怕的
+          </div>
+          <h2 className="mt-2 text-h2 font-semibold leading-snug text-ink-900">
+            问卷白做一趟，问题往往出在这几步
+          </h2>
+        </Reveal>
+        <Stagger step={0.06} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {painPoints.map((point, index) => (
+            <StaggerItem key={point.title}>
+              <Card className="h-full border-border bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-body-lg font-semibold text-ink-900">{point.title}</h3>
+                  <span className="text-caption tabular text-ink-400">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-small leading-relaxed text-ink-500">{point.desc}</p>
+              </Card>
+            </StaggerItem>
+          ))}
+        </Stagger>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 py-12">
+        <Reveal className="mb-7">
+          <h2 className="text-h2 font-semibold text-ink-900">一套工具，从题目体检到报告导出</h2>
+          <p className="mt-2 text-body text-ink-500">
+            每一步都能看见数字是怎么来的，不需要在黑箱里等结果。
+          </p>
+        </Reveal>
+        <div className="grid grid-cols-1 gap-x-10 gap-y-6 sm:grid-cols-2">
+          {features.map((feature, index) => (
+            <Reveal key={feature.title} delay={index * 50}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary text-ink-700">
+                  <feature.icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-body-lg font-semibold text-ink-900">{feature.title}</h3>
+                  <p className="mt-0.5 text-small leading-relaxed text-ink-500">
+                    {feature.desc}
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
         </div>
       </section>
 
-      {/* 覆盖能力带（信息密集：文本分栏而非整卡，制造密集-放松交替） */}
-      <section className="mx-auto max-w-5xl px-6 py-14">
+      <section className="mx-auto max-w-5xl px-6 py-12">
         <Reveal>
-          <div className="rounded-lg border border-border bg-cream-surface px-6 py-8 sm:px-8">
-            <h2 className="text-center font-display text-h2 font-semibold text-ink-900">
+          <div className="rounded-xl border border-border bg-cream-surface px-6 py-7 sm:px-8">
+            <h2 className="text-center text-h2 font-semibold text-ink-900">
               覆盖论文所需全部统计方法
             </h2>
-            <div className="mx-auto mt-7 grid max-w-3xl grid-cols-1 gap-x-8 gap-y-2.5 text-left sm:grid-cols-2">
+            <div className="mx-auto mt-6 grid max-w-3xl grid-cols-1 gap-x-8 gap-y-2.5 text-left sm:grid-cols-2">
               {trustItems.map((item) => (
                 <div key={item} className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
@@ -339,68 +360,79 @@ export default function HomePage() {
         </Reveal>
       </section>
 
-      {/* 开通收口 CTA */}
-      <section className="mx-auto max-w-5xl px-6 pt-16 text-center">
+      <section id="principles" className="mx-auto max-w-5xl px-6 py-12">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {principles.map((item) => (
+            <Card key={item.title} className="p-5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary text-ink-700">
+                <item.icon className="h-4 w-4" />
+              </div>
+              <h2 className="mt-3 text-body-lg font-semibold text-ink-900">{item.title}</h2>
+              <p className="mt-1 text-small leading-relaxed text-ink-500">{item.desc}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 py-12">
         <Reveal>
-          <h2 className="font-display text-h2 font-semibold leading-snug text-ink-900">
-            免费体检，自助开通完整能力
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-body text-ink-500">
-            题目体检与样本代表性诊断永久免费；数据预演、统计报告、智能诊断与导出等完整能力，选择套餐扫码即用。
-          </p>
-          <div className="mt-7 flex items-center justify-center gap-3">
-            <Button size="lg" asChild>
-              <Link href="/pricing">
-                查看套餐
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/projects/new">
-                开始免费体检
-              </Link>
-            </Button>
+          <div className="rounded-xl border border-primary/25 bg-brand-soft/60 p-6 sm:p-8">
+            <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-h2 font-semibold text-ink-900">需要完整报告时再开通</h2>
+                <p className="mt-2 text-body text-ink-500">
+                  完整报告 {PRICING.report.price} 元/份，学期包 {PRICING.subscription.price} 元。
+                  站内价格为参考价，实际以小红书店铺订单页为准。
+                </p>
+              </div>
+              <Button size="lg" className="shrink-0" asChild>
+                <Link href="/pricing">
+                  查看服务包
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </Reveal>
       </section>
 
-      {/* 页脚 */}
-      <footer className="mt-8 border-t border-border bg-cream-surface/50">
-        <div className="mx-auto max-w-5xl px-6 py-12">
-          <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-3 text-caption text-ink-500">
-            {DISCLAIMER}
-          </div>
-          <div className="mt-8 flex flex-col items-center gap-4">
-            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-caption text-ink-500">
-              <Link href="/" className="transition-colors hover:text-ink-900">首页</Link>
-              <Link href="/pricing" className="transition-colors hover:text-ink-900">套餐</Link>
-              <Link href="/learn" className="transition-colors hover:text-ink-900">统计小课堂</Link>
-              <Link href="/about" className="transition-colors hover:text-ink-900">关于</Link>
-              <WechatEntry
-                trigger={
-                  <span className="cursor-pointer select-none transition-colors hover:text-ink-900">
-                    客服微信
-                  </span>
-                }
-              />
-              <ContactForm
-                variant="sheet"
-                entryPoint="footer"
-                trigger={
-                  <span className="cursor-pointer select-none transition-colors hover:text-ink-900">
-                    留言反馈
-                  </span>
-                }
-              />
-            </nav>
-            <div className="h-px w-16 bg-border" />
-            <p className="text-caption text-ink-400">
-              <span className="font-display font-semibold text-ink-500">预演</span>
-              {" · "}数据分析智能体 · 本科毕设研究预演工具
-            </p>
-          </div>
+      <section className="mx-auto max-w-5xl px-6 py-12">
+        <h2 className="text-h2 font-semibold text-ink-900">常见问题</h2>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {faqs.map((faq) => (
+            <Card key={faq.q} className="p-5">
+              <h3 className="text-body-lg font-semibold text-ink-900">{faq.q}</h3>
+              <p className="mt-1.5 text-small leading-relaxed text-ink-500">{faq.a}</p>
+            </Card>
+          ))}
         </div>
-      </footer>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 pb-12 text-center">
+        <h2 className="text-h2 font-semibold text-ink-900">先免费体检，再决定要不要开通</h2>
+        <p className="mx-auto mt-2 max-w-xl text-body text-ink-500">
+          上传题目就能看到方向是否可行，不需要先付费。
+        </p>
+        <Button size="lg" className="mt-5" asChild>
+          <Link href="/projects/new">
+            开始免费体检
+            <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Link>
+        </Button>
+      </section>
+
+      <SiteFooter />
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur md:hidden">
+        <div className="flex gap-2">
+          <Button className="flex-1" asChild>
+            <Link href="/projects/new">免费体检</Link>
+          </Button>
+          <Button variant="outline" className="flex-1" asChild>
+            <Link href="/example">看样例报告</Link>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

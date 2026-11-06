@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { SampleSizeCalculator } from "@/components/tutorial/SampleSizeCalculator";
 
 /**
@@ -32,6 +33,7 @@ export default function SampleSizeToolPage() {
 
         <SampleSizeCalculator />
       </div>
+      <SiteFooter />
     </div>
   );
 }

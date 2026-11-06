@@ -80,9 +80,9 @@ export const DISCLAIMER =
   "本数据由数据分析智能体生成，仅用于研究可行性预演，不可直接用于论文或正式研究。";
 
 /**
- * 定价（《VIBE 全流程手册》§1/§4：免费引流 + 付费解锁）。
+ * 服务包（免费引流 + 付费解锁）。
  * single=单次预演；report=完整报告；subscription=学期包。
- * 金额为对外展示的引导价，后端下单金额由 payment_service 服务端决定。
+ * 站内金额为参考价，实际成交价与订单状态以小红书店铺为准。
  */
 export const PRICING = {
   free: {
@@ -111,7 +111,7 @@ export const PRICING = {
       "Word/Excel 导出（带水印）",
       "30 天有效",
     ],
-    cta: "选择单次预演",
+    cta: "去小红书下单",
     ctaHref: "/pricing?plan=single",
   },
   report: {
@@ -128,7 +128,7 @@ export const PRICING = {
       "报告润色（LLM 论文段落）",
       "365 天有效",
     ],
-    cta: "选择完整报告",
+    cta: "去小红书下单",
     ctaHref: "/pricing?plan=report",
   },
   subscription: {
@@ -143,7 +143,7 @@ export const PRICING = {
       "多份问卷同时管理",
       "优先技术支持",
     ],
-    cta: "选择学期包",
+    cta: "去小红书下单",
     ctaHref: "/pricing?plan=subscription",
   },
 } as const;

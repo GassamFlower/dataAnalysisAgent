@@ -26,7 +26,7 @@ const MODE_META: Record<
   Project["mode"],
   { label: string; badge: "default" | "secondary"; icon: React.ElementType }
 > = {
-  real: { label: "真实数据项目", badge: "default", icon: Database },
+  real: { label: "真实数据项目", badge: "secondary", icon: Database },
   simulation: { label: "模拟预演项目", badge: "secondary", icon: FlaskConical },
 };
 
@@ -115,7 +115,6 @@ export function ProjectStatusCard({ project }: { project: Project }) {
               <ModeIcon className="h-3 w-3" />
               {modeMeta.label}
             </Badge>
-            <span className="text-caption text-ink-400">当前阶段</span>
           </div>
           <p className="mt-2 text-body text-ink-700">
             {getStageDescription(project.status, project.mode)}

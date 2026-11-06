@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useMetricTooltip } from "@/lib/hooks/use-tutorial";
+import { useAuthStore } from "@/lib/stores/auth-store";
 import { cn } from "@/lib/utils";
 
 interface MetricTooltipProps {
@@ -50,7 +51,11 @@ export function MetricTooltip({
   contentClassName,
 }: MetricTooltipProps) {
   const { data: tooltip, isLoading } = useMetricTooltip(metricType);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const tutorialSlug = METRIC_TUTORIAL_SLUG[metricType];
+
+  // 未登录（营销页样例报告）不展示问号，避免指向需要登录的解读接口
+  if (!isAuthenticated) return children ? <>{children}</> : null;
 
   return (
     <TooltipProvider delayDuration={100}>

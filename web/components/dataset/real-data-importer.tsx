@@ -199,16 +199,16 @@ export function RealDataImporter({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             className={`
-              flex flex-col items-center justify-center rounded-lg border-2 border-dashed
+              flex flex-col items-center justify-center rounded-xl border border-dashed border-border
               px-6 py-10 text-center transition-colors
               ${
                 isDragging
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-cream-surface"
+                  ? "border-primary bg-brand-soft/60"
+                  : "bg-cream-surface"
               }
             `}
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-card text-primary">
               <FileUp className="h-6 w-6" />
             </div>
             <p className="mt-4 text-body font-medium text-ink-700">

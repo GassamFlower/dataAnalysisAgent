@@ -30,8 +30,8 @@ const STEPS = [
 
 export function FirstRunGuide() {
   return (
-    <div className="mx-auto max-w-2xl rounded-lg border border-dashed border-border bg-cream-surface/50 px-6 py-10 text-center">
-      <h2 className="font-display text-h2 font-semibold text-ink-900">
+    <div className="mx-auto max-w-2xl rounded-xl border border-dashed border-border bg-cream-surface/50 px-6 py-10 text-center">
+      <h2 className="text-h2 font-semibold text-ink-900">
         三步，把论文的数据拿到手
       </h2>
       <p className="mt-2 text-body text-ink-500">
@@ -41,15 +41,15 @@ export function FirstRunGuide() {
       <ol className="mt-8 space-y-4 text-left">
         {STEPS.map((s, i) => (
           <li key={s.title} className="flex items-start gap-4">
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary text-ink-700">
               <s.icon className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 {i + 1}
               </span>
             </div>
             <div className="pt-0.5">
-              <div className="text-h3 font-semibold text-ink-900">{s.title}</div>
-              <p className="mt-1 text-body text-ink-500">{s.desc}</p>
+              <div className="text-body-lg font-semibold text-ink-900">{s.title}</div>
+              <p className="mt-1 text-small text-ink-500">{s.desc}</p>
             </div>
           </li>
         ))}

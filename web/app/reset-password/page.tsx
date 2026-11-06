@@ -70,14 +70,7 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6">
-      {/* 品牌水印：重置密码页延续"研究期刊卷首"气质 */}
-      <span
-        aria-hidden
-        className="brand-watermark pointer-events-none absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 select-none whitespace-nowrap text-center text-[11rem]"
-      >
-        预演
-      </span>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-16">
       <Link
         href="/login"
         className="absolute left-6 top-6 z-10 inline-flex items-center text-body text-ink-500 hover:text-ink-900"
@@ -86,12 +79,12 @@ function ResetPasswordForm() {
         返回登录
       </Link>
 
-      <Card className="relative z-10 w-full max-w-sm p-8">
+      <Card className="relative z-10 w-full max-w-sm p-6 sm:p-8">
         <div className="text-center">
-          <h1 className="font-display text-2xl font-bold text-ink-900">
+          <h1 className="text-h2 font-semibold tracking-tight text-ink-900">
             设置新密码
           </h1>
-          <p className="mt-2 text-body text-ink-500">
+          <p className="mt-1.5 text-body text-ink-500">
             {success ? "密码重置成功" : "请输入你的新密码"}
           </p>
         </div>
@@ -109,7 +102,7 @@ function ResetPasswordForm() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="newPassword">新密码（6~32 位）</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                 <Input
                   id="newPassword"
                   type="password"
@@ -124,7 +117,7 @@ function ResetPasswordForm() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="confirmPassword">确认新密码</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                 <Input
                   id="confirmPassword"
                   type="password"

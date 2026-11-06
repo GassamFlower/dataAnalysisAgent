@@ -101,14 +101,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6">
-      {/* 品牌水印：注册页延续"研究期刊卷首"气质 */}
-      <span
-        aria-hidden
-        className="brand-watermark pointer-events-none absolute left-1/2 top-1/2 w-full -translate-x-1/2 -translate-y-1/2 select-none whitespace-nowrap text-center text-[11rem]"
-      >
-        预演
-      </span>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-16">
       <Link
         href="/login"
         className="absolute left-6 top-6 inline-flex items-center text-body text-ink-500 hover:text-ink-900"
@@ -117,12 +110,12 @@ export default function RegisterPage() {
         返回登录
       </Link>
 
-      <Card className="relative z-10 w-full max-w-sm p-8">
+      <Card className="relative z-10 w-full max-w-sm p-6 sm:p-8">
         <div className="text-center">
-          <h1 className="font-display text-2xl font-bold text-ink-900">
+          <h1 className="text-h2 font-semibold tracking-tight text-ink-900">
             {step === "register" ? "注册账号" : "验证邮箱"}
           </h1>
-          <p className="mt-2 text-body text-ink-500">
+          <p className="mt-1.5 text-body text-ink-500">
             {step === "register"
               ? "填写邮箱和密码，注册你的账号"
               : `验证码已发送至 ${email}`}
@@ -134,7 +127,7 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="email">邮箱</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                 <Input
                   id="email"
                   type="email"
@@ -149,7 +142,7 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="nickname">昵称（可选）</Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                 <Input
                   id="nickname"
                   type="text"
@@ -163,7 +156,7 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="password">密码（6~32 位）</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                 <Input
                   id="password"
                   type="password"
@@ -178,7 +171,7 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-2">
               <Label htmlFor="confirmPassword">确认密码</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                 <Input
                   id="confirmPassword"
                   type="password"

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { useAuthStore } from "@/lib/stores/auth-store";
 import {
   tutorialApi,
   type MetricTooltipResponse,
@@ -63,12 +65,13 @@ export function useStartOnboarding() {
   });
 }
 
-/** 获取指标解读内容 */
+/** 获取指标解读内容（需登录；营销页未登录时不请求，避免 401 触发跳转登录） */
 export function useMetricTooltip(metricType: string) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery<MetricTooltipResponse>({
     queryKey: [...TUTORIAL_QUERY_KEY, "metric-tooltip", metricType],
     queryFn: () => tutorialApi.getMetricTooltip(metricType),
-    enabled: !!metricType,
+    enabled: !!metricType && isAuthenticated,
     staleTime: 60 * 60 * 1000, // 指标解读内容静态，缓存 1 小时
   });
 }

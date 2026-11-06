@@ -1,70 +1,72 @@
 /**
- * Design Tokens - cream 暖调复古老钱质感
+ * Design Tokens — Mercator 工作台风格
+ *
+ * 视觉基调：米灰纸面 + 近黑正文 + 细灰描边 + 单点深绿强调。
+ * 无衬线、低圆角、极轻阴影；数字统一等宽对齐，便于横向比较。
  *
  * 铁律：所有视觉值必须从此处取，禁止硬编码。
- * 权威说明见 docs/FRONTEND_ARCHITECTURE.md（第五章 = design token）。
+ * 旧变量名（cream/ink/accent-brick 等）保留为兼容别名，业务组件无需改名。
  */
 
 :root {
-  /* ===== 背景层（cream 奶油暖白） ===== */
-  --bg-base: #faf7f2; /* 页面主背景 */
-  --bg-surface: #f5f0e8; /* 卡片 / 次背景 */
-  --bg-elevated: #ffffff; /* 弹窗 / 浮层 */
-  --bg-muted: #ebe3d5; /* 表格条纹 / 分隔区 */
+  /* ===== 背景层 ===== */
+  --bg-base: #f5f5f3; /* 页面主背景 */
+  --bg-surface: #f0f0ed; /* 侧栏 / 次级区块 */
+  --bg-elevated: #fbfbf9; /* 卡片 / 弹窗 / 浮层 */
+  --bg-muted: #ecebe6; /* 表头 / 分隔带 */
 
-  /* ===== 前景层（ink 墨色，暖灰底，非纯黑） ===== */
-  --ink-900: #2a2520; /* 主文字（标题） */
-  --ink-700: #4a4239; /* 次文字（正文） */
-  --ink-500: #7a7066; /* 辅助文字（说明） */
-  --ink-400: #a89e92; /* 占位 / 禁用 */
+  /* ===== 前景层 ===== */
+  --ink-900: #1b1d22; /* 主文字 */
+  --ink-700: #3f434b; /* 次文字 */
+  --ink-500: #666a72; /* 说明文字 */
+  --ink-400: #696d75; /* 占位 / 弱化（页面底色与卡片底上满足 4.5:1） */
 
-  /* ===== 强调色（复古暖色，低饱和老钱质感） ===== */
-  --accent-brick: #b5564b; /* 主强调（CTA / 品牌） */
-  --accent-indigo: #3d5a80; /* 次强调（链接 / 信息） */
-  --accent-olive: #8b6f47; /* 第三强调（标签 / 装饰） */
+  /* ===== 品牌强调色（深绿单点强调） =====
+   * 注意：--accent 是 shadcn 的"浅色悬停底"，不是品牌色；
+   * 品牌绿统一走 --brand，避免与 bg-accent 工具类冲突。 */
+  --brand: #2c5a4a;
+  --brand-hover: #23483b;
+  --brand-soft: #e6ede9; /* 选中底 / 浅标签 */
+  --brand-soft-strong: #d3e0d9;
+
+  /* 兼容别名：旧代码/工具类引用，语义统一收敛到新色板 */
+  --accent-brick: var(--brand);
+  --accent-indigo: var(--info);
+  --accent-olive: var(--warning);
 
   /* ===== 语义色 ===== */
-  --success: #5a7d5a; /* 成功（达标） */
-  --warning: #c9a227; /* 警告（存疑） */
-  --error: #a03e33; /* 错误（不达标） */
-  --info: #3d5a80; /* 信息（复用 indigo 值，职责=链接/信息提示） */
+  --success: #2f6b4f;
+  --warning: #8a6a2f;
+  --error: #a34a3a;
+  --info: #3f6675;
 
-  /* ===== 数据可视化色板（低饱和暖色系，冷暖双轴 + 明度拉开，红绿色盲可区分） =====
-   * 说明：chart-1 砖红与 chart-5 原橄榄色在色盲视角下难以区分（同为暖褐调）。
-   * 已把 chart-5 改为冷调深青 teal，与砖红形成暖/冷对比，protanopia/deuteranopia 下仍可辨。
-   * 序列值取自 shadcn 图表常用暖基调，配合明度差保证票组互不混淆。 */
-  --chart-1: #b5564b; /* 砖红（主强调 / 正相关） */
-  --chart-2: #3d5a80; /* indigo（次强调） */
-  --chart-3: #c9a227; /* 金黄 */
-  --chart-4: #5a7d5a; /* 绿（负相关） */
-  --chart-5: #1f6f6e; /* 深青 teal（冷调，替代橄榄，避免与砖红撞色） */
-  --chart-6: #7a5c8a; /* 紫（微亮，与 teal/indigo 拉开明度） */
+  /* ===== 数据可视化色板（暖冷交替 + 明度拉开，色盲可辨） ===== */
+  --chart-1: #2c5a4a; /* 深绿（主序列） */
+  --chart-2: #4f7f8c; /* 青灰 */
+  --chart-3: #b8863f; /* 金褐 */
+  --chart-4: #7d8b80; /* 灰绿 */
+  --chart-5: #7a6a96; /* 灰紫 */
+  --chart-6: #a34a3a; /* 砖红 */
 
-  /* ===== 字号 =====
-   * v2.0 重排（2026-09-11）：原梯度下半段过密（h3 18 / body-lg 16 仅差 2px，
-   * body 14 / small 13 仅差 1px），中文下层级不可辨。
-   * 新梯度：12 / 13 / 15 / 17 / 20 / 24 / 30 / 40，行高随字号放宽到 1.5–1.73。
-   * 注意：tailwind.config.ts 中 text-xs/sm/base/lg/xl/2xl/3xl/4xl 与
-   * text-caption/small/body/body-lg/h3/h2/h1/display 映射到同一组变量，
-   * 改此处即全站生效（630 处引用），无需改动任何 tsx。 */
+  /* ===== 字号（密集工作台梯度） ===== */
   --text-display: 40px;
   --text-display-line: 48px;
-  --text-h1: 30px;
-  --text-h1-line: 38px;
-  --text-h2: 24px;
-  --text-h2-line: 32px;
-  --text-h3: 20px;
-  --text-h3-line: 28px;
-  --text-body-lg: 17px;
-  --text-body-lg-line: 27px;
-  --text-body: 15px;
-  --text-body-line: 26px;
+  --text-h1: 28px;
+  --text-h1-line: 36px;
+  --text-h2: 22px;
+  --text-h2-line: 30px;
+  --text-h3: 18px;
+  --text-h3-line: 26px;
+  --text-body-lg: 16px;
+  --text-body-lg-line: 26px;
+  --text-body: 14px;
+  --text-body-line: 22px;
   --text-small: 13px;
   --text-small-line: 20px;
   --text-caption: 12px;
   --text-caption-line: 18px;
 
-  /* ===== 间距（8px 栅格） ===== */
+  /* ===== 间距（4px 栅格） ===== */
   --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
@@ -78,38 +80,45 @@
   --space-16: 64px;
   --space-24: 96px;
 
-  /* ===== 圆角 ===== */
+  /* ===== 控件尺寸（对齐 UIUX-Reference §3.1 / §3.2） ===== */
+  --control-h-sm: 36px; /* 表格操作、紧凑工具栏 */
+  --control-h: 42px; /* 默认按钮 / 输入框 */
+  --control-h-lg: 48px; /* 营销页主行动 */
+  --touch-target: 44px; /* 移动端最小热区 */
+
+  /* ===== 圆角（克制） ===== */
   --radius-none: 0;
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 16px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
   --radius-full: 9999px;
 
-  /* ===== 阴影（暖灰底，非纯黑） ===== */
-  --shadow-xs: 0 1px 2px rgba(42, 37, 32, 0.04);
-  --shadow-sm: 0 1px 3px rgba(42, 37, 32, 0.06), 0 1px 2px rgba(42, 37, 32, 0.04);
-  --shadow-md: 0 4px 8px rgba(42, 37, 32, 0.06), 0 2px 4px rgba(42, 37, 32, 0.04);
-  --shadow-lg: 0 8px 16px rgba(42, 37, 32, 0.08), 0 4px 8px rgba(42, 37, 32, 0.04);
-  --shadow-xl: 0 16px 32px rgba(42, 37, 32, 0.1), 0 4px 8px rgba(42, 37, 32, 0.04);
+  /* ===== 阴影（几乎不可见，仅用于浮层） ===== */
+  --shadow-xs: 0 1px 2px rgba(27, 29, 34, 0.04);
+  --shadow-sm: 0 1px 2px rgba(27, 29, 34, 0.05), 0 1px 1px rgba(27, 29, 34, 0.03);
+  --shadow-md: 0 2px 6px rgba(27, 29, 34, 0.06), 0 1px 2px rgba(27, 29, 34, 0.04);
+  --shadow-lg: 0 8px 24px rgba(27, 29, 34, 0.08), 0 2px 6px rgba(27, 29, 34, 0.04);
+  --shadow-xl: 0 16px 40px rgba(27, 29, 34, 0.1), 0 4px 10px rgba(27, 29, 34, 0.05);
 
   /* ===== 边框 ===== */
-  --border-color: #ebe3d5;
-  --border-color-strong: #a89e92;
+  --border-color: #e2e1da;
+  --border-color-strong: #c9c8bf;
   --border-width: 1px;
   --border-width-focus: 2px;
   --border-style: solid;
 
-  /* ===== 字体 ===== */
-  --font-display: var(--font-fraunces), "Noto Serif SC", Georgia, "Songti SC", serif;
-  --font-sans: var(--font-noto-sans), "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* ===== 字体（全站无衬线；标题不再使用衬线体） ===== */
+  --font-sans: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei",
+    "Noto Sans SC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ===== 动效 ===== */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration-fast: 150ms;
-  --duration-base: 200ms;
-  --duration-slow: 300ms;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
 
   /* ===== shadcn/ui 语义 token 映射（组件通过这些取色） ===== */
   --background: var(--bg-base);
@@ -118,27 +127,26 @@
   --card-foreground: var(--ink-900);
   --popover: var(--bg-elevated);
   --popover-foreground: var(--ink-900);
-  --primary: var(--accent-brick);
+  --primary: var(--brand);
   --primary-foreground: #ffffff;
-  --secondary: var(--bg-muted);
-  --secondary-foreground: var(--ink-700);
+  --secondary: var(--bg-surface);
+  --secondary-foreground: var(--ink-900);
   --muted: var(--bg-muted);
   --muted-foreground: var(--ink-500);
+  /* shadcn 的 accent 是浅色悬停底（bg-accent），与品牌绿 --brand 分离 */
   --accent: var(--bg-surface);
   --accent-foreground: var(--ink-900);
   --destructive: var(--error);
   --destructive-foreground: #ffffff;
   /* --success / --warning / --info 的值已在上方"语义色"段定义，
    * 此处只映射 foreground。勿写 --success: var(--success) 这类自引用——
-   * 同一规则内后声明覆盖前声明，自引用构成循环引用导致变量 invalid，
-   * bg-success / text-success 静默失效（这正是历史代码被迫直写
-   * bg-red-50 等 Tailwind 色板的根因，2026-09-11 修复）。 */
+   * 同一规则内后声明覆盖前声明，自引用构成循环引用导致变量 invalid。 */
   --success-foreground: #ffffff;
   --warning-foreground: #ffffff;
   --info-foreground: #ffffff;
   --border: var(--border-color);
   --input: var(--border-color);
-  --ring: var(--accent-brick);
+  --ring: var(--brand);
 
   /* shadcn 半径语义 */
   --radius: var(--radius-md);
@@ -150,89 +158,89 @@
   --screen-xl: 1280px;
   --screen-2xl: 1536px;
 
-  /* ===== 毛玻璃 Liquid Glass ===== */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.24);
-  --glass-blur: 16px;
+  /* ===== 毛玻璃（仅浮层/吸顶导航使用） ===== */
+  --glass-bg: rgba(245, 245, 243, 0.86);
+  --glass-border: rgba(27, 29, 34, 0.08);
+  --glass-blur: 12px;
 
-  /* ===== 品牌氛围（纸质纹理 / 水印，极淡不抢内容） ===== */
-  /* 纸质噪点：低对比滤镜叠加在暖纸上，色相取暖纸本身而非纯黑 */
-  --noise-opacity: 0.03;
-  --watermark-opacity: 0.035;
+  /* ===== 动效层级 ===== */
+  --delay-1: 40ms;
+  --delay-2: 80ms;
+  --delay-3: 120ms;
+  --delay-4: 160ms;
 
-  /* ===== 动效层级（错峰入场，统一由 --ease-out 驱动） ===== */
-  --delay-1: 60ms;
-  --delay-2: 120ms;
-  --delay-3: 180ms;
-  --delay-4: 240ms;
-
-  /* ===== Shell 布局参数（v2.0 新增：三个 shell 统一从此取值） =====
-   * 用途：marketing-header / app-shell / admin-shell 的导航高度与侧栏宽度。
-   * 现状曾出现 app w-60(240) vs admin pl-64(256) 的 16px 跨区抖动。 */
+  /* ===== Shell 布局参数 ===== */
   --shell-header-h: 64px;
-  --shell-sidebar-w: 256px;
+  --shell-sidebar-w: 248px;
   --shell-gutter: 32px;
 }
 
-/* ===== 暗色模式 ===== */
+/* ===== 暗色模式（中性石墨，不改变信息层级） ===== */
 .dark {
-  --background: #17130f;
-  --foreground: #f3efe6;
+  --background: #17181a;
+  --foreground: #ececea;
 
-  --card: #211c16;
-  --card-foreground: #f3efe6;
-  --popover: #211c16;
-  --popover-foreground: #f3efe6;
+  --card: #1d1f22;
+  --card-foreground: #ececea;
+  --popover: #24262a;
+  --popover-foreground: #ececea;
 
-  --muted: #2b251d;
-  --muted-foreground: #a89f94;
+  --muted: #26282c;
+  --muted-foreground: #9a9da3;
 
-  --border: #3a332a;
-  --input: #3a332a;
-  --ring: #ce6a5d;
+  --border: #303338;
+  --input: #303338;
+  --ring: #6ea88f;
 
-  --primary: #ce6a5d;
-  --primary-foreground: #ffffff;
+  --primary: #6ea88f;
+  --primary-foreground: #10201a;
 
-  --secondary: #2b251d;
-  --secondary-foreground: #f3efe6;
+  --secondary: #24262a;
+  --secondary-foreground: #ececea;
 
-  --accent: #2b251d;
-  --accent-foreground: #f3efe6;
+  --accent: #24262a;
+  --accent-foreground: #ececea;
 
-  --destructive: #d47063;
-  --destructive-foreground: #ffffff;
+  --destructive: #d0705f;
+  --destructive-foreground: #17181a;
 
-  --success: #9ba97f;
-  --success-foreground: #17130f;
+  --success: #79b394;
+  --success-foreground: #17181a;
 
-  --warning: #dfb78c;
-  --warning-foreground: #17130f;
+  --warning: #c9a35f;
+  --warning-foreground: #17181a;
 
-  --info: #7f9cb8;
-  --info-foreground: #17130f;
+  --info: #7fa6b4;
+  --info-foreground: #17181a;
 
-  /* 映射到 cream 原始 token（暗色为暖褐底，非近黑） */
-  --bg-base: #17130f;
-  --bg-surface: #211d16;
-  --bg-elevated: #2b251d;
-  --bg-muted: #3a332a;
+  /* 映射到原始 token */
+  --bg-base: #17181a;
+  --bg-surface: #1d1f22;
+  --bg-elevated: #24262a;
+  --bg-muted: #2b2e33;
 
-  --ink-900: #f3efe6;
-  --ink-700: #e6e0d4;
-  --ink-500: #a89f94;
-  --ink-400: #7a6f62;
+  --ink-900: #ececea;
+  --ink-700: #cfd0cd;
+  --ink-500: #9a9da3;
+  --ink-400: #8e9198;
 
-  --border-color: #3a332a;
+  --brand: #6ea88f;
+  --brand-hover: #82bba2;
+  --brand-soft: rgba(110, 168, 143, 0.14);
+  --brand-soft-strong: rgba(110, 168, 143, 0.24);
+  --accent-brick: var(--brand);
 
-  --glass-bg: rgba(28, 24, 18, 0.72);
+  --border-color: #303338;
+  --border-color-strong: #45484e;
+
+  --glass-bg: rgba(23, 24, 26, 0.86);
   --glass-border: rgba(255, 255, 255, 0.08);
 
-  /* 数据可视化色板（暗色适配：在暖褐底上提亮，保持 chart-1/5 暖冷对比） */
-  --chart-1: #d47163;
-  --chart-2: #6f92bc;
-  --chart-3: #e2b854;
-  --chart-4: #7fa07f;
-  --chart-5: #3f9e9c;
-  --chart-6: #9a78ae;
+  /* 数据可视化色板（暗色提亮，保持暖冷对比与明度差） */
+  --chart-1: #7dbda0;
+  --chart-2: #7fa9b8;
+  --chart-3: #d6a960;
+  --chart-4: #a3b0a4;
+  --chart-5: #a595c4;
+  --chart-6: #cf7a68;
 }

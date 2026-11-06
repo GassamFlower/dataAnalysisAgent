@@ -120,10 +120,10 @@ export default function ExportPage({ params }: { params: { id: string } }) {
 
       <PageHeader
         title="数据导出"
-        description="导出模拟数据集，含 simulated 水印元数据。仅用于研究预演。"
+        description="导出项目数据集；模拟预演数据会带 simulated 水印元数据。"
       />
 
-      <Watermark className="mb-4" />
+      {project?.mode === "simulation" && <Watermark className="mb-4" />}
 
       <div className="space-y-6">
         <ExportFormatSelector value={exportFormat} onChange={setExportFormat} />

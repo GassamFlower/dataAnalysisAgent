@@ -49,17 +49,17 @@ export function DemoSimulation() {
   const { text, color } = hitLabel(rate);
 
   return (
-    <section className="mx-auto max-w-5xl px-6 py-16">
+    <section className="mx-auto max-w-5xl px-6 py-10">
       <Card className="overflow-hidden border border-primary/15">
         <div className="grid grid-cols-1 gap-0 lg:grid-cols-2">
           {/* 左：说明 + 控制 */}
           <div className="flex flex-col gap-6 p-7 sm:p-8">
             <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-primary/10 p-2.5">
-                <MousePointerClick className="h-5 w-5 text-primary" />
+              <div className="rounded-md bg-secondary p-2.5 text-ink-700">
+                <MousePointerClick className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="font-display text-h2 font-semibold text-ink-900">
+                <h2 className="text-h2 font-semibold text-ink-900">
                   拖一拖，回收前就知道命中率
                 </h2>
                 <p className="mt-2 text-body text-ink-500">
@@ -74,7 +74,7 @@ export function DemoSimulation() {
                 <label htmlFor="demo-effect" className="text-body font-medium text-ink-700">
                   效应量（Cohen&apos;s d）
                 </label>
-                <span className="font-mono text-h3 font-semibold text-primary tabular-nums">
+                <span className="tabular text-h3 font-semibold text-primary">
                   {effect.toFixed(2)}
                 </span>
               </div>
@@ -97,7 +97,7 @@ export function DemoSimulation() {
                 <label htmlFor="demo-n" className="text-body font-medium text-ink-700">
                   样本量（每组）
                 </label>
-                <span className="font-mono text-h3 font-semibold text-primary tabular-nums">
+                <span className="tabular text-h3 font-semibold text-primary">
                   {n}
                 </span>
               </div>
@@ -130,13 +130,13 @@ export function DemoSimulation() {
               }}
             >
               <div className="flex h-[calc(128px-38px)] w-[calc(128px-38px)] items-center justify-center rounded-full bg-card">
-                <span className="font-mono text-h2 font-bold text-ink-900 tabular-nums">
+                <span className="tabular text-h2 font-semibold text-ink-900">
                   {percent}%
                 </span>
               </div>
             </div>
             <div className="text-center">
-              <p className={`font-display text-h3 font-semibold ${color}`}>{text}</p>
+              <p className={`text-h3 font-semibold ${color}`}>{text}</p>
               <p className="mt-1 text-caption text-ink-500">
                 以 {effect.toFixed(2)} 的效应量 × 每组 {n} 人估算
               </p>

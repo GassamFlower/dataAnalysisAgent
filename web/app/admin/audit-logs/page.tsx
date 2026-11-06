@@ -103,10 +103,10 @@ export default function AdminAuditLogsPage() {
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
         />
-        <Button variant="outline" size="sm" onClick={applyFilters}>
+        <Button variant="outline" onClick={applyFilters}>
           筛选
         </Button>
-        <Button variant="ghost" size="sm" onClick={clearFilters}>
+        <Button variant="ghost" onClick={clearFilters}>
           清除
         </Button>
       </div>
@@ -149,7 +149,7 @@ export default function AdminAuditLogsPage() {
                           <button
                             type="button"
                             onClick={() => toggleExpand(a.id)}
-                            className="mb-1 inline-flex items-center gap-1 rounded text-primary hover:underline"
+                            className="mb-1 inline-flex items-center gap-1 rounded py-1 text-primary hover:underline"
                           >
                             {isOpen ? (
                               <ChevronDown className="h-3.5 w-3.5" />

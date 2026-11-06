@@ -40,12 +40,12 @@ export function RelatedArticles({
   return (
     <div className="mt-10">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-ink-900">
+        <h3 className="text-h3 font-semibold text-ink-900">
           相关文章 · {categoryLabel}
         </h3>
         <Link
           href="/learn"
-          className="flex items-center text-sm text-primary hover:underline"
+          className="flex items-center text-small text-primary hover:underline"
         >
           查看全部
           <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -55,19 +55,19 @@ export function RelatedArticles({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {related.map((article) => (
           <Link key={article.slug} href={`/learn/${article.slug}`}>
-            <Card className="group h-full p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <Card className="group h-full p-4 transition-colors hover:border-[var(--border-color-strong)]">
               <div className="mb-2 flex items-center gap-2">
                 <Badge variant="secondary">{categoryLabel}</Badge>
-                <span className="flex items-center text-xs text-muted-foreground">
+                <span className="flex items-center text-caption text-ink-500">
                   <Clock className="mr-1 h-3 w-3" />
                   {estimateReadTime(article.content_markdown)}
                 </span>
               </div>
-              <h4 className="mb-1 line-clamp-2 font-medium text-ink-900 group-hover:text-primary">
+              <h4 className="mb-1 line-clamp-2 text-body font-semibold text-ink-900">
                 {article.title}
               </h4>
               {article.summary && (
-                <p className="line-clamp-2 text-sm text-muted-foreground">
+                <p className="line-clamp-2 text-small text-ink-500">
                   {article.summary}
                 </p>
               )}

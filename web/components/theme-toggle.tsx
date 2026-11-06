@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,9 @@ import {
 export function ThemeToggle() {
   const theme = useUIStore((state) => state.theme);
   const setTheme = useUIStore((state) => state.setTheme);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const cycle: Record<UITheme, UITheme> = {
     light: "dark",
@@ -23,10 +27,14 @@ export function ThemeToggle() {
 
   const next = cycle[theme];
 
-  const Icon = theme === "dark" ? Moon : Sun;
+  // 首帧与 SSR 保持一致（Sun），mount 后再按持久化主题切换图标，避免水合不一致
+  const Icon = !mounted ? Sun : theme === "dark" ? Moon : Sun;
 
-  const ariaLabel =
-    theme === "light" ? "切换到暗色主题" : "切换到亮色主题";
+  const ariaLabel = !mounted
+    ? "切换主题"
+    : theme === "light"
+      ? "切换到暗色主题"
+      : "切换到亮色主题";
 
   return (
     <Button

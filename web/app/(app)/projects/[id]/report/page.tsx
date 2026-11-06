@@ -165,7 +165,7 @@ export default function ReportPage({
       <div>
         <StepNav projectId={params.id} current="report" />
         <Card className="mx-auto mt-8 max-w-lg p-8 text-center">
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-brand-soft">
             <Loader2 className="h-7 w-7 animate-spin text-primary" />
           </div>
           <h3 className="text-h2 font-semibold text-ink-900">正在生成报告</h3>
@@ -176,7 +176,7 @@ export default function ReportPage({
             {steps.map((step, i) => (
               <div key={step.label} className="flex items-center gap-3">
                 <div className="flex flex-col items-center gap-1">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary/30 bg-primary/5 font-mono text-caption font-semibold text-primary">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-brand-soft text-caption font-semibold text-primary tabular">
                     {step.icon}
                   </div>
                   <span className="text-[11px] text-ink-500">{step.label}</span>
@@ -287,7 +287,10 @@ export default function ReportPage({
         }
       />
 
-      <Watermark className="mb-4" />
+      {project?.mode === "simulation" && <Watermark className="mb-4" />}
+      <p className="mb-4 text-caption text-ink-400">
+        报告中的诊断结论与文字由 AI 辅助生成，需人工复核后使用。
+      </p>
 
       {/* 模拟数据报告 Banner（不可关闭）；传入预演命中率以标注达标情况与失效假设 */}
       <SimulationReportBanner
@@ -297,9 +300,9 @@ export default function ReportPage({
 
       {/* 数据分析救急区：自动关联当前项目与数据源（真实/模拟），可转人工分析 */}
       <section className="mt-4">
-        <Card className="flex flex-col items-start justify-between gap-4 border-primary/30 bg-primary/5 p-5 sm:flex-row sm:items-center">
+        <Card className="flex flex-col items-start justify-between gap-4 border-primary/25 bg-brand-soft/60 p-5 sm:flex-row sm:items-center">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-card text-primary">
               <LifeBuoy className="h-5 w-5" />
             </div>
             <div>
@@ -343,7 +346,7 @@ export default function ReportPage({
 
       <Reveal onView={false} delay={0.05}>
         <Tabs defaultValue="stats" className="mt-2">
-        <TabsList className="sticky top-0 z-20 mb-4 w-full justify-start overflow-x-auto border-b border-border bg-background pb-3 pt-2 sm:w-auto">
+        <TabsList className="sticky top-0 z-20 mb-5 flex h-auto w-full flex-wrap justify-start gap-0.5 bg-background p-1 sm:w-auto">
           <TabsTrigger value="stats">统计结果</TabsTrigger>
           <TabsTrigger value="hypothesis">假设检验</TabsTrigger>
           <TabsTrigger value="sample">样本质量</TabsTrigger>

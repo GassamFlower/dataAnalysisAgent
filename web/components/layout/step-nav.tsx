@@ -26,7 +26,7 @@ export function StepNav({
   };
 
   return (
-    <nav aria-label="项目流程" className="mb-8">
+    <nav aria-label="项目流程" className="mb-6">
       <ol className="flex items-center">
         {PROJECT_STEPS.map((step, i) => {
           const done = i < currentIndex;
@@ -37,33 +37,33 @@ export function StepNav({
             <li key={step.key} className="flex flex-1 items-center last:flex-none">
               <Link
                 href={href}
-                className="group flex items-center gap-3"
+                className="group flex items-center gap-2.5"
                 aria-current={active ? "step" : undefined}
               >
                 <span
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full border transition-colors duration-base ease-out",
+                    "flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-medium transition-colors duration-base ease-out",
                     active && "border-primary bg-primary text-primary-foreground",
-                    done && "border-success bg-success text-success-foreground",
-                    !active && !done && "border-border bg-cream-surface text-ink-400"
+                    done && "border-success/30 bg-success/10 text-success",
+                    !active && !done && "border-border bg-card text-ink-400"
                   )}
                 >
                   {done ? (
-                    <Check className="h-4 w-4" />
+                    <Check className="h-3.5 w-3.5" />
                   ) : (
-                    <span className="text-small font-semibold">{i + 1}</span>
+                    <span>{i + 1}</span>
                   )}
                 </span>
                 <span className="hidden sm:block">
                   <span
                     className={cn(
-                      "block text-body font-medium",
+                      "block text-small font-medium",
                       active ? "text-ink-900" : "text-ink-500"
                     )}
                   >
                     {step.label}
                   </span>
-                  <span className="block text-caption text-ink-400">
+                  <span className="block text-[11px] text-ink-400">
                     {step.description}
                   </span>
                 </span>
@@ -72,8 +72,8 @@ export function StepNav({
               {i < PROJECT_STEPS.length - 1 ? (
                 <div
                   className={cn(
-                    "mx-4 h-px flex-1 transition-colors duration-base ease-out",
-                    done ? "bg-success" : "bg-border"
+                    "mx-3 h-px flex-1 transition-colors duration-base ease-out",
+                    done ? "bg-success/40" : "bg-border"
                   )}
                 />
               ) : null}

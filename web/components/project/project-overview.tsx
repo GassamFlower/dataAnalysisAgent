@@ -43,7 +43,7 @@ function OverviewCard({ title, icon: Icon, children }: OverviewCardProps) {
     <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-h3 font-semibold text-ink-900">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-ink-700">
             <Icon className="h-4 w-4" />
           </span>
           {title}
@@ -61,8 +61,8 @@ interface StatProps {
 
 function Stat({ value, label }: StatProps) {
   return (
-    <div className="rounded-lg bg-cream-surface p-4">
-      <p className="text-h2 font-semibold text-ink-900">{value}</p>
+    <div className="rounded-md bg-cream-surface p-4">
+      <p className="tabular text-h2 font-semibold text-ink-900">{value}</p>
       <p className="mt-1 text-caption text-ink-500">{label}</p>
     </div>
   );
@@ -91,7 +91,7 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
         >
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Badge variant={isReal ? "default" : "secondary"} className="text-small">
+              <Badge variant="secondary" className="text-small">
                 {isReal ? "真实数据项目" : "模拟预演项目"}
               </Badge>
             </div>
@@ -117,7 +117,7 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
           {overview?.dataset?.source ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Badge variant={isReal ? "default" : "secondary"} className="text-small">
+                <Badge variant="secondary" className="text-small">
                   {overview.dataset.source === "real" ? "真实回收数据" : "模拟生成数据"}
                 </Badge>
               </div>

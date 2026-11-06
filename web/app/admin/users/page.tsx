@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
             }
           }}
         />
-        <Button variant="outline" size="sm" onClick={() => { setSearch(keyword); setPage(1); }}>
+        <Button variant="outline" onClick={() => { setSearch(keyword); setPage(1); }}>
           搜索
         </Button>
         <Select value={plan} onValueChange={(v) => { setPlan(v); setPage(1); }}>

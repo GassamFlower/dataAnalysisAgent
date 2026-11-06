@@ -114,11 +114,11 @@ class Settings(BaseSettings):
     ALIPAY_NOTIFY_URL: str = ""            # 异步通知 URL（https://你的域名/api/v1/payment/alipay/notify）
     ALIPAY_GATEWAY: str = "https://openapi.alipay.com/gateway.do"
 
-    # 线上成交模式开关（《VIBE 全流程手册》P0：开自助在线支付）
-    # True = 允许 C 端在线下单/支付回调自动激活（微信 Native 扫码 + 支付宝）；
+    # 线上成交模式开关。
+    # 当前成交渠道为小红书站内订单：站点不接在线支付，套餐由管理员在后台「线下订单」开通。
+    # True = 允许 C 端在线下单/支付回调自动激活（需要配置微信支付或支付宝商户参数）；
     # False = 在线支付全部拒绝，完整能力仅在后台由管理员「线下订单」手动开通。
-    # 生产默认开启以支持自助闭环；若需临时切回线下，置 False 即可。
-    ENABLE_ONLINE_PAYMENT: bool = True
+    ENABLE_ONLINE_PAYMENT: bool = False
 
     # 套餐限制
     FREE_PLAN_PROJECT_LIMIT: int = 3

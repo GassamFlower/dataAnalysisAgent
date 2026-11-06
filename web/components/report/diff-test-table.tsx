@@ -39,7 +39,72 @@ export function DiffTestTable({ results }: { results: DiffTestResult[] | null | 
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+    <div className="space-y-3">
+      {/* 窄屏：每条假设一张卡片，避免横向滚动 */}
+      <div className="space-y-3 md:hidden">
+        {results.map((r, i) => {
+          const hasError = Boolean(r.error);
+          return (
+            <div
+              key={`${r.predictor}-${r.outcome}-${i}`}
+              className="rounded-lg border border-border bg-card p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-body font-semibold text-ink-900">
+                  {r.predictor} <span className="text-ink-400">→</span> {r.outcome}
+                </span>
+                {r.significant === undefined ? null : (
+                  <span
+                    className={
+                      "flex shrink-0 items-center gap-1 text-caption " +
+                      (r.significant ? "text-success" : "text-ink-400")
+                    }
+                  >
+                    {r.significant ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      <X className="h-3.5 w-3.5" />
+                    )}
+                    {r.significant ? "显著" : "不显著"}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-caption text-ink-400">
+                {hasError ? (
+                  <span className="text-destructive">{r.error}</span>
+                ) : (
+                  r.methodName ?? r.method ?? "—"
+                )}
+              </p>
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-cream-surface px-2 py-2">
+                  <dt className="text-caption text-ink-400">统计量</dt>
+                  <dd className="tabular text-body font-medium text-ink-900">
+                    {formatNum(r.statistic, 4)}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-cream-surface px-2 py-2">
+                  <dt className="text-caption text-ink-400">p 值</dt>
+                  <dd className="tabular text-body font-medium text-ink-900">
+                    {formatP(r.pValue)}
+                  </dd>
+                </div>
+                <div className="rounded-md bg-cream-surface px-2 py-2">
+                  <dt className="text-caption text-ink-400">效应量</dt>
+                  <dd className="tabular text-body font-medium text-ink-900">
+                    {formatNum(r.effectSize)}
+                  </dd>
+                </div>
+              </dl>
+              {r.interpretation ? (
+                <p className="mt-3 text-small leading-relaxed text-ink-500">{r.interpretation}</p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg border border-border bg-card md:block">
       <Table className="table-sticky-head">
         <TableHeader>
           <TableRow className="bg-cream-surface hover:bg-cream-surface">
@@ -120,6 +185,7 @@ export function DiffTestTable({ results }: { results: DiffTestResult[] | null | 
             ) : null
           )}
         </ul>
+      </div>
       </div>
     </div>
   );

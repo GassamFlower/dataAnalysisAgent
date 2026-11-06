@@ -18,20 +18,33 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, LayoutDashboard, Menu, GraduationCap } from "lucide-react";
+import {
+  FileText,
+  User,
+  LogOut,
+  LayoutDashboard,
+  Menu,
+} from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
+const NAV_LINKS = [
+  { href: "/example", label: "样例报告" },
+  { href: "/pricing", label: "服务价格" },
+  { href: "/learn", label: "统计小课堂" },
+];
+
 function Brand() {
   return (
-    <div className="flex items-center gap-2">
-      <Link href="/" className="flex items-center gap-2">
-        <span className="font-display text-h3 font-bold text-ink-900">预演</span>
-      </Link>
-      <Badge variant="outline" className="hidden font-normal text-ink-500 sm:inline-flex">
+    <Link href="/" className="flex items-center gap-2.5">
+      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink-900 text-background">
+        <FileText className="h-4 w-4" />
+      </span>
+      <span className="text-body font-semibold text-ink-900">预演</span>
+      <Badge variant="outline" className="hidden font-normal sm:inline-flex">
         研究预演工具
       </Badge>
-    </div>
+    </Link>
   );
 }
 
@@ -60,113 +73,91 @@ export function MarketingHeader() {
     window.location.href = "/";
   };
 
-  const navLinks = [
-    { href: "/pricing", label: "联系" },
-    { href: "/learn", label: "统计小课堂" },
-    { href: "/about", label: "关于" },
-  ];
-
   const shellClasses = cn(
-    "sticky top-0 z-50 border-b transition-[background-color,border-color] duration-base ease-out",
+    "sticky top-0 z-50 border-b transition-colors duration-base ease-out",
     scrolled
-      ? "border-border bg-background/80 backdrop-blur-lg"
+      ? "border-border bg-[var(--glass-bg)] backdrop-blur"
       : "border-transparent bg-transparent"
   );
 
-  // SSR 时显示默认状态（未登录），避免 hydration mismatch
-  if (!mounted) {
-    return (
-      <div className={shellClasses}>
-        <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-          <Brand />
-          <nav className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-              <Link href="/pricing">联系</Link>
+  const navLinkClass =
+    "rounded-md px-3 py-2 text-small text-ink-700 transition-colors hover:bg-secondary hover:text-ink-900";
+
+  const authActions = () => {
+    if (!mounted) {
+      return (
+        <>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/login">登录</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/projects/new">免费体检</Link>
+          </Button>
+        </>
+      );
+    }
+    if (isAuthenticated) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <User className="h-3.5 w-3.5" />
+              {user?.nickname ?? "用户"}
             </Button>
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-              <Link href="/learn">
-                <GraduationCap className="mr-1.5 h-4 w-4" />
-                统计小课堂
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem asChild>
+              <Link href="/projects" className="flex cursor-pointer items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                我的项目
               </Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-              <Link href="/about">关于</Link>
-            </Button>
-            <ThemeToggle />
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/login">登录</Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link href="/projects/new">免费体检</Link>
-            </Button>
-          </nav>
-        </header>
-      </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="flex cursor-pointer items-center gap-2 text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              退出登录
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+    return (
+      <>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/login">登录</Link>
+        </Button>
+        <Button size="sm" asChild>
+          <Link href="/projects/new">免费体检</Link>
+        </Button>
+      </>
     );
-  }
+  };
 
   return (
     <div className={shellClasses}>
-      <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+      <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
         <Brand />
 
         {/* 桌面导航 */}
-        <nav className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/pricing">联系</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/learn">
-              <GraduationCap className="mr-1.5 h-4 w-4" />
-              统计小课堂
+        <nav className="hidden items-center gap-1 md:flex" aria-label="主导航">
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className={navLinkClass}>
+              {link.label}
             </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/about">关于</Link>
-          </Button>
+          ))}
+          <span className="mx-2 h-4 w-px bg-border" aria-hidden />
           <ThemeToggle />
-          {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <User className="mr-1.5 h-3.5 w-3.5" />
-                  {user?.nickname ?? "用户"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem asChild>
-                  <Link href="/projects" className="flex items-center gap-2 cursor-pointer">
-                    <LayoutDashboard className="h-4 w-4" />
-                    我的项目
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 cursor-pointer text-destructive"
-                >
-                  <LogOut className="h-4 w-4" />
-                  退出登录
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/login">登录</Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link href="/projects/new">免费体检</Link>
-              </Button>
-            </>
-          )}
+          <div className="ml-1 flex items-center gap-2">{authActions()}</div>
         </nav>
 
-        {/* 移动端：汉堡菜单（保持 CTA 可见） */}
-        <div className="flex items-center gap-2 md:hidden">
+        {/* 移动端：CTA + 抽屉 */}
+        <div className="flex items-center gap-1.5 md:hidden">
           <ThemeToggle />
           <Button size="sm" asChild>
-            <Link href={isAuthenticated ? "/projects" : "/projects/new"}>
-              {user?.nickname ? "我的项目" : "免费体检"}
+            <Link href={mounted && isAuthenticated ? "/projects" : "/projects/new"}>
+              {mounted && isAuthenticated ? "我的项目" : "免费体检"}
             </Link>
           </Button>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -179,40 +170,40 @@ export function MarketingHeader() {
               <SheetHeader>
                 <SheetTitle className="text-left">菜单</SheetTitle>
               </SheetHeader>
-              <nav className="mt-6 flex flex-col gap-1">
-                {navLinks.map((l) => (
-                  <Button
-                    key={l.href}
-                    variant="ghost"
-                    size="lg"
-                    asChild
-                    className="justify-start"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <Link href={l.href}>{l.label}</Link>
-                  </Button>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  asChild
-                  className="justify-start"
+              <nav className="mt-6 flex flex-col gap-0.5" aria-label="移动端导航">
+                <Link
+                  href="/"
                   onClick={() => setMobileOpen(false)}
+                  className={cn(navLinkClass, "py-2.5")}
                 >
-                  <Link href={isAuthenticated ? "/projects" : "/login"}>
-                    {isAuthenticated ? "我的项目" : "登录"}
+                  首页
+                </Link>
+                {NAV_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(navLinkClass, "py-2.5")}
+                  >
+                    {link.label}
                   </Link>
-                </Button>
-                {isAuthenticated ? (
-                  <Button
-                    variant="ghost"
-                    size="lg"
-                    className="justify-start text-destructive"
+                ))}
+                <Link
+                  href={mounted && isAuthenticated ? "/projects" : "/login"}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(navLinkClass, "py-2.5")}
+                >
+                  {mounted && isAuthenticated ? "我的项目" : "登录"}
+                </Link>
+                {mounted && isAuthenticated ? (
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-small text-destructive transition-colors hover:bg-secondary"
                     onClick={handleLogout}
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOut className="h-4 w-4" />
                     退出登录
-                  </Button>
+                  </button>
                 ) : null}
               </nav>
             </SheetContent>

@@ -34,7 +34,11 @@ export function StatCard({
             passed ? "text-ink-900" : "text-destructive"
           )}
         >
-          {typeof value === "number" ? value.toFixed(3) : value}
+          {typeof value === "number"
+            ? Number.isInteger(value)
+              ? value.toString()
+              : value.toFixed(3)
+            : value}
         </span>
         {unit ? <span className="text-body text-ink-500">{unit}</span> : null}
       </div>

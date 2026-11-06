@@ -142,12 +142,12 @@ export default function WorkbenchPage({
 
       <Card className="mb-6 p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10 text-success">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success">
             ✓
           </div>
           <div>
             <h3 className="text-h3 font-semibold text-ink-900">体检完成</h3>
-            <p className="text-body text-ink-500">
+            <p className="tabular text-small text-ink-500">
               共识别 {questions.length} 道题，{dimensions.length} 个维度，{reverseCount} 道反向题。
             </p>
           </div>
@@ -182,9 +182,9 @@ export default function WorkbenchPage({
       </div>
 
       {/* 免费层边界：联系开通 */}
-      <Card className="border-primary/30 bg-cream-surface p-6">
+      <Card className="border-primary/25 bg-cream-surface p-6">
         <div className="flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary">
             <Lock className="h-5 w-5" />
           </div>
           <div className="flex-1">
@@ -194,7 +194,7 @@ export default function WorkbenchPage({
               </h3>
             </div>
             <p className="mt-2 text-body text-ink-500">
-              体检永久免费。生成模拟数据、验证假设是否达标、导出报告等完整能力，选择套餐扫码即用。
+              体检永久免费。生成模拟数据、验证假设是否达标、导出报告等完整能力，按服务包开通后使用。
             </p>
             <div className="mt-4 flex gap-3">
               <Button asChild>

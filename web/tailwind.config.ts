@@ -76,6 +76,10 @@ const config: Config = {
           400: "var(--ink-400)",
         },
         brand: {
+          DEFAULT: "var(--brand)",
+          hover: "var(--brand-hover)",
+          soft: "var(--brand-soft)",
+          "soft-strong": "var(--brand-soft-strong)",
           brick: "var(--accent-brick)",
           indigo: "var(--accent-indigo)",
           olive: "var(--accent-olive)",

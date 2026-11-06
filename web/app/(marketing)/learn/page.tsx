@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { TermCard } from "@/components/tutorial/TermCard";
 import { tutorialApi, type TermCardResponse } from "@/lib/api/tutorial";
 import { useTutorialArticles } from "@/lib/hooks/use-tutorial";
@@ -117,17 +118,17 @@ export default function LearnPage() {
         />
 
         {/* 预演微课 · 引导卡片 */}
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.07] via-cream-surface/60 to-cream-surface px-5 py-4">
+        <div className="rounded-xl border border-border bg-cream-surface px-5 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex flex-1 items-center gap-3">
-              <div className="rounded-xl bg-primary/10 p-2.5">
-                <Lightbulb className="h-5 w-5 text-primary" />
+              <div className="rounded-md bg-card p-2.5 text-ink-700">
+                <Lightbulb className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-semibold text-ink-900">
+                <h2 className="text-body-lg font-semibold text-ink-900">
                   预演微课 · 发问卷前，先模拟一遍
                 </h2>
-                <p className="mt-0.5 text-body text-muted-foreground">
+                <p className="mt-0.5 text-small text-ink-500">
                   回收后再改已太晚——先用“预演”验证量表与假设，发布前发现问题。
                 </p>
               </div>
@@ -150,15 +151,15 @@ export default function LearnPage() {
         </div>
 
         {/* 学科量表库 · 入口 */}
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.07] via-cream-surface/60 to-cream-surface px-5 py-4">
+        <div className="rounded-xl border border-border bg-cream-surface px-5 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex flex-1 items-center gap-3">
-              <div className="rounded-xl bg-primary/10 p-2.5">
-                <Library className="h-5 w-5 text-primary" />
+              <div className="rounded-md bg-card p-2.5 text-ink-700">
+                <Library className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-semibold text-ink-900">学科量表库</h2>
-                <p className="mt-0.5 text-body text-muted-foreground">
+                <h2 className="text-body-lg font-semibold text-ink-900">学科量表库</h2>
+                <p className="mt-0.5 text-small text-ink-500">
                   管理学 / 教育学 / 心理学常用量表，一键建项目并进入预演，免去手工录题。
                 </p>
               </div>
@@ -177,8 +178,21 @@ export default function LearnPage() {
           <div className="flex flex-wrap items-center gap-2 text-body text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <Calculator className="h-4 w-4" />
-              免费工具：样本量计算器
+              免费工具：
             </span>
+            <Link
+              href="/learn/tools/sample-size"
+              className="text-ink-700 underline-offset-4 hover:text-primary hover:underline"
+            >
+              样本量计算器
+            </Link>
+            <span className="text-border">·</span>
+            <Link
+              href="/learn/tools/ai-tone"
+              className="text-ink-700 underline-offset-4 hover:text-primary hover:underline"
+            >
+              文字体检 · 去 AI 味
+            </Link>
             <span className="hidden text-xs text-muted-foreground sm:inline">
               · 共 {data?.total ?? 0} 篇
             </span>
@@ -207,17 +221,17 @@ export default function LearnPage() {
           </Tabs>
 
           <span className="text-xs text-muted-foreground">难度</span>
-          <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
+          <div className="inline-flex items-center gap-1 rounded-md bg-muted p-0.5">
             {DIFFICULTY_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setDifficulty(opt.value)}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs transition-colors",
+                  "rounded-sm px-2.5 py-1 text-xs transition-colors",
                   difficulty === opt.value
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "bg-card text-ink-900 shadow-xs"
+                    : "text-ink-500 hover:text-ink-900",
                 )}
               >
                 {opt.label}
@@ -237,10 +251,10 @@ export default function LearnPage() {
                   type="button"
                   onClick={() => setTag(tag === t ? "" : t)}
                   className={cn(
-                    "shrink-0 rounded-full border px-3 py-1 text-xs transition-colors",
+                    "shrink-0 rounded-md border px-2.5 py-1 text-xs transition-colors",
                     tag === t
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-ink-700 hover:border-primary/40 hover:bg-primary/5",
+                      ? "border-primary/30 bg-brand-soft text-primary"
+                      : "border-border text-ink-700 hover:bg-secondary",
                   )}
                 >
                   #{t}
@@ -252,13 +266,13 @@ export default function LearnPage() {
 
         {/* 语义搜索：术语卡片（命中术语时显示在结果上方） */}
         {searchLoading ? (
-          <div className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-cream-surface p-5 text-small text-ink-500">
             正在解析关键词…
           </div>
         ) : searchTerm ? (
           <TermCard term={searchTerm} />
         ) : keyword.trim() ? (
-          <div className="rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-cream-surface p-5 text-small text-ink-500">
             未匹配到术语，以下为标题/摘要命中「{keyword.trim()}」的教程
           </div>
         ) : null}
@@ -284,18 +298,18 @@ export default function LearnPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {data?.items.map((article) => (
               <Link key={article.id} href={`/learn/${article.slug}`}>
-                <Card className="group h-full overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg">
+                <Card className="group h-full overflow-hidden transition-colors hover:border-[var(--border-color-strong)]">
                   {/* 封面图 */}
                   <div className="aspect-video w-full overflow-hidden bg-muted">
                     {article.cover_image ? (
                       <img
                         src={article.cover_image}
                         alt={article.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-                        <BookOpen className="h-12 w-12 text-primary/40" />
+                      <div className="flex h-full items-center justify-center bg-cream-surface">
+                        <BookOpen className="h-10 w-10 text-ink-400" />
                       </div>
                     )}
                   </div>
@@ -322,11 +336,11 @@ export default function LearnPage() {
                       </span>
                     </div>
 
-                    <h3 className="mb-2 line-clamp-2 text-h3 font-semibold text-ink-900 transition-colors group-hover:text-primary">
+                    <h3 className="mb-2 line-clamp-2 text-body-lg font-semibold text-ink-900">
                       {article.title}
                     </h3>
 
-                    <p className="line-clamp-3 text-body text-muted-foreground">
+                    <p className="line-clamp-3 text-small text-ink-500">
                       {article.summary || "暂无摘要"}
                     </p>
 
@@ -358,6 +372,7 @@ export default function LearnPage() {
           </div>
         )}
       </div>
+      <SiteFooter />
     </div>
   );
 }

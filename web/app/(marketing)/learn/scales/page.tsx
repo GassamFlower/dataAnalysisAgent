@@ -22,6 +22,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useScales } from "@/lib/hooks/use-scales";
 import { useCreateProject } from "@/lib/hooks/use-project";
@@ -280,6 +281,7 @@ export default function ScalesLibraryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <SiteFooter />
     </div>
   );
 }

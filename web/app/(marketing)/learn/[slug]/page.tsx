@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingState } from "@/components/common/loading-state";
 import { ErrorState } from "@/components/common/error-state";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { MarkdownRenderer } from "@/components/tutorial/MarkdownRenderer";
 import { TableOfContents } from "@/components/tutorial/TableOfContents";
 import { LearningPath } from "@/components/tutorial/LearningPath";
@@ -304,6 +305,7 @@ export default function TutorialDetailPage({
           </aside>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }

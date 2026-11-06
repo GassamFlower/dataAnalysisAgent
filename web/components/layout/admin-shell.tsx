@@ -17,6 +17,8 @@ import {
   LogOut,
   ArrowUpRight,
   Menu,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -29,12 +31,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ThemeToggle } from "@/components/theme-toggle";
 
-/** 导航分组：按后台工作台信息架构重新组织 */
-const adminNavGroups: {
-  label: string;
-  items: { href: string; label: string; icon: typeof BarChart3 }[];
-}[] = [
+type AdminNavItem = { href: string; label: string; icon: typeof BarChart3 };
+
+/** 日常操作：首屏只保留概览、用户、订单 */
+const adminPrimaryGroups: { label: string; items: AdminNavItem[] }[] = [
   {
     label: "概览",
     items: [{ href: "/admin/metrics", label: "运营概览", icon: BarChart3 }],
@@ -44,22 +46,28 @@ const adminNavGroups: {
     items: [
       { href: "/admin/users", label: "用户与项目", icon: Users },
       { href: "/admin/orders", label: "订单与支付", icon: Receipt },
-      { href: "/admin/messages", label: "留言管理", icon: MessageSquare },
-    ],
-  },
-  {
-    label: "内容",
-    items: [{ href: "/admin/tutorials", label: "教程管理", icon: ScrollText }],
-  },
-  {
-    label: "系统",
-    items: [
-      { href: "/admin/configs", label: "配置与配额", icon: SlidersHorizontal },
-      { href: "/admin/llm-configs", label: "LLM 配置", icon: Cpu },
-      { href: "/admin/audit-logs", label: "审计日志", icon: ShieldCheck },
     ],
   },
 ];
+
+/** 低频配置：折叠在“高级”分组下 */
+const adminAdvancedItems: AdminNavItem[] = [
+  { href: "/admin/messages", label: "留言管理", icon: MessageSquare },
+  { href: "/admin/tutorials", label: "教程管理", icon: ScrollText },
+  { href: "/admin/configs", label: "配置与配额", icon: SlidersHorizontal },
+  { href: "/admin/llm-configs", label: "LLM 配置", icon: Cpu },
+  { href: "/admin/audit-logs", label: "审计日志", icon: ShieldCheck },
+];
+
+/** 当前路径对应的后台栏目名称 */
+function sectionLabel(pathname: string): string {
+  if (pathname.startsWith("/admin/permissions")) return "管理员授权";
+  const allItems = [...adminPrimaryGroups.flatMap((group) => group.items), ...adminAdvancedItems];
+  const hit = allItems.find(
+    (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+  );
+  return hit?.label ?? "运营概览";
+}
 
 /**
  * 管理后台 Shell（F-ADM）：桌面端固定左侧边栏 + 移动端抽屉，独立于端应用 AppShell。
@@ -75,18 +83,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  // 等待客户端 mount 后再判定登录态，避免持久化 token 尚未 rehydrate 时误跳登录
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // 守卫：未登录跳登录；已登录但非管理员提示无权限
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (mounted && !isAuthenticated) {
       router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [isAuthenticated, pathname, router]);
+  }, [mounted, isAuthenticated, pathname, router]);
 
-  if (!isAuthenticated) {
+  if (!mounted || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-ink-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-ink-400" />
       </div>
     );
   }
@@ -95,19 +107,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="max-w-sm space-y-3 text-center">
-          <ShieldCheck className="mx-auto h-10 w-10 text-ink-400" />
-          <h2 className="font-display text-lg font-bold text-ink-900">
-            需要管理员权限
-          </h2>
-          <p className="text-sm text-muted-foreground">
+          <ShieldCheck className="mx-auto h-9 w-9 text-ink-400" />
+          <h2 className="text-h3 font-semibold text-ink-900">需要管理员权限</h2>
+          <p className="text-body text-ink-500">
             当前账号不是管理员，无法访问管理后台。
           </p>
-          <Link
-            href="/projects"
-            className="mt-2 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-white"
-          >
-            返回我的项目
-          </Link>
+          <Button asChild className="mt-2">
+            <Link href="/projects">返回我的项目</Link>
+          </Button>
         </div>
       </div>
     );
@@ -120,155 +127,187 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-fast ease-out",
+      "touch-target flex h-9 items-center gap-2.5 rounded-md px-3 text-small transition-colors duration-fast ease-out",
       active
-        ? "bg-primary/10 text-primary font-medium"
-        : "text-ink-700 hover:bg-accent hover:text-accent-foreground"
+        ? "bg-[var(--brand-soft)] font-medium text-primary"
+        : "text-ink-700 hover:bg-card hover:text-ink-900"
     );
+
+  const isAdvancedActive = adminAdvancedItems.some((item) => isActive(item.href));
+  const showAdvanced = advancedOpen || isAdvancedActive || isActive("/admin/permissions");
+
+  const renderNavItem = (item: AdminNavItem) => {
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setMobileOpen(false)}
+        className={navLinkClass(active)}
+        aria-current={active ? "page" : undefined}
+      >
+        <item.icon className="h-4 w-4 shrink-0" />
+        {item.label}
+      </Link>
+    );
+  };
 
   const navBody = (
     <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
-      {adminNavGroups.map((group) => {
-        if (group.label === "系统" && isSuperAdmin) {
-          return (
-            <div key={group.label}>
-              <div className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-ink-400">
-                {group.label}
-              </div>
-              <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const active = isActive(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMobileOpen(false)}
-                      className={navLinkClass(active)}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                <Link
-                  key="/admin/permissions"
-                  href="/admin/permissions"
-                  onClick={() => setMobileOpen(false)}
-                  className={navLinkClass(isActive("/admin/permissions"))}
-                >
-                  <UserCog className="h-4 w-4 shrink-0" />
-                  管理员授权
-                </Link>
-              </div>
-            </div>
-          );
-        }
-        return (
-          <div key={group.label}>
-            <div className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-ink-400">
-              {group.label}
-            </div>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={navLinkClass(active)}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
+      {adminPrimaryGroups.map((group) => (
+        <div key={group.label}>
+          <div className="px-3 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-400">
+            {group.label}
           </div>
-        );
-      })}
+          <div className="space-y-0.5">{group.items.map(renderNavItem)}</div>
+        </div>
+      ))}
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((open) => !open)}
+          className="touch-target flex h-9 w-full items-center justify-between px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-400 transition-colors hover:text-ink-700"
+          aria-expanded={showAdvanced}
+        >
+          高级
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 transition-transform duration-fast",
+              showAdvanced && "rotate-180"
+            )}
+          />
+        </button>
+        {showAdvanced ? (
+          <div className="space-y-0.5">
+            {adminAdvancedItems.map(renderNavItem)}
+            {isSuperAdmin ? (
+              <Link
+                href="/admin/permissions"
+                onClick={() => setMobileOpen(false)}
+                className={navLinkClass(isActive("/admin/permissions"))}
+                aria-current={isActive("/admin/permissions") ? "page" : undefined}
+              >
+                <UserCog className="h-4 w-4 shrink-0" />
+                管理员授权
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </nav>
   );
 
   /** 底部身份区：头像首字 + 昵称/管理员 + 退出 */
   const identityBlock = (
     <div className="border-t border-border p-3">
-      <div className="mb-2 flex items-center gap-2.5 rounded-md px-2 py-1.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+      <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card text-small font-medium text-ink-700">
           {(user?.nickname || "管").slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-ink-900">
+          <div className="truncate text-small font-medium text-ink-900">
             {user?.nickname || "管理员"}
           </div>
-          <div className="text-xs text-ink-400">后台管理员</div>
+          <div className="text-[11px] text-ink-500">
+            {isSuperAdmin ? "超级管理员" : "后台管理员"}
+          </div>
         </div>
       </div>
-      <div className="flex gap-1.5">
+      <div className="mt-1 flex gap-1">
         <Button
           variant="ghost"
           size="sm"
-          className="flex-1 justify-start text-ink-700"
+          className="flex-1 justify-start"
           onClick={() => {
             logout();
             router.push("/");
           }}
         >
-          <LogOut className="h-3.5 w-3.5" />退出
+          <LogOut className="h-3.5 w-3.5" />
+          退出
         </Button>
         <Link
           href="/projects"
-          className="inline-flex flex-1 items-center justify-start gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-ink-700 hover:bg-accent hover:text-accent-foreground"
+          className="inline-flex flex-1 items-center justify-start gap-1.5 rounded-md px-2.5 py-1.5 text-caption text-ink-700 transition-colors hover:bg-secondary hover:text-ink-900"
         >
-          <ArrowUpRight className="h-3.5 w-3.5" />端应用
+          <ArrowUpRight className="h-3.5 w-3.5" />
+          端应用
         </Link>
       </div>
+    </div>
+  );
+
+  const brand = (
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink-900 text-background">
+        <ShieldCheck className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-body font-semibold leading-tight text-ink-900">
+          管理后台
+        </span>
+        <span className="block text-[11px] leading-tight text-ink-500">
+          运营与系统配置
+        </span>
+      </span>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-background">
       {/* 桌面端左侧固定边栏 */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-cream-surface md:flex">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <span className="font-display text-lg font-bold text-ink-900">
-            管理后台
-          </span>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-border bg-cream-surface md:flex">
+        <div className="flex h-16 items-center border-b border-border px-4">
+          {brand}
         </div>
         {navBody}
         {identityBlock}
       </aside>
 
       {/* 移动端顶栏 */}
-      <header className="fixed left-0 right-0 top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-cream-surface px-4 md:hidden">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <span className="font-display text-lg font-bold text-ink-900">
-            管理后台
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-[var(--glass-bg)] px-4 backdrop-blur md:hidden">
+        {brand}
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle />
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="打开后台菜单">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="flex w-[280px] flex-col bg-cream-surface p-0"
+            >
+              <SheetHeader className="border-b border-border px-4 py-4 text-left">
+                <SheetTitle className="sr-only">后台菜单</SheetTitle>
+                {brand}
+              </SheetHeader>
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {navBody}
+                {identityBlock}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </header>
+
+      {/* 桌面端顶栏：位置 + 主题 */}
+      <header className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-border bg-[var(--glass-bg)] px-8 backdrop-blur md:flex md:pl-[280px]">
+        <div className="flex items-center gap-1.5 text-small text-ink-500">
+          <span>管理后台</span>
+          <ChevronRight className="h-3.5 w-3.5 text-ink-400" />
+          <span className="font-medium text-ink-900">
+            {sectionLabel(pathname)}
           </span>
         </div>
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="打开后台菜单">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="flex w-64 flex-col bg-cream-surface p-0">
-            <SheetHeader className="border-b border-border p-5 text-left">
-              <SheetTitle className="font-display text-lg text-ink-900">
-                管理后台
-              </SheetTitle>
-            </SheetHeader>
-            {navBody}
-            {identityBlock}
-          </SheetContent>
-        </Sheet>
+        <ThemeToggle />
       </header>
 
       {/* 主内容区：更宽的工作台内容 */}
-      <main className="pt-16 md:pl-64 md:pt-0">
-        <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+      <main className="md:pl-[248px]">
+        <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
           {children}
         </div>
       </main>

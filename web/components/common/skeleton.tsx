@@ -9,7 +9,7 @@ export function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-cream-muted", className)}
+      className={cn("animate-pulse rounded-md bg-muted", className)}
       {...props}
     />
   );
@@ -18,7 +18,7 @@ export function Skeleton({
 /** 卡片骨架 */
 export function SkeletonCard() {
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <div className="rounded-xl border border-border bg-card p-5">
       <Skeleton className="mb-4 h-6 w-1/3" />
       <Skeleton className="mb-2 h-4 w-full" />
       <Skeleton className="mb-2 h-4 w-5/6" />

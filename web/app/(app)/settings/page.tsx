@@ -328,7 +328,7 @@ export default function SettingsPage() {
 
           {/* 免费用户升级引导 */}
           {user.plan === "free" && (
-            <div className="mt-3 flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+            <div className="mt-3 flex items-start gap-3 rounded-md border border-primary/25 bg-brand-soft/60 p-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div className="flex-1">
                 <p className="text-sm font-medium">开通完整能力</p>

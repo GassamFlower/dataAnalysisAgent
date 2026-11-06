@@ -115,13 +115,13 @@ export default function NewProjectPage() {
                   setRawText(tpl.rawText);
                 }}
                 disabled={isSubmitting}
-                className="group rounded-md border border-border bg-cream-surface/50 px-4 py-3 text-left transition-colors hover:border-primary/50 hover:bg-cream-surface disabled:cursor-not-allowed disabled:opacity-50"
+                className="group rounded-md border border-border bg-cream-surface/50 px-4 py-3 text-left transition-colors hover:border-[var(--border-color-strong)] hover:bg-cream-surface disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-body font-medium text-ink-900">
                     {tpl.label}
                   </span>
-                  <span className="rounded-full bg-cream-muted px-2 py-0.5 text-caption text-ink-500">
+                  <span className="rounded-sm bg-cream-muted px-2 py-0.5 text-caption text-ink-500">
                     {tpl.description}
                   </span>
                 </div>

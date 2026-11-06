@@ -131,12 +131,12 @@ function ProjectCard({
 
   return (
     <Card
-      className="group relative cursor-pointer p-5 transition-colors hover:border-primary/50 hover:bg-cream-surface"
+      className="group relative cursor-pointer p-5 transition-colors hover:border-[var(--border-color-strong)] hover:bg-cream-surface"
       onClick={handleCardClick}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-h3 font-semibold text-ink-900 group-hover:text-primary">
+          <h3 className="line-clamp-2 text-h3 font-semibold leading-snug text-ink-900">
             {project.name}
           </h3>
           <p className="mt-1 text-caption text-ink-500">
