@@ -1,7 +1,7 @@
 """v1 版路由聚合。"""
 from fastapi import APIRouter
 
-from app.api.v1 import auth, compliance, dataset, llm_config, payment, projects, questionnaire, report, simulation, tutorial, users, analytics, admin, message, frontend_config, scales
+from app.api.v1 import auth, compliance, dataset, llm_config, payment, projects, questionnaire, report, simulation, tutorial, users, analytics, admin, message, frontend_config, scales, ai_tone
 
 router = APIRouter(prefix="/v1")
 router.include_router(auth.router)
@@ -20,3 +20,4 @@ router.include_router(admin.router)
 router.include_router(message.router)
 router.include_router(frontend_config.router)
 router.include_router(scales.router)
+router.include_router(ai_tone.router)

@@ -23,6 +23,7 @@ DEFAULT_QUOTA_LIMITS: dict[str, int] = {
     "analysis": 6,
     "data_import": 6,
     "ai_interpret": 1,
+    "ai_tone": 3,
 }
 
 # 每个动作的可读中文标签
@@ -32,6 +33,7 @@ QUOTA_ACTION_LABELS: dict[str, str] = {
     "analysis": "高级统计",
     "data_import": "数据导入",
     "ai_interpret": "AI 解读",
+    "ai_tone": "文字改写",
 }
 
 _CONFIG_KEY_PREFIX = "quota."

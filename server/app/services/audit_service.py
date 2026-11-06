@@ -245,6 +245,7 @@ ACTION_TYPES = {
     "DIMENSION_EDIT": "dimension_edit",
     "REVERSE_TOGGLE": "reverse_toggle",
     "PAYMENT_NOTIFY": "payment_notify",
+    "AI_TONE_REWRITE": "ai_tone_rewrite",
     # 认证相关
     "USER_REGISTER": "user_register",
     "USER_LOGIN": "user_login",
